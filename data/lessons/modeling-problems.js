@@ -37,6 +37,15 @@ export const MODELING_PROBLEMS = [
     expressionLatex: 'm=1,\\; c=6,\\; k=25 \\;\\;(\\text{MSD} \\to \\text{CL})',
     finalAnswerLatex:
       'T(s)=\\frac{11}{s^2+6s+36}, \\quad s_{\\text{CL}}=-3\\pm 3\\sqrt{3}\\,j, \\quad c_{\\text{crit}}=12',
+    diagram: {
+      type: 'msd',
+      m: '1',
+      c: '6',
+      k: '25',
+      input: 'f(t)',
+      output: 'x(t)',
+      subtitle: 'Mass-Spring-Damper FBD',
+    },
     verifyPlot: {
       kind: 'step-compare',
       domain: [0, 2.2],
@@ -64,14 +73,57 @@ export const MODELING_PROBLEMS = [
     },
     steps: [
       {
-        stepType: 'ode_fbd',
-        badge: "Newton's 2nd Law ODE",
+        stepType: 'diagram_fbd',
+        badge: 'Read Diagram → FBD Force Balance',
         whyThisStep:
-          "Writing Newton's 2nd law in the time domain separates kinetic energy storage ($m\\ddot{x}$), elastic storage ($kx$), and viscous dissipation ($c\\dot{x}$) before transforming to algebra.",
+          'Reading coordinate arrows and restoring directions directly off the free-body diagram locks in passive sign conventions before touching numbers — preventing the classic sign-flip bug that turns a stable spring into an unstable plant.',
         systemImpact:
-          'Every positive coefficient ($m, c, k > 0$) guarantees passive energy dissipation, so the unforced open-loop stage is strictly stable and settles back to equilibrium.',
+          'Because both wall-anchored elements ($-kx$ and $-c\\dot{x}$) oppose rightward motion $+x(t)$, transposing them to the inertia side guarantees all-positive coefficients ($m, c, k > 0$).',
         prompt:
-          'Apply a free-body force balance $\\sum F = m\\ddot{x}$ with applied input force $f(t)$ opposing spring force $kx$ and damper force $c\\dot{x}$ for $m=1,\\; c=6,\\; k=25$.',
+          "Read the schematic's positive displacement $x(t)\\to$, applied drive $f(t)\\to$, and opposing spring $k$ & damper $c$ to write Newton's 2nd law $\\sum F_x = m\\ddot{x}$ in symbolic variables.",
+        highlightLatex:
+          '\\sum F_x = \\textcolor{#22D3EE}{m}\\ddot{x}: \\quad \\text{drive } \\textcolor{#34D399}{+f(t)}, \\quad \\text{restoring } \\textcolor{#F59E0B}{-c\\dot{x},\\; -kx}',
+        options: [
+          {
+            id: 'a',
+            latex: 'm\\ddot{x} = f(t) + c\\dot{x} + kx',
+            correct: false,
+            misconception:
+              'Wall-anchored spring and damper OPPOSE rightward displacement $x$ and velocity $\\dot{x}$, so they pull LEFT ($-kx$ and $-c\\dot{x}$), not right.',
+          },
+          {
+            id: 'b',
+            latex: 'm\\ddot{x} = f(t) - c\\dot{x} - kx',
+            correct: true,
+          },
+          {
+            id: 'c',
+            latex: 'c\\dot{x} + kx = f(t)',
+            correct: false,
+            misconception:
+              'Do not omit the mass inertia reaction $m\\ddot{x}$ — neglecting $m$ drops the order from 2nd-order oscillatory to 1st-order non-oscillatory!',
+          },
+          {
+            id: 'd',
+            latex: 'm\\ddot{x} = -f(t) - c\\dot{x} - kx',
+            correct: false,
+            misconception:
+              'Check the arrow on the schematic: applied force $f(t)$ acts in the $+x$ direction, so it enters $+f(t)$.',
+          },
+        ],
+        lockedLabel: 'Symbolic FBD',
+        lockedResultLatex: '\\textcolor{#34D399}{m\\ddot{x} = f(t) - c\\dot{x} - kx}',
+        hint: 'Forces aligned with $+x(t)$ enter $+$; wall-anchored spring ($kx$) and damper ($c\\dot{x}$) pull opposite to motion ($-$).',
+      },
+      {
+        stepType: 'ode_fbd',
+        badge: 'Plug Diagram Constants → ODE',
+        whyThisStep:
+          'Moving all state derivatives to the left and substituting the labeled diagram constants separates kinetic storage ($m\\ddot{x}$), viscous dissipation ($c\\dot{x}$), and elastic storage ($kx$) in standard form.',
+        systemImpact:
+          'Every positive coefficient ($m=1, c=6, k=25 > 0$) guarantees passive energy dissipation, so the unforced open-loop stage is strictly stable and settles back to equilibrium.',
+        prompt:
+          'Rearrange $m\\ddot{x} = f(t) - c\\dot{x} - kx$ into standard form and substitute the diagram constants $m=1,\\; c=6,\\; k=25$.',
         highlightLatex:
           '\\textcolor{#22D3EE}{m}\\ddot{x} + \\textcolor{#F59E0B}{c}\\dot{x} + \\textcolor{#22D3EE}{k}x = f(t)',
         options: [
@@ -85,7 +137,7 @@ export const MODELING_PROBLEMS = [
             latex: '\\ddot{x} - 6\\dot{x} - 25x = f(t)',
             correct: false,
             misconception:
-              'Spring ($-kx$) and damper ($-c\\dot{x}$) oppose motion on the force side ($f - c\\dot{x} - kx = m\\ddot{x}$), so moving them to the left gives positive signs.',
+              'Moving $-c\\dot{x} - kx$ from the right-hand side to the left-hand side flips both signs to positive ($+6\\dot{x} + 25x$).',
           },
           {
             id: 'c',
@@ -104,7 +156,7 @@ export const MODELING_PROBLEMS = [
         ],
         lockedLabel: 'Governing ODE',
         lockedResultLatex: '\\textcolor{#34D399}{\\ddot{x} + 6\\dot{x} + 25x = f(t)}',
-        hint: 'From $f(t) - c\\dot{x} - kx = m\\ddot{x}$, move all $x$-terms to the left side.',
+        hint: 'From $m\\ddot{x} = f(t) - c\\dot{x} - kx$, move all $x$-terms left and plug in $m=1, c=6, k=25$.',
       },
       {
         stepType: 'laplace_tf',
@@ -337,6 +389,15 @@ export const MODELING_PROBLEMS = [
     expressionLatex: 'm=1,\\; c=7,\\; k=10 \\;\\;(\\text{Overdamped} \\to \\zeta=1)',
     finalAnswerLatex:
       'G(s)=\\frac{1}{(s+2)(s+5)}, \\qquad K_p = 2.25 \\implies s_{\\text{CL}} = -3.5,-3.5',
+    diagram: {
+      type: 'msd',
+      m: '1',
+      c: '7',
+      k: '10',
+      input: 'f(t)',
+      output: 'x(t)',
+      subtitle: 'Overdamped Shock Absorber',
+    },
     verifyPlot: {
       kind: 'step-compare',
       domain: [0, 3.0],
@@ -359,14 +420,57 @@ export const MODELING_PROBLEMS = [
     },
     steps: [
       {
-        stepType: 'ode_to_tf',
-        badge: 'ODE & Open-Loop G(s)',
+        stepType: 'diagram_ode',
+        badge: 'Diagram → Governing ODE',
         whyThisStep:
-          'Jumping directly from physical parameters $(m, c, k)$ to the Laplace plant $G(s)$ lets you inspect pole structure and damping immediately.',
+          'Reading $(m, c, k)$ and coordinate arrows directly off the shock-absorber schematic anchors every derivative order ($\\ddot{x}, \\dot{x}, x$) to a physical component before transforming to the $s$-plane.',
+        systemImpact:
+          'Already in the time domain you can spot $c = 7 > 2\\sqrt{mk} = 2\\sqrt{10} \\approx 6.32$, immediately telling you this hydraulic strut is strictly overdamped before solving a single root.',
+        prompt:
+          'Read mass $m=1$, damper $c=7$, spring $k=10$, and coordinate arrows $x(t)\\to,\\; f(t)\\to$ on the schematic to assemble the governing differential equation.',
+        highlightLatex:
+          '\\textcolor{#22D3EE}{m}\\ddot{x} + \\textcolor{#F59E0B}{c}\\dot{x} + \\textcolor{#22D3EE}{k}x = f(t) \\quad\\text{with } (m,c,k) = (1, 7, 10)',
+        options: [
+          {
+            id: 'a',
+            latex: '\\ddot{x} + 7\\dot{x} + 10x = f(t)',
+            correct: true,
+          },
+          {
+            id: 'b',
+            latex: '\\ddot{x} + 10\\dot{x} + 7x = f(t)',
+            correct: false,
+            misconception:
+              'Keep damper $c=7$ on the velocity term $\\dot{x}$ and spring stiffness $k=10$ on the displacement term $x$.',
+          },
+          {
+            id: 'c',
+            latex: '\\ddot{x} - 7\\dot{x} - 10x = f(t)',
+            correct: false,
+            misconception:
+              'Opposing forces $-c\\dot{x} - kx$ on the right-hand side transpose to $+7\\dot{x} + 10x$ on the left of $m\\ddot{x}$.',
+          },
+          {
+            id: 'd',
+            latex: '7\\ddot{x} + 10\\dot{x} + x = f(t)',
+            correct: false,
+            misconception:
+              'Mass $m=1$ multiplies acceleration $\\ddot{x}$; placing $c=7$ on $\\ddot{x}$ misassigns every physical element.',
+          },
+        ],
+        lockedLabel: 'Governing ODE',
+        lockedResultLatex: '\\textcolor{#34D399}{\\ddot{x} + 7\\dot{x} + 10x = f(t)}',
+        hint: 'Pair $m=1$ with $\\ddot{x}$, damper $c=7$ with $\\dot{x}$, and spring $k=10$ with $x$ on the left side.',
+      },
+      {
+        stepType: 'ode_to_tf',
+        badge: 'Laplace Transfer Function',
+        whyThisStep:
+          'Transforming the governing ODE under zero initial conditions into the rational plant $G(s) = X(s)/F(s)$ lets you inspect pole structure and damping immediately.',
         systemImpact:
           'The constant term $10$ sets open-loop DC compliance ($0.10\\text{ m/N}$), while the large $7s$ damping term dominates energy dissipation.',
         prompt:
-          'Write the open-loop transfer function $G(s) = X(s)/F(s)$ for the shock absorber with $m=1,\\; c=7,\\; k=10$.',
+          'Take $\\mathcal{L}\\{\\cdot\\}$ of $\\ddot{x} + 7\\dot{x} + 10x = f(t)$ (zero ICs) and write the open-loop transfer function $G(s) = X(s)/F(s)$.',
         highlightLatex:
           '\\textcolor{#22D3EE}{1}\\cdot\\ddot{x} + \\textcolor{#F59E0B}{7}\\dot{x} + \\textcolor{#22D3EE}{10}x = f(t) \\;\\xrightarrow{\\mathcal{L}}\\; G(s)',
         options: [
@@ -586,6 +690,15 @@ export const MODELING_PROBLEMS = [
     expressionLatex: 'J=2,\\; b=8,\\; k_\\theta=8 \\;\\;(\\text{Gimbal})',
     finalAnswerLatex:
       'G(s)=\\frac{0.5}{(s+2)^2}, \\qquad s=-2,-2 \\;\\;(\\zeta=1 \\xrightarrow{+K_d} \\text{overdamped})',
+    diagram: {
+      type: 'rotational',
+      J: '2',
+      b: '8',
+      kTheta: '8',
+      input: 'τ(t)',
+      output: 'θ(t)',
+      subtitle: 'Rotational Gimbal Inertia',
+    },
     verifyPlot: {
       kind: 'step-compare',
       domain: [0, 4.5],
@@ -612,14 +725,57 @@ export const MODELING_PROBLEMS = [
     },
     steps: [
       {
-        stepType: 'torque_ode',
-        badge: 'Newton-Euler Torque Balance',
+        stepType: 'diagram_torque_fbd',
+        badge: 'Diagram → Free-Body Torque Sum',
         whyThisStep:
-          'Rotational mechanics obeys the exact mirror of translational dynamics ($J\\leftrightarrow m,\\; b\\leftrightarrow c,\\; k_\\theta\\leftrightarrow k$), letting you model gimbals, joints, and flywheels identically.',
+          'Reading angular polarity $+\\theta(t)$, drive torque $+\\tau(t)$, and opposing bearing/flexure reactions directly off the gimbal diagram enforces correct signs before plugging in inertia and drag numbers.',
+        systemImpact:
+          'Opposing torques $-b\\dot{\\theta}$ and $-k_\\theta\\theta$ transpose to the left as $+b\\dot{\\theta} + k_\\theta\\theta$, preserving exact mathematical isomorphism with translational mass-spring-damper mechanics.',
+        prompt:
+          'Read flywheel inertia $J$, opposing torsional spring $-k_\\theta\\theta$, viscous bearing drag $-b\\dot{\\theta}$, and drive torque $+\\tau(t)$ from the gimbal schematic to write Newton-Euler $\\sum \\tau = J\\ddot{\\theta}$.',
+        highlightLatex:
+          '\\sum \\tau = \\textcolor{#22D3EE}{J}\\ddot{\\theta}: \\quad \\text{drive } \\textcolor{#34D399}{+\\tau(t)}, \\quad \\text{drag } \\textcolor{#F59E0B}{-b\\dot{\\theta}}, \\quad \\text{spring } \\textcolor{#F59E0B}{-k_\\theta\\theta}',
+        options: [
+          {
+            id: 'a',
+            latex: 'J\\ddot{\\theta} = \\tau(t) + b\\dot{\\theta} + k_\\theta\\theta',
+            correct: false,
+            misconception:
+              'Both viscous bearing drag ($b\\dot{\\theta}$) and torsional flexure ($k_\\theta\\theta$) RESIST positive rotation, so they subtract from applied torque $\\tau(t)$.',
+          },
+          {
+            id: 'b',
+            latex: 'J\\dot{\\theta} = \\tau(t) - b\\theta - k_\\theta\\int\\theta\\,dt',
+            correct: false,
+            misconception:
+              'Angular acceleration is $\\ddot{\\theta}$ (second derivative of angle), bearing drag scales with angular rate $\\dot{\\theta}$, and torsional spring scales with angle $\\theta$.',
+          },
+          {
+            id: 'c',
+            latex: 'J\\ddot{\\theta} = \\tau(t) - b\\dot{\\theta} - k_\\theta\\theta',
+            correct: true,
+          },
+          {
+            id: 'd',
+            latex: 'J\\ddot{\\theta} = \\tau(t) - k_\\theta\\dot{\\theta} - b\\theta',
+            correct: false,
+            misconception:
+              'Do not swap rotational parameters: viscous bearing $b$ multiplies angular velocity $\\dot{\\theta}$ while torsional stiffness $k_\\theta$ multiplies angle $\\theta$.',
+          },
+        ],
+        lockedLabel: 'Symbolic Torque FBD',
+        lockedResultLatex: '\\textcolor{#34D399}{J\\ddot{\\theta} = \\tau(t) - b\\dot{\\theta} - k_\\theta\\theta}',
+        hint: 'Drive torque $+\\tau(t)$ accelerates the rotor in $+\\theta$, while bearing drag and flexure spring oppose motion ($-$).',
+      },
+      {
+        stepType: 'torque_ode',
+        badge: 'Plug Diagram Constants → Torque ODE',
+        whyThisStep:
+          'Moving all $\\theta$-terms to the left and substituting $(J, b, k_\\theta)$ exposes the exact leading inertia $J = 2$ that will later scale the monic transfer-function gain.',
         systemImpact:
           'Because rotor inertia $J = 2$ is twice unity, torque commands produce half the angular acceleration of a unit-inertia axis — scaling the plant gain down by $1/J$.',
         prompt:
-          'Write the rotational Newton-Euler ODE relating input motor torque $\\tau(t)$ to gimbal angle $\\theta(t)$ for $J=2,\\; b=8,\\; k_\\theta=8$.',
+          'Rearrange $J\\ddot{\\theta} = \\tau(t) - b\\dot{\\theta} - k_\\theta\\theta$ into standard form and substitute the schematic constants $J=2,\\; b=8,\\; k_\\theta=8$.',
         highlightLatex:
           '\\textcolor{#22D3EE}{J}\\ddot{\\theta} + \\textcolor{#F59E0B}{b}\\dot{\\theta} + \\textcolor{#22D3EE}{k_\\theta}\\theta = \\tau(t)',
         options: [
@@ -843,6 +999,16 @@ export const MODELING_PROBLEMS = [
     expressionLatex: 'L=0.5\\text{H},\\; R=4\\Omega,\\; C=0.05\\text{F}',
     finalAnswerLatex:
       'G(s)=\\frac{40}{s^2+8s+40}, \\quad s=-4\\pm 2\\sqrt{6}\\,j, \\quad R_{\\text{crit}}=2\\sqrt{10}\\,\\Omega',
+    diagram: {
+      type: 'rlc-series',
+      L: '0.5 H',
+      R: '4 Ω',
+      C: '0.05 F',
+      input: 'v_in(t)',
+      output: 'v_C(t)',
+      current: 'i(t)',
+      subtitle: 'Series RLC Voltage Divider',
+    },
     verifyPlot: {
       kind: 'step-compare',
       domain: [0, 1.8],
@@ -868,14 +1034,57 @@ export const MODELING_PROBLEMS = [
     },
     steps: [
       {
-        stepType: 'kvl_ode',
-        badge: 'KVL Mesh Equation',
+        stepType: 'diagram_kvl_symbolic',
+        badge: 'Diagram → Symbolic KVL & Capacitor Law',
         whyThisStep:
-          'Expressing KVL solely in terms of the output state $v_C(t)$ via the constitutive law $i = C\\dot{v}_C$ eliminates the intermediate current variable in one clean stroke.',
+          'Tracing clockwise current $i(t)$ and passive $+ / -$ drops around the schematic loop before plugging in numbers exposes the exact dimensionless time-constants $LC$ and $RC$.',
+        systemImpact:
+          'Eliminating loop current $i(t)$ immediately reveals why $\\omega_n = 1/\\sqrt{LC}$ (independent of $R$) and why steady DC voltage passes across the inductor with unity gain ($v_C = v_{\\text{in}}$).',
+        prompt:
+          'Trace clockwise current $i(t)$ and $+ / -$ polarities in the RLC schematic ($v_{\\text{in}} - L\\frac{di}{dt} - Ri - v_C = 0$) and substitute the capacitor law $i = C\\dot{v}_C$ symbolically.',
+        highlightLatex:
+          'v_{\\text{in}}(t) - \\textcolor{#22D3EE}{L}\\frac{di}{dt} - \\textcolor{#F59E0B}{R}i - v_C = 0, \\qquad i = \\textcolor{#22D3EE}{C}\\dot{v}_C',
+        options: [
+          {
+            id: 'a',
+            latex: 'L\\ddot{v}_C + R\\dot{v}_C + C v_C = v_{\\text{in}}(t)',
+            correct: false,
+            misconception:
+              'Substituting $i = C\\dot{v}_C$ multiplies $L\\frac{di}{dt}$ and $Ri$ by $C$, leaving $v_C$ with coefficient $1$ (not $C$).',
+          },
+          {
+            id: 'b',
+            latex: 'LC\\ddot{v}_C + RC\\dot{v}_C + v_C = v_{\\text{in}}(t)',
+            correct: true,
+          },
+          {
+            id: 'c',
+            latex: 'LC\\ddot{v}_C + \\frac{R}{C}\\dot{v}_C + v_C = v_{\\text{in}}(t)',
+            correct: false,
+            misconception:
+              'Resistor voltage is $Ri = R(C\\dot{v}_C) = RC\\dot{v}_C$ (multiplying by $C$, not dividing by $C$).',
+          },
+          {
+            id: 'd',
+            latex: 'L\\dot{v}_C + RC\\dot{v}_C + v_C = v_{\\text{in}}(t)',
+            correct: false,
+            misconception:
+              'Differentiating $i = C\\dot{v}_C$ inside $L\\frac{di}{dt}$ yields a second derivative $LC\\ddot{v}_C$, not $L\\dot{v}_C$.',
+          },
+        ],
+        lockedLabel: 'Symbolic KVL',
+        lockedResultLatex: '\\textcolor{#34D399}{LC\\ddot{v}_C + RC\\dot{v}_C + v_C = v_{\\text{in}}(t)}',
+        hint: 'Differentiate $i = C\\dot{v}_C$ to get $\\frac{di}{dt} = C\\ddot{v}_C$, then substitute both into KVL.',
+      },
+      {
+        stepType: 'kvl_ode',
+        badge: 'Plug Diagram Values → Output ODE',
+        whyThisStep:
+          'Substituting the schematic component values $(L, R, C)$ into the symbolic KVL equation locks in exact numerical coefficients for the Laplace transform.',
         systemImpact:
           'The product $LC = 0.025\\text{ s}^2$ sets the resonant timescale while $RC = 0.2\\text{ s}$ sets the electrical dissipation timescale.',
         prompt:
-          'Combine series KVL $L\\frac{di}{dt} + Ri + v_C = v_{\\text{in}}$ with $i = C\\dot{v}_C$ for $L=0.5\\text{ H},\\; R=4\\,\\Omega,\\; C=0.05\\text{ F}$.',
+          'Substitute the schematic values $L=0.5\\text{ H},\\; R=4\\,\\Omega,\\; C=0.05\\text{ F}$ into $LC\\ddot{v}_C + RC\\dot{v}_C + v_C = v_{\\text{in}}(t)$.',
         highlightLatex:
           '\\textcolor{#22D3EE}{LC}\\,\\ddot{v}_C + \\textcolor{#F59E0B}{RC}\\,\\dot{v}_C + v_C = v_{\\text{in}}(t)',
         options: [
@@ -1138,6 +1347,15 @@ export const MODELING_PROBLEMS = [
     expressionLatex: 'R=10\\Omega,\\; L=0.2\\text{H},\\; C=0.02\\text{F}\\;\\;(\\parallel\\text{RLC})',
     finalAnswerLatex:
       'Z(s)=\\frac{50s}{s^2+5s+250}, \\quad s=-2.5\\pm 15.61j, \\quad R\\to 5\\Omega \\Rightarrow \\sigma: 2.5\\to 5',
+    diagram: {
+      type: 'rlc-parallel',
+      R: '10 Ω',
+      L: '0.2 H',
+      C: '0.02 F',
+      input: 'i_in(t)',
+      output: 'v(t)',
+      subtitle: 'Parallel RLC Current Tank',
+    },
     verifyPlot: {
       kind: 'step-compare',
       domain: [0, 1.8],
@@ -1162,15 +1380,15 @@ export const MODELING_PROBLEMS = [
     steps: [
       {
         stepType: 'kcl_node',
-        badge: 'KCL Node Equation',
+        badge: 'Diagram → Branch Currents & KCL',
         whyThisStep:
-          'In parallel topologies all branches share one voltage $v(t)$, so summing branch currents via KCL is far faster and less error-prone than mesh equations.',
+          'Reading the shared top-node voltage $v(t)$ across all three parallel branches in the schematic lets you sum branch currents via KCL directly — far faster and less error-prone than mesh equations.',
         systemImpact:
           'The inductor integral term $\\frac{1}{L}\\int v\\,dt$ acts as a DC short circuit, guaranteeing that no steady DC voltage can survive across the tank.',
         prompt:
-          'Write the KCL current balance at the shared node voltage $v(t)$ driven by current source $i_{\\text{in}}(t)$ across parallel $C, R, L$.',
+          'Read node voltage $v(t)$ across the 3 parallel branches ($i_C = C\\dot{v},\\; i_R = v/R,\\; i_L = \\frac{1}{L}\\int v\\,dt$) in the schematic and write KCL at the top node driven by $i_{\\text{in}}(t)$.',
         highlightLatex:
-          'i_C + i_R + i_L = i_{\\text{in}}(t) \\quad\\text{at shared node } \\textcolor{#22D3EE}{v(t)}',
+          'i_C + i_R + i_L = i_{\\text{in}}(t) \\quad\\text{at shared top node } \\textcolor{#22D3EE}{v(t)}',
         options: [
           {
             id: 'a',
@@ -1199,20 +1417,63 @@ export const MODELING_PROBLEMS = [
               'Capacitor constitutive law is $i_C = C\\dot{v}$, multiplying by $C$, not $1/C$.',
           },
         ],
-        lockedLabel: 'KCL Balance',
+        lockedLabel: 'Symbolic KCL',
         lockedResultLatex:
           '\\textcolor{#34D399}{C\\dot{v} + \\frac{v}{R} + \\frac{1}{L}\\int v\\,dt = i_{\\text{in}}(t)}',
-        hint: 'Sum $i_C = C\\dot{v}$, $i_R = v/R$, and $i_L = \\frac{1}{L}\\int v\\,dt$.',
+        hint: 'Sum $i_C = C\\dot{v}$, $i_R = v/R$, and $i_L = \\frac{1}{L}\\int v\\,dt$ equal to $i_{\\text{in}}(t)$.',
+      },
+      {
+        stepType: 'kcl_admittance_values',
+        badge: 'Plug Diagram Values → Admittance Y(s)',
+        whyThisStep:
+          'Taking $\\mathcal{L}\\{\\cdot\\}$ of KCL turns the integral into $1/s$ and immediately reveals the branch admittances ($Cs$, conductance $1/R$, and inverse inductance $1/Ls$).',
+        systemImpact:
+          'Because shunt conductance is $1/R = 0.1\\text{ S}$ and susceptances are $0.02s$ and $5/s$, smaller $R$ increases conductance $1/R$ and pulls energy out of the tank faster.',
+        prompt:
+          'Transform KCL to Laplace ($Y(s) = I_{\\text{in}}(s)/V(s) = Cs + \\frac{1}{R} + \\frac{1}{Ls}$) and substitute the diagram constants $R=10\\,\\Omega,\\; L=0.2\\text{ H},\\; C=0.02\\text{ F}$.',
+        highlightLatex:
+          'Y(s) = \\textcolor{#22D3EE}{C}s + \\frac{1}{\\textcolor{#F59E0B}{R}} + \\frac{1}{\\textcolor{#22D3EE}{L}s} \\quad\\text{for } (R,L,C) = (10, 0.2, 0.02)',
+        options: [
+          {
+            id: 'a',
+            latex: 'Y(s) = 0.02s + 10 + \\frac{0.2}{s}',
+            correct: false,
+            misconception:
+              'Admittance uses RECIPROCALS of $R$ and $L$: $1/R = 1/10 = 0.1\\text{ S}$ and $1/L = 1/0.2 = 5\\text{ H}^{-1}$.',
+          },
+          {
+            id: 'b',
+            latex: 'Y(s) = 0.02s + 0.1 + \\frac{5}{s}',
+            correct: true,
+          },
+          {
+            id: 'c',
+            latex: 'Y(s) = 50s + 0.1 + \\frac{5}{s}',
+            correct: false,
+            misconception:
+              'Capacitive admittance is $Cs = 0.02s$, not $s/C = 50s$!',
+          },
+          {
+            id: 'd',
+            latex: 'Y(s) = 0.02s + 0.1 + 5s',
+            correct: false,
+            misconception:
+              'The integral $\\frac{1}{L}\\int v\\,dt$ transforms to $\\frac{1}{Ls} = \\frac{5}{s}$ (dividing by $s$, not multiplying by $s$).',
+          },
+        ],
+        lockedLabel: 'Admittance Y(s)',
+        lockedResultLatex: 'Y(s) = \\textcolor{#34D399}{0.02s + 0.1 + \\frac{5}{s}}',
+        hint: 'Evaluate $C = 0.02$, $1/R = 1/10 = 0.1$, and $1/L = 1/0.2 = 5$.',
       },
       {
         stepType: 'impedance_tf',
         badge: 'Impedance TF Z(s) & Zero',
         whyThisStep:
-          'Inverting total admittance $Y(s) = Cs + \\frac{1}{R} + \\frac{1}{Ls}$ exposes the numerator zero at $s = 0$ — the hallmark of a bandpass tank.',
+          'Inverting total admittance $Y(s) = 0.02s + 0.1 + 5/s$ exposes the numerator zero at $s = 0$ — the hallmark of a bandpass tank.',
         systemImpact:
           'The zero at $s = 0$ forces $Z(0) = 0$ (DC blocked by inductor) and $Z(\\infty) = 0$ (HF shorted by capacitor), turning the tank into a narrow bandpass impedance.',
         prompt:
-          'Substitute $R=10\\,\\Omega,\\; L=0.2\\text{ H},\\; C=0.02\\text{ F}$ into $Y(s) = Cs + \\frac{1}{R} + \\frac{1}{Ls}$ and invert to obtain monic $Z(s) = V(s)/I_{\\text{in}}(s)$.',
+          'Invert $Y(s) = 0.02s + 0.1 + \\frac{5}{s}$ and normalize to obtain the monic impedance transfer function $Z(s) = V(s)/I_{\\text{in}}(s)$.',
         highlightLatex:
           'Z(s) = \\frac{1}{\\textcolor{#22D3EE}{0.02}s + \\textcolor{#F59E0B}{0.1} + \\textcolor{#22D3EE}{5}/s} = \\frac{s/0.02}{s^2 + \\tfrac{0.1}{0.02}s + \\tfrac{5}{0.02}}',
         options: [
@@ -1389,6 +1650,15 @@ export const MODELING_PROBLEMS = [
     expressionLatex: '\\tau_1=0.5\\text{s},\\; \\tau_2=0.25\\text{s} \\;\\;(\\text{RC} \\to \\text{CL})',
     finalAnswerLatex:
       'T(s)=\\frac{8K}{s^2+6s+8+8K}, \\quad K_{\\text{crit}}=0.125, \\quad K_{\\zeta=0.5}=3.5',
+    diagram: {
+      type: 'rc-cascade',
+      tau1: '0.5 s',
+      tau2: '0.25 s',
+      input: 'v_in(t)',
+      mid: 'v₁(t)',
+      output: 'v_out(t)',
+      subtitle: 'Buffered 2-Stage RC Cascade',
+    },
     verifyPlot: {
       kind: 'step-compare',
       domain: [0, 2.6],
@@ -1415,14 +1685,58 @@ export const MODELING_PROBLEMS = [
     },
     steps: [
       {
+        stepType: 'diagram_rc_cascade_odes',
+        badge: 'Diagram → Buffered Stage ODEs',
+        whyThisStep:
+          'Checking whether two RC stages are separated by an ideal unity-gain buffer ($i_{\\text{buf}} = 0$) tells you whether they decouple cleanly or suffer a cross-loading term $R_1 C_2\\dot{v}_{\\text{out}}$ that drags the poles apart.',
+        systemImpact:
+          'Because $i_{\\text{buf}} = 0$ isolates Stage 1 from Stage 2, the cascaded transfer function is simply the exact product $\\frac{1}{\\tau_1 s+1}\\cdot\\frac{1}{\\tau_2 s+1}$ with open-loop poles readable straight off the schematic!',
+        prompt:
+          'Read the two RC stages isolated by the ideal unity-gain buffer ($i_{\\text{buf}} = 0$) in the circuit schematic to write the decoupled pair of stage ODEs linking $v_{\\text{in}},\\; v_1,$ and $v_{\\text{out}}$.',
+        highlightLatex:
+          '\\text{Stage 1 } (\\textcolor{#22D3EE}{\\tau_1}) \\;\\xrightarrow{\\;i_{\\text{buf}}=0\\;}\\; \\text{Stage 2 } (\\textcolor{#F59E0B}{\\tau_2})',
+        options: [
+          {
+            id: 'a',
+            latex: '\\tau_1\\dot{v}_1 + v_1 = v_{\\text{in}}, \\quad \\tau_2\\dot{v}_{\\text{out}} + v_{\\text{out}} = v_1',
+            correct: true,
+          },
+          {
+            id: 'b',
+            latex: '\\tau_1\\dot{v}_1 + v_1 + R_1 C_2\\dot{v}_{\\text{out}} = v_{\\text{in}}, \\quad \\tau_2\\dot{v}_{\\text{out}} + v_{\\text{out}} = v_1',
+            correct: false,
+            misconception:
+              'Removing the buffer would inject that cross-loading term $R_1 C_2\\dot{v}_{\\text{out}}$! Here the ideal buffer ($i_{\\text{buf}} = 0$) prevents Stage 2 from drawing current out of Stage 1.',
+          },
+          {
+            id: 'c',
+            latex: '\\dot{v}_1 + \\tau_1 v_1 = v_{\\text{in}}, \\quad \\dot{v}_{\\text{out}} + \\tau_2 v_{\\text{out}} = v_1',
+            correct: false,
+            misconception:
+              'KCL at each capacitor node gives $C\\dot{v} + \\frac{v - v_{\\text{src}}}{R} = 0 \\implies RC\\dot{v} + v = v_{\\text{src}}$, so $\\tau = RC$ multiplies $\\dot{v}$, not $v$.',
+          },
+          {
+            id: 'd',
+            latex: '\\tau_1\\dot{v}_1 + v_1 = v_{\\text{in}}, \\quad \\tau_2\\dot{v}_{\\text{out}} + v_{\\text{out}} = v_{\\text{in}}',
+            correct: false,
+            misconception:
+              'Follow the schematic wiring: Stage 2 is driven by the buffered midpoint voltage $v_1(t)$, not directly by $v_{\\text{in}}(t)$.',
+          },
+        ],
+        lockedLabel: 'Buffered Stage ODEs',
+        lockedResultLatex:
+          '\\textcolor{#34D399}{\\tau_1\\dot{v}_1 + v_1 = v_{\\text{in}},\\;\\; \\tau_2\\dot{v}_{\\text{out}} + v_{\\text{out}} = v_1}',
+        hint: 'With $i_{\\text{buf}} = 0$, each RC low-pass stage independently obeys $\\tau\\dot{v}_{\\text{cap}} + v_{\\text{cap}} = v_{\\text{drive}}$.',
+      },
+      {
         stepType: 'cascade_tf',
         badge: 'Buffered Cascade G(s)',
         whyThisStep:
-          'Because a unity-gain op-amp buffer prevents loading between RC stages, the total open-loop transfer function is simply the exact product of the individual first-order blocks.',
+          'Taking $\\mathcal{L}\\{\\cdot\\}$ of the decoupled stage ODEs and multiplying them gives the exact open-loop transfer function in monic form.',
         systemImpact:
           'Multiplying two unity-DC-gain lags gives $G(0) = 8/8 = 1$ with a $-40\\text{ dB/dec}$ high-frequency roll-off.',
         prompt:
-          'Multiply two buffered RC low-pass stages with $\\tau_1 = 0.5\\text{ s}$ and $\\tau_2 = 0.25\\text{ s}$ and write $G(s)$ in monic denominator form.',
+          'Transform the two decoupled stage ODEs with $\\tau_1 = 0.5\\text{ s}$ and $\\tau_2 = 0.25\\text{ s}$, multiply them, and write $G(s) = V_{\\text{out}}(s)/V_{\\text{in}}(s)$ in monic denominator form.',
         highlightLatex:
           'G(s) = \\frac{1}{\\textcolor{#22D3EE}{0.5}s + 1}\\cdot\\frac{1}{\\textcolor{#F59E0B}{0.25}s + 1}',
         options: [
@@ -1645,6 +1959,18 @@ export const MODELING_PROBLEMS = [
     expressionLatex: 'J=0.5,\\; b=0.5,\\; R_a=2,\\; K_t=K_e=2',
     finalAnswerLatex:
       'G_\\theta(s)=\\frac{2}{s(s+5)}, \\qquad K_p = 6.25 \\implies \\zeta = \\frac{1}{\\sqrt{2}}',
+    diagram: {
+      type: 'dc-motor',
+      Ra: '2 Ω',
+      La: 'La≈0',
+      Ke: '2',
+      Kt: '2',
+      J: '0.5',
+      b: '0.5',
+      input: 'v_a(t)',
+      output: 'θ(t), ω(t)',
+      subtitle: 'Armature-Controlled DC Motor',
+    },
     verifyPlot: {
       kind: 'step-compare',
       domain: [0, 2.8],
@@ -1671,15 +1997,15 @@ export const MODELING_PROBLEMS = [
     steps: [
       {
         stepType: 'coupled_eqs',
-        badge: 'Coupled Electrical & Shaft ODEs',
+        badge: 'Diagram → Armature KVL & Shaft Torque',
         whyThisStep:
-          'Electromechanical energy conversion couples two domains symmetrically: armature current drives torque ($K_t i$) while shaft speed induces opposing back-EMF ($K_e\\omega$).',
+          'Reading the electrical loop ($v_a, R_a, L_a, e_b = K_e\\omega$) and mechanical shaft ($J, b, \\tau_m = K_t i$) directly off the motor diagram enforces Lenz\'s law polarity before touching numbers.',
         systemImpact:
-          'In SI units ($K_t = K_e$), power conservation guarantees zero lossless energy leakage between electrical ($K_e\\omega\\cdot i$) and mechanical ($K_t i\\cdot \\omega$) ports.',
+          'In SI units ($K_t = K_e$), power conservation guarantees zero lossless energy leakage between the opposing electrical back-EMF ($K_e\\omega\\cdot i$) and driving mechanical torque ($K_t i\\cdot\\omega$).',
         prompt:
-          'Select the coupled armature KVL equation and rotor shaft torque balance linking voltage $v_a(t)$, current $i(t)$, and angular speed $\\omega(t)$.',
+          'Read the motor diagram\'s electrical loop ($v_a, R_a, L_a$, opposing back-EMF $e_b = K_e\\omega$) and mechanical shaft ($J, b$, drive torque $\\tau_m = K_t i$) to write the symbolic coupled ODEs.',
         highlightLatex:
-          '\\text{Armature KVL } (L_a, R_a, \\textcolor{#F59E0B}{K_e\\omega}) \\;\\;\\&\\;\\; \\text{Shaft } (J, b, \\textcolor{#22D3EE}{K_t i})',
+          '\\text{Armature KVL } (L_a, R_a, \\textcolor{#F59E0B}{e_b = K_e\\omega}) \\;\\;\\&\\;\\; \\text{Shaft } (J, b, \\textcolor{#22D3EE}{\\tau_m = K_t i})',
         options: [
           {
             id: 'a',
@@ -1708,66 +2034,110 @@ export const MODELING_PROBLEMS = [
               'Inductor voltage is $L_a\\dot{i}$ and resistor voltage is $R_a i$, not swapped.',
           },
         ],
-        lockedLabel: 'Coupled ODEs',
+        lockedLabel: 'Coupled Motor ODEs',
         lockedResultLatex:
           '\\textcolor{#34D399}{L_a\\dot{i} + R_a i + K_e\\omega = v_a,\\;\\; J\\dot{\\omega} + b\\omega = K_t i}',
         hint: 'Back-EMF drops voltage in the armature loop ($+K_e\\omega$) while torque $K_t i$ accelerates $J\\dot{\\omega} + b\\omega$.',
       },
       {
-        stepType: 'back_emf_elim',
-        badge: 'Eliminate Current (La ≈ 0)',
+        stepType: 'motor_plug_constants',
+        badge: 'Plug Diagram Constants (La ≈ 0)',
         whyThisStep:
-          'Because electrical time constants ($L_a/R_a$) are typically $10\\text{–}100\\times$ faster than rotor inertia, dropping $L_a$ exposes the dramatic hidden damping created by back-EMF.',
+          'Electrical time constants ($L_a/R_a$) are typically $10\\text{–}100\\times$ faster than rotor inertia, so setting $L_a \\approx 0$ and plugging in the schematic constants reduces KVL to a pure algebraic link between $i$ and $\\omega$.',
         systemImpact:
-          'Back-EMF adds pure electrical viscous damping $\\frac{K_t K_e}{R_a}$ directly to $b$ — explaining why shorting a DC motor\'s terminals makes the shaft feel stiff like thick oil!',
+          'Dropping $L_a$ lets you read the stall current ($v_a/R_a = 0.5 v_a$) and no-load speed ($v_a/K_e = 0.5 v_a$) directly off the algebraic armature equation.',
         prompt:
-          'Set $L_a \\approx 0$, solve KVL for $i = \\frac{v_a - K_e\\omega}{R_a}$, and substitute into $J\\dot{\\omega} + b\\omega = K_t i$.',
+          'Apply $L_a \\approx 0$ and substitute the schematic constants $R_a=2\\,\\Omega,\\; K_e=2,\\; K_t=2,\\; J=0.5,\\; b=0.5$ into the coupled motor equations.',
         highlightLatex:
-          'J\\dot{\\omega} + b\\omega = K_t\\!\\left(\\frac{v_a - \\textcolor{#F59E0B}{K_e\\omega}}{\\textcolor{#22D3EE}{R_a}}\\right)',
+          '\\textcolor{#22D3EE}{R_a}i + \\textcolor{#F59E0B}{K_e}\\omega = v_a, \\qquad \\textcolor{#22D3EE}{J}\\dot{\\omega} + \\textcolor{#F59E0B}{b}\\omega = \\textcolor{#34D399}{K_t}i',
         options: [
           {
             id: 'a',
-            latex: 'J\\dot{\\omega} + \\left(b - \\frac{K_t K_e}{R_a}\\right)\\omega = \\frac{K_t}{R_a}v_a',
-            correct: false,
-            misconception:
-              'Moving $-\\frac{K_t K_e}{R_a}\\omega$ from the right-hand side to the left-hand side makes it PLUS, increasing effective damping.',
+            latex: '2i + 2\\omega = v_a, \\quad 0.5\\dot{\\omega} + 0.5\\omega = 2i',
+            correct: true,
           },
           {
             id: 'b',
-            latex: 'J\\dot{\\omega} + \\left(b + \\frac{K_t K_e}{R_a}\\right)\\omega = \\frac{K_t}{R_a}v_a',
+            latex: '2i - 2\\omega = v_a, \\quad 0.5\\dot{\\omega} + 0.5\\omega = 2i',
+            correct: false,
+            misconception:
+              'Back-EMF opposes $v_a$, so $R_a i + K_e\\omega = v_a$ carries a PLUS sign ($+2\\omega$), not minus.',
+          },
+          {
+            id: 'c',
+            latex: '0.5i + 2\\omega = v_a, \\quad 2\\dot{\\omega} + 0.5\\omega = 2i',
+            correct: false,
+            misconception:
+              'Do not swap electrical resistance $R_a = 2\\,\\Omega$ with mechanical inertia $J = 0.5$!',
+          },
+          {
+            id: 'd',
+            latex: '2i + 2\\omega = v_a, \\quad 0.5\\dot{\\omega} + 2\\omega = 0.5i',
+            correct: false,
+            misconception:
+              'Match mechanical friction $b = 0.5$ to $\\omega$ and torque constant $K_t = 2$ to current $i$.',
+          },
+        ],
+        lockedLabel: 'Numerical Pair',
+        lockedResultLatex:
+          '\\textcolor{#34D399}{2i + 2\\omega = v_a,\\;\\; 0.5\\dot{\\omega} + 0.5\\omega = 2i}',
+        hint: 'Set $L_a = 0$ and replace $(R_a, K_e, K_t, J, b)$ with $(2, 2, 2, 0.5, 0.5)$.',
+      },
+      {
+        stepType: 'back_emf_elim',
+        badge: 'Eliminate Current → Back-EMF Damping',
+        whyThisStep:
+          'Eliminating armature current $i$ collapses the two-domain motor into a single shaft ODE and exposes the dramatic hidden electrical braking term $\\frac{K_t K_e}{R_a}$.',
+        systemImpact:
+          'Back-EMF adds $\\frac{K_t K_e}{R_a} = 2.0$ of pure electrical viscous damping on top of $b = 0.5$ ($b_{\\text{eff}} = 2.5$, $5\\times$ mechanical friction!) — explaining why shorting a DC motor\'s terminals makes the shaft feel stiff like thick oil!',
+        prompt:
+          'Solve $2i + 2\\omega = v_a$ for $i = \\frac{v_a - K_e\\omega}{R_a} = 0.5v_a - \\omega$ and substitute into $0.5\\dot{\\omega} + 0.5\\omega = 2i$ to get the reduced shaft ODE.',
+        highlightLatex:
+          'J\\dot{\\omega} + \\left(b + \\frac{\\textcolor{#F59E0B}{K_t K_e}}{\\textcolor{#22D3EE}{R_a}}\\right)\\omega = \\frac{K_t}{R_a}v_a',
+        options: [
+          {
+            id: 'a',
+            latex: '0.5\\dot{\\omega} - 1.5\\omega = v_a',
+            correct: false,
+            misconception:
+              'Moving $-2\\omega$ from the right-hand side ($2i = v_a - 2\\omega$) to the left ADDS to $0.5\\omega$, giving $+2.5\\omega$ (stronger damping, never negative!).',
+          },
+          {
+            id: 'b',
+            latex: '0.5\\dot{\\omega} + 2.5\\omega = v_a',
             correct: true,
           },
           {
             id: 'c',
-            latex: 'J\\dot{\\omega} + (b + K_t K_e R_a)\\omega = K_t R_a v_a',
+            latex: '0.5\\dot{\\omega} + 0.5\\omega = v_a',
             correct: false,
             misconception:
-              'Ohm\'s law divides voltage by $R_a$, so lower armature resistance produces STRONGER back-EMF braking ($1/R_a$).',
+              'Do not drop the back-EMF term $-2\\omega$ inside $2i = v_a - 2\\omega$ — it supplies $80\\%$ of the motor\'s total damping!',
           },
           {
             id: 'd',
-            latex: 'J\\dot{\\omega} + b\\omega = \\frac{K_t}{R_a}v_a',
+            latex: '0.5\\dot{\\omega} + 2.5\\omega = 2v_a',
             correct: false,
             misconception:
-              'Do not drop the back-EMF term $-K_e\\omega$; it is typically the largest source of motor damping!',
+              'Check the voltage gain $\\frac{K_t}{R_a} = \\frac{2}{2} = 1$, so the right-hand side is $1\\cdot v_a$, not $2v_a$.',
           },
         ],
         lockedLabel: 'Back-EMF Damping',
         lockedResultLatex:
-          '\\textcolor{#34D399}{J\\dot{\\omega} + \\left(b + \\frac{K_t K_e}{R_a}\\right)\\omega = \\frac{K_t}{R_a}v_a}',
-        hint: 'Substitute $i = (v_a - K_e\\omega)/R_a$ and collect all $\\omega$ terms on the left.',
+          '\\textcolor{#34D399}{0.5\\dot{\\omega} + 2.5\\omega = v_a} \\;\\;\\left(b_{\\text{eff}} = b + \\tfrac{K_t K_e}{R_a} = 2.5\\right)',
+        hint: 'Substitute $2i = v_a - 2\\omega$ into $0.5\\dot{\\omega} + 0.5\\omega = 2i$ and collect $\\omega$ on the left.',
       },
       {
         stepType: 'vel_tf',
         badge: 'Velocity TF Ω(s)/Va(s)',
         whyThisStep:
-          'Evaluating the concrete pole of the velocity stage reveals the motor\'s true mechanical time constant $\\tau_m$ after electrical braking is accounted for.',
+          'Normalizing the reduced shaft ODE to a monic Laplace transfer function reveals the motor\'s true mechanical pole and speed time constant $\\tau_m$.',
         systemImpact:
-          'Back-EMF quadruples friction alone ($b_{\\text{eff}} = 0.5 + 2.0 = 2.5$), pushing the velocity pole from $-1$ all the way to $-5$ ($5\\times$ faster speed response: $\\tau_m = 0.2\\text{ s}$!).',
+          'Back-EMF braking pushes the velocity pole from $-1$ all the way to $-5$ ($5\\times$ faster speed response: $\\tau_m = 0.2\\text{ s}$!) with high-frequency gain $1/J = 2$.',
         prompt:
-          'Plug $J=0.5,\\; b=0.5,\\; R_a=2,\\; K_t=K_e=2$ into the eliminated ODE and write the monic velocity transfer function $\\Omega(s)/V_a(s)$.',
+          'Take $\\mathcal{L}\\{\\cdot\\}$ of $0.5\\dot{\\omega} + 2.5\\omega = v_a$ and normalize to obtain the monic velocity transfer function $\\Omega(s)/V_a(s)$.',
         highlightLatex:
-          '\\textcolor{#22D3EE}{0.5}\\dot{\\omega} + \\left(0.5 + \\frac{\\textcolor{#F59E0B}{2\\cdot 2}}{\\textcolor{#22D3EE}{2}}\\right)\\omega = \\frac{2}{2}v_a',
+          '(\\textcolor{#22D3EE}{0.5}s + \\textcolor{#F59E0B}{2.5})\\,\\Omega(s) = V_a(s) \\implies \\frac{\\Omega(s)}{V_a(s)}',
         options: [
           {
             id: 'a',
@@ -1942,6 +2312,17 @@ export const MODELING_PROBLEMS = [
     expressionLatex: 'C_1=C_2=1,\\; R_{12}=R_a=1 \\;\\;(\\text{2-Zone})',
     finalAnswerLatex:
       'G(s)=\\frac{1}{s^2+3s+1} \\;\\;(\\text{real poles}) \\xrightarrow{K_p=8} \\zeta_{\\text{cl}}=0.5',
+    diagram: {
+      type: 'thermal-2zone',
+      C1: '1',
+      C2: '1',
+      R12: '1',
+      Ra: '1',
+      input: 'q(t)',
+      t1: 'T₁',
+      t2: 'T₂',
+      subtitle: 'Two-Zone Thermal Network',
+    },
     verifyPlot: {
       kind: 'step-compare',
       domain: [0, 7.0],
@@ -1973,14 +2354,58 @@ export const MODELING_PROBLEMS = [
     },
     steps: [
       {
-        stepType: 'thermal_odes',
-        badge: 'Two-Zone Heat Balance',
+        stepType: 'diagram_thermal_flux',
+        badge: 'Diagram → Thermal Flux Laws',
         whyThisStep:
-          'Thermal systems follow an exact RC-circuit analogy (temperature $\\leftrightarrow$ voltage, heat flow $\\leftrightarrow$ current), letting you write coupled energy balances directly.',
+          'Reading temperature nodes ($T_1, T_2$) and conductive paths ($R_{12}, R_a$) directly off the thermal network guarantees energy conservation: every watt leaving Zone 1 through $R_{12}$ enters Zone 2 identically.',
+        systemImpact:
+          'Summing both balances cancels internal flux $q_{12}$ completely, proving that steady-state payload temperature depends ONLY on ambient leak resistance ($T_{2,\\text{ss}} = R_a q$) regardless of $R_{12}$!',
+        prompt:
+          'Read nodes $T_1, T_2$, heat input $q(t)$, and thermal resistors $R_{12}, R_a$ from the schematic to write conductive fluxes $q_{12} = (T_1 - T_2)/R_{12},\\; q_a = T_2/R_a$ inside the nodal energy balances $C_i\\dot{T}_i = \\sum q_{\\text{in}} - \\sum q_{\\text{out}}$.',
+        highlightLatex:
+          'q_{12} = \\frac{\\textcolor{#22D3EE}{T_1} - \\textcolor{#F59E0B}{T_2}}{R_{12}}, \\quad q_a = \\frac{\\textcolor{#F59E0B}{T_2}}{R_a}, \\quad C_i\\dot{T}_i = \\sum q_{\\text{in}} - \\sum q_{\\text{out}}',
+        options: [
+          {
+            id: 'a',
+            latex: 'C_1\\dot{T}_1 = q - \\frac{T_1 - T_2}{R_{12}}, \\quad C_2\\dot{T}_2 = \\frac{T_1 - T_2}{R_{12}} - \\frac{T_2}{R_a}',
+            correct: true,
+          },
+          {
+            id: 'b',
+            latex: 'C_1\\dot{T}_1 = q + \\frac{T_1 - T_2}{R_{12}}, \\quad C_2\\dot{T}_2 = \\frac{T_1 - T_2}{R_{12}} + \\frac{T_2}{R_a}',
+            correct: false,
+            misconception:
+              'Heat flows from warmer to cooler nodes, so $q_{12}$ LEAVES Zone 1 ($-$) and ambient leak $q_a$ LEAVES Zone 2 ($-$).',
+          },
+          {
+            id: 'c',
+            latex: 'C_1\\dot{T}_1 = q - R_{12}(T_1 - T_2), \\quad C_2\\dot{T}_2 = R_{12}(T_1 - T_2) - R_a T_2',
+            correct: false,
+            misconception:
+              'By Fourier\'s law (thermal Ohm\'s law), heat flow DIVIDES temperature difference by thermal resistance: $q = \\Delta T / R$, not $R\\,\\Delta T$.',
+          },
+          {
+            id: 'd',
+            latex: 'C_1\\dot{T}_1 = q - \\frac{T_1 - T_2}{R_{12}} - \\frac{T_1}{R_a}, \\quad C_2\\dot{T}_2 = \\frac{T_1 - T_2}{R_{12}}',
+            correct: false,
+            misconception:
+              'Check the schematic: ambient resistor $R_a$ connects the PAYLOAD node $T_2$ to ambient ground, not the insulated heater $T_1$.',
+          },
+        ],
+        lockedLabel: 'Thermal Flux Laws',
+        lockedResultLatex:
+          '\\textcolor{#34D399}{C_1\\dot{T}_1 = q - \\frac{T_1-T_2}{R_{12}},\\;\\; C_2\\dot{T}_2 = \\frac{T_1-T_2}{R_{12}} - \\frac{T_2}{R_a}}',
+        hint: 'Flux $q_{12} = (T_1 - T_2)/R_{12}$ leaves $T_1$ and enters $T_2$; ambient flux $q_a = T_2/R_a$ leaves $T_2$.',
+      },
+      {
+        stepType: 'thermal_odes',
+        badge: 'Plug Diagram Constants → Heat ODEs',
+        whyThisStep:
+          'Moving all temperature states to the left and substituting $(C_1, C_2, R_{12}, R_a)$ produces clean coupled linear ODEs ready for elimination.',
         systemImpact:
           'Because the heater block ($T_1$) and payload ($T_2$) exchange heat symmetrically across $R_{12}$, a sensor placed on the payload lags behind heater power by two cascaded thermal stages.',
         prompt:
-          'Write the coupled energy balances for heater $T_1$ (input $q$) and payload $T_2$ (ambient loss through $R_a$) with $C_1=C_2=1,\\; R_{12}=R_a=1$.',
+          'Transpose the temperature terms left and substitute the schematic constants $C_1=C_2=1,\\; R_{12}=R_a=1$ into the two-zone heat balances.',
         highlightLatex:
           'C_1\\dot{T}_1 + \\frac{T_1-T_2}{R_{12}} = q, \\qquad C_2\\dot{T}_2 + \\frac{T_2-T_1}{R_{12}} + \\frac{T_2}{R_a} = 0',
         options: [
@@ -2204,6 +2629,15 @@ export const MODELING_PROBLEMS = [
     expressionLatex: 'G(s)=\\frac{2}{s^2+2s+5},\\; s_d=-4\\pm 4j',
     finalAnswerLatex:
       'K_d = 3,\\; K_p = 13.5, \\quad T(s)=\\frac{6s+27}{s^2+8s+32} \\;\\;(z_{\\text{CL}}=-4.5)',
+    diagram: {
+      type: 'feedback-pd',
+      controller: 'Kp + Kd·s',
+      plant: '2 / (s²+2s+5)',
+      input: 'R(s)',
+      output: 'Y(s)',
+      specTag: 'sd = -4±4j',
+      subtitle: 'Closed-Loop PD Architecture',
+    },
     verifyPlot: {
       kind: 'step-compare',
       domain: [0, 1.8],
@@ -2227,14 +2661,58 @@ export const MODELING_PROBLEMS = [
     },
     steps: [
       {
+        stepType: 'diagram_loop_signals',
+        badge: 'Diagram → Loop Error & Control Signal',
+        whyThisStep:
+          'Tracing whether the PD controller sits in the forward path (differentiating error $E$) or the feedback path (differentiating output $Y$) determines whether a finite closed-loop zero appears in $T(s)$.',
+        systemImpact:
+          'Writing $Y(s) = G(s)C(s)[R(s) - Y(s)]$ shows immediately that forward-path $C(s)$ enters BOTH the numerator (injecting a zero at $-K_p/K_d$) and the denominator (placing both poles).',
+        prompt:
+          'Trace the summing junction ($+ / -$) and forward path in the block diagram to express tracking error $E(s)$, control signal $U(s)$, and the implicit loop equation for $Y(s)$.',
+        highlightLatex:
+          '\\textcolor{#22D3EE}{E(s)} = R(s) - Y(s), \\quad \\textcolor{#F59E0B}{U(s)} = C(s)E(s), \\quad \\textcolor{#34D399}{Y(s)} = G(s)U(s)',
+        options: [
+          {
+            id: 'a',
+            latex: 'E = R + Y,\\; U = (K_p + K_d s)E \\implies Y = G(s)C(s)[R + Y]',
+            correct: false,
+            misconception:
+              'Check the minus sign ($-$) on the summing junction in the block diagram: negative feedback subtracts $Y(s)$ from $R(s)$, giving $E = R - Y$.',
+          },
+          {
+            id: 'b',
+            latex: 'E = R - Y,\\; U = (K_p + K_d s)E \\implies Y = G(s)C(s)[R - Y]',
+            correct: true,
+          },
+          {
+            id: 'c',
+            latex: 'E = R - Y,\\; U = K_p E - K_d s Y \\implies Y = G(s)[K_p(R - Y) - K_d s Y]',
+            correct: false,
+            misconception:
+              'That is rate-feedback (I-PD / velocity feedback) architecture; our schematic puts the entire PD block $C(s) = K_p + K_d s$ in the forward path acting on $E(s)$.',
+          },
+          {
+            id: 'd',
+            latex: 'E = R - G(s)Y,\\; U = C(s)E \\implies Y = C(s)[R - G(s)Y]',
+            correct: false,
+            misconception:
+              'The unity feedback branch returns $Y(s)$ directly to the summer (gain $H(s)=1$) without passing through the plant $G(s)$ a second time.',
+          },
+        ],
+        lockedLabel: 'Loop Signal Flow',
+        lockedResultLatex:
+          '\\textcolor{#34D399}{E = R - Y,\\;\\; U = (K_p + K_d s)E \\implies Y = G(s)C(s)[R - Y]}',
+        hint: 'Follow the block diagram left-to-right: $E(s) = R(s) - Y(s)$, $U(s) = C(s)E(s)$, and $Y(s) = G(s)U(s)$.',
+      },
+      {
         stepType: 'pd_cl_tf',
         badge: 'Closed-Loop T(s) with PD',
         whyThisStep:
-          'Unlike pure P-control (which can only shift the $s^0$ stiffness term), PD control gives you TWO independent algebraic knobs ($K_d$ on $s^1$ and $K_p$ on $s^0$) to place poles anywhere in the $s$-plane.',
+          'Solving $Y = G(s)C(s)[R - Y]$ for $T(s) = Y(s)/R(s)$ reveals TWO independent algebraic knobs ($K_d$ on $s^1$ and $K_p$ on $s^0$) to place poles anywhere in the $s$-plane.',
         systemImpact:
           'Putting $C(s) = K_p + K_d s$ in the forward path grants arbitrary pole placement, while simultaneously planting a finite numerator zero at $s = -K_p/K_d$.',
         prompt:
-          'Combine $C(s) = K_p + K_d s$ with $G(s) = \\frac{2}{s^2+2s+5}$ in unity negative feedback to form $T(s) = \\frac{CG}{1 + CG}$.',
+          'Solve $Y = G(s)C(s)[R - Y]$ with $C(s) = K_p + K_d s$ and $G(s) = \\frac{2}{s^2+2s+5}$ to form $T(s) = \\frac{CG}{1 + CG}$.',
         highlightLatex:
           'L(s) = \\frac{\\textcolor{#22D3EE}{2}(\\textcolor{#F59E0B}{K_d s + K_p})}{\\textcolor{#22D3EE}{s^2 + 2s + 5}} \\implies T(s) = \\frac{L}{1+L}',
         options: [
@@ -2456,6 +2934,15 @@ export const MODELING_PROBLEMS = [
     expressionLatex: 'G(s)=\\frac{1}{s(s+2)},\\; T_s\\le 1\\text{s},\\; \\%OS\\le 4.3\\%',
     finalAnswerLatex:
       's_d = -4\\pm 4j \\;\\;(\\sigma\\ge 4,\\; \\theta\\le 45^\\circ) \\implies K_d = 6,\\; K_p = 32',
+    diagram: {
+      type: 'feedback-pd',
+      controller: 'Kp + Kd·s',
+      plant: '1 / (s(s+2))',
+      input: 'R(s)',
+      output: 'Y(s)',
+      specTag: 'Ts≤1s, %OS≤4.3%',
+      subtitle: 'Spec-Constrained PD Loop',
+    },
     verifyPlot: {
       kind: 'pole-map',
       bounds: { minRe: -7, maxRe: 1, minIm: -5.5, maxIm: 5.5 },

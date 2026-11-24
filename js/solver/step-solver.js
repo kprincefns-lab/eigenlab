@@ -33,6 +33,7 @@ import {
   FREQ_SOLVER_TIERS,
 } from '../../data/lessons/freq-problems.js';
 import { store, sound, renderKatex, renderInlineMathText } from '../store.js';
+import { renderSystemSchematicSVG } from '../viz/schematic-svg.js';
 
 const CHEAT_SHEET_RULES = [
   {
@@ -523,6 +524,7 @@ export class PaperlessStepSolver {
     this._expandedLedgerImpacts = new Set();
     this.hintVisible = false;
     this.cheatSheetOpen = false;
+    this.diagramExpanded = true;
     this.mobilePickerOpen = false;
     this.isProblemCompleted = false;
     this.isAdvancing = false;
@@ -720,6 +722,7 @@ export class PaperlessStepSolver {
     this._lastSystemImpact = null;
     this._expandedLedgerImpacts = new Set();
     this.hintVisible = false;
+    this.diagramExpanded = true;
     this.isProblemCompleted = false;
     this.isAdvancing = false;
     this.newlyLockedIndex = -1;
@@ -1176,6 +1179,33 @@ export class PaperlessStepSolver {
       ? this._buildVerificationCardHtml(problem)
       : this._buildActiveStepHtml(problem);
 
+    const diagramBlockHtml = problem.diagram
+      ? `
+        <div class="w-full mt-1 pt-2 border-t border-white/[0.08] flex flex-col gap-1.5 min-w-0" data-system-schematic>
+          <div class="w-full flex items-center justify-between gap-2 min-w-0">
+            <span class="font-mono text-[10px] sm:text-[11px] uppercase tracking-wider text-cyan-200/90 truncate min-w-0">
+              📐 System Schematic${problem.diagram.subtitle ? ` · ${escapeHtml(problem.diagram.subtitle)}` : ''}
+            </span>
+            <button
+              type="button"
+              data-diagram-toggle
+              aria-expanded="${this.diagramExpanded}"
+              class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[10px] sm:text-[11px] font-semibold bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 hover:border-cyanGlow/40 text-slate-300 hover:text-cyan-200 transition-colors cursor-pointer"
+            >
+              ${this.diagramExpanded ? 'Hide ▴' : 'Show ▾'}
+            </button>
+          </div>
+          ${
+            this.diagramExpanded
+              ? `<div class="w-full overflow-hidden bg-[#06090F]/90 border border-white/10 rounded-xl p-1.5 sm:p-2 flex items-center justify-center [&>svg]:max-h-[118px] sm:[&>svg]:max-h-[156px] [&>svg]:w-full [&>svg]:h-auto [&>svg]:block">
+                  ${renderSystemSchematicSVG(problem.diagram, { activeStepIndex: this.currentStepIndex })}
+                </div>`
+              : ''
+          }
+        </div>
+      `
+      : '';
+
     this.container.innerHTML = `
       <div class="flex flex-col gap-2.5 sm:gap-5">
         <!-- TOP PROBLEM HEADER -->
@@ -1338,6 +1368,7 @@ export class PaperlessStepSolver {
               <span class="text-cyan-300/90 shrink-0">${escapeHtml(problem.tierLabel)} • ${globalIndex + 1}/${totalProblems}</span>
             </div>
             <div class="w-full flex items-center justify-center py-0.5 sm:py-1 overflow-x-auto" data-target-expression></div>
+            ${diagramBlockHtml}
           </div>
         </div>
 
@@ -2146,6 +2177,12 @@ export class PaperlessStepSolver {
       btn.addEventListener('click', () => {
         this._toggleCheatSheet();
       });
+    });
+
+    this.container.querySelector('[data-diagram-toggle]')?.addEventListener('click', () => {
+      sound?.playTick?.();
+      this.diagramExpanded = !this.diagramExpanded;
+      this._render();
     });
 
     this.container.querySelector('[data-hint-btn]')?.addEventListener('click', () => {
