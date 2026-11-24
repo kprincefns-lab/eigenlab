@@ -1,0 +1,11 @@
+{
+  "lessonId": "mech-modeling",
+  "status": "coming_soon",
+  "plannedTopics": [
+    "Quarter-Car Active Suspension ODE to s-Plane",
+    "Voice-Coil Linear Actuator Coupled Electromechanical Model",
+    "Dual-Tank Hydraulic Level Transfer Function",
+    "MEMS Accelerometer Proof-Mass Damping Design"
+  ],
+  "problems": []
+}

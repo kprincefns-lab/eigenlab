@@ -1,0 +1,11 @@
+{
+  "lessonId": "mech-root-bode",
+  "status": "coming_soon",
+  "plannedTopics": [
+    "Hard-Disk Drive Dual-Stage Lead-Lag Servo",
+    "Flexible Robotic Link Notch Filter & Resonance Suppression",
+    "Magnetic Levitation Nyquist Stabilization",
+    "Satellite Attitude Loop-Shaping Sensitivity Budget"
+  ],
+  "problems": []
+}

@@ -24,11 +24,17 @@ import { LinAlg3DStudio, LINALG_PRESETS } from './viz/linalg-3d.js';
 import { LinearTransform2DLab, LinAlgVisualQuizEngine } from './viz/linalg-graphs.js';
 import { Pid3DStudio, PID_PRESETS } from './viz/pid-3d.js';
 import { PidDecompositionLab, PidVisualQuizEngine } from './viz/pid-graphs.js';
+import { Modeling3DStudio, MODELING_PRESETS } from './viz/modeling-3d.js';
+import { ModelingSPlaneLab, ModelingVisualQuizEngine } from './viz/modeling-graphs.js';
+import { Freq3DStudio, FREQ_PRESETS } from './viz/freq-3d.js';
+import { RootBodeLab, FreqVisualQuizEngine } from './viz/freq-graphs.js';
 import { PaperlessStepSolver } from './solver/step-solver.js';
 import { INTEGRAL_PROBLEMS, INTEGRAL_SOLVER_TIERS } from '../data/lessons/integrals-problems.js';
 import { DIFFEQ_PROBLEMS, DIFFEQ_SOLVER_TIERS } from '../data/lessons/diffeq-problems.js';
 import { LINALG_PROBLEMS, LINALG_SOLVER_TIERS } from '../data/lessons/linalg-problems.js';
 import { PID_PROBLEMS, PID_SOLVER_TIERS } from '../data/lessons/pid-problems.js';
+import { MODELING_PROBLEMS, MODELING_SOLVER_TIERS } from '../data/lessons/modeling-problems.js';
+import { FREQ_PROBLEMS, FREQ_SOLVER_TIERS } from '../data/lessons/freq-problems.js';
 
 // ---------------------------------------------------------------------------
 // Constants & Fallback Data
@@ -38,7 +44,9 @@ const LESSON_ID = 'calc-derivatives';
 const INTEGRAL_LESSON_ID = 'calc-integrals';
 const DIFFEQ_LESSON_ID = 'math-diff-eq';
 const LINALG_LESSON_ID = 'math-lin-alg';
+const MODELING_LESSON_ID = 'mech-modeling';
 const PID_LESSON_ID = 'mech-pid';
+const FREQ_LESSON_ID = 'mech-root-bode';
 
 const STAGES = [
   {
@@ -215,6 +223,76 @@ const PID_STAGES = [
   },
 ];
 
+const MODELING_STAGES = [
+  {
+    id: '3d-lab',
+    number: 1,
+    icon: '🔩',
+    shortLabel: '3D Rig & s-Plane',
+    mobileLabel: '3D Rig',
+    label: '1. 3D Physical Rig & s-Plane',
+  },
+  {
+    id: 'intuition',
+    number: 2,
+    icon: '📐',
+    shortLabel: 's-Plane Locus',
+    mobileLabel: 's-Plane',
+    label: '2. Pole Locus, Analogy & Quiz',
+  },
+  {
+    id: 'solver',
+    number: 3,
+    icon: '🧮',
+    shortLabel: 'Modeling Solver',
+    mobileLabel: 'Solver',
+    label: '3. Deep Multi-Part ODE → CL Solver',
+  },
+  {
+    id: 'word-problems',
+    number: 4,
+    icon: '⚙️',
+    shortLabel: 'Word Problems',
+    mobileLabel: 'Applied',
+    label: '4. Applied Word Problems',
+  },
+];
+
+const FREQ_STAGES = [
+  {
+    id: '3d-lab',
+    number: 1,
+    icon: '🏔️',
+    shortLabel: '3D |G(s)| Surface',
+    mobileLabel: '3D |G(s)|',
+    label: '1. 3D |G(s)| Surface & Root Locus',
+  },
+  {
+    id: 'intuition',
+    number: 2,
+    icon: '📈',
+    shortLabel: 'Locus & Bode',
+    mobileLabel: 'Bode',
+    label: '2. Root Locus ↔ Bode Lab & Quiz',
+  },
+  {
+    id: 'solver',
+    number: 3,
+    icon: '🧮',
+    shortLabel: 'Lead-Lag Solver',
+    mobileLabel: 'Solver',
+    label: '3. Root Locus, Bode & Lead-Lag Solver',
+  },
+  {
+    id: 'word-problems',
+    number: 4,
+    icon: '⚙️',
+    shortLabel: 'Word Problems',
+    mobileLabel: 'Applied',
+    label: '4. Applied Word Problems',
+  },
+];
+
 const PLANNED_TOPIC_METADATA = {
   'Servo Velocity & Acceleration Profiling': {
     domain: 'Mechatronics',
@@ -355,6 +433,62 @@ const PLANNED_TOPIC_METADATA = {
     equation: 'G(s) = \\frac{K e^{-\\tau s}}{T s + 1}, \\quad \\tau_{\\max} = \\frac{\\text{PM}}{\\omega_{gc}}',
     summary:
       'Compensate for pure transport lag in heated zones so thermal profiles track reflow curves without phase-lag ringing.',
+  },
+  'Quarter-Car Active Suspension ODE to s-Plane': {
+    domain: 'Automotive Dynamics',
+    accent: 'cyan',
+    equation: 'm_s\\ddot{z}_s + c_s(\\dot{z}_s - \\dot{z}_u) + k_s(z_s - z_u) = f_a',
+    summary:
+      'Derive coupled sprung/unsprung chassis dynamics, map ride-comfort poles on the s-plane, and shape active damping.',
+  },
+  'Voice-Coil Linear Actuator Coupled Electromechanical Model': {
+    domain: 'Mechatronics',
+    accent: 'amber',
+    equation: 'L\\dot{i} + Ri + K_e\\dot{x} = v, \\quad m\\ddot{x} + c\\dot{x} + kx = K_f i',
+    summary:
+      'Couple Lorentz force and back-EMF into a single 3rd-order transfer function and isolate electrical vs mechanical poles.',
+  },
+  'Dual-Tank Hydraulic Level Transfer Function': {
+    domain: 'Fluid Systems',
+    accent: 'violet',
+    equation: 'G(s) = \\frac{R_2}{(R_1 C_1 s + 1)(R_2 C_2 s + 1) + R_2 C_1 s}',
+    summary:
+      'Linearize interacting orifice flows around steady head to prove passive fluid cascades always yield overdamped real poles.',
+  },
+  'MEMS Accelerometer Proof-Mass Damping Design': {
+    domain: 'MEMS & Sensors',
+    accent: 'emerald',
+    equation: '\\frac{X(s)}{A_{\\text{in}}(s)} = \\frac{1}{s^2 + 2\\zeta\\omega_n s + \\omega_n^2}, \\quad \\zeta \\approx 0.707',
+    summary:
+      'Size squeeze-film gas damping for a silicon proof mass to maximize flat accelerometer bandwidth without resonant ringing.',
+  },
+  'Hard-Disk Drive Dual-Stage Lead-Lag Servo': {
+    domain: 'Precision Mechatronics',
+    accent: 'cyan',
+    equation: 'C(s) = K\\frac{1 + \\alpha T_1 s}{1 + T_1 s}\\cdot\\frac{1 + T_2 s}{1 + \\beta T_2 s}',
+    summary:
+      'Combine high-bandwidth phase lead with low-frequency lag boost to hold sub-nanometer read-head track following.',
+  },
+  'Flexible Robotic Link Notch Filter & Resonance Suppression': {
+    domain: 'Robotics',
+    accent: 'amber',
+    equation: 'N(s) = \\frac{s^2 + 2\\zeta_z\\omega_r s + \\omega_r^2}{s^2 + 2\\zeta_p\\omega_r s + \\omega_r^2} \\;\\;(\\zeta_z \\ll \\zeta_p)',
+    summary:
+      'Cancel structural Bode resonant peaks M_r in lightweight robotic arms without sacrificing closed-loop phase margin.',
+  },
+  'Magnetic Levitation Nyquist Stabilization': {
+    domain: 'Unstable Control',
+    accent: 'violet',
+    equation: 'G(s) = \\frac{-K_i}{m s^2 - K_x}, \\quad Z = N + P = 0 \\implies N = -1',
+    summary:
+      'Stabilize an open-loop RHP magnetic pole using Nyquist encirclement counts and phase-lead compensation.',
+  },
+  'Satellite Attitude Loop-Shaping Sensitivity Budget': {
+    domain: 'Aerospace Control',
+    accent: 'emerald',
+    equation: 'S(s) + T(s) = 1, \\quad M_s = \\max_\\omega |S(j\\omega)| \\le 1.6',
+    summary:
+      'Shape open-loop gain L(jω) to reject solar-torque disturbances at low frequencies while rolling off star-tracker noise.',
   },
 };
 
@@ -497,6 +631,30 @@ const FALLBACK_PID_WORD_PROBLEMS = {
   problems: [],
 };
 
+const FALLBACK_MODELING_WORD_PROBLEMS = {
+  lessonId: 'mech-modeling',
+  status: 'coming_soon',
+  plannedTopics: [
+    'Quarter-Car Active Suspension ODE to s-Plane',
+    'Voice-Coil Linear Actuator Coupled Electromechanical Model',
+    'Dual-Tank Hydraulic Level Transfer Function',
+    'MEMS Accelerometer Proof-Mass Damping Design',
+  ],
+  problems: [],
+};
+
+const FALLBACK_FREQ_WORD_PROBLEMS = {
+  lessonId: 'mech-root-bode',
+  status: 'coming_soon',
+  plannedTopics: [
+    'Hard-Disk Drive Dual-Stage Lead-Lag Servo',
+    'Flexible Robotic Link Notch Filter & Resonance Suppression',
+    'Magnetic Levitation Nyquist Stabilization',
+    'Satellite Attitude Loop-Shaping Sensitivity Budget',
+  ],
+  problems: [],
+};
+
 // ---------------------------------------------------------------------------
 // Application Runtime State
 // ---------------------------------------------------------------------------
@@ -512,7 +670,9 @@ const appState = {
     'calc-integrals': FALLBACK_INTEGRAL_WORD_PROBLEMS,
     'math-diff-eq': FALLBACK_DIFFEQ_WORD_PROBLEMS,
     'math-lin-alg': FALLBACK_LINALG_WORD_PROBLEMS,
+    'mech-modeling': FALLBACK_MODELING_WORD_PROBLEMS,
     'mech-pid': FALLBACK_PID_WORD_PROBLEMS,
+    'mech-root-bode': FALLBACK_FREQ_WORD_PROBLEMS,
   },
   lab: {
     presetId: null,
@@ -639,6 +799,67 @@ const appState = {
     controllerLatex: 'C(s) = 4.0 + \\frac{0.8}{s} + 1.2s',
     plantLatex: 'G(s) = \\frac{1}{s(0.4s + 1)}',
   },
+  modelingLab: {
+    presetId: 'msd-underdamped',
+    m: 1.0,
+    c: 1.2,
+    k: 9.0,
+    kp: 0.0,
+    showSPlane: true,
+    cameraPreset: '3d',
+    isAnimating: false,
+  },
+  modelingTelemetry: {
+    presetId: 'msd-underdamped',
+    label: 'Mass-Spring-Damper',
+    domain: 'mechanical',
+    paramLabels: { m: 'Mass m (kg)', c: 'Damper c (N·s/m)', k: 'Spring k (N/m)' },
+    m: 1.0,
+    c: 1.2,
+    k: 9.0,
+    kp: 0.0,
+    wn: 3.0,
+    zeta: 0.2,
+    sigma: 0.6,
+    wd: 2.94,
+    regime: 'UNDERDAMPED',
+    poles: [],
+    overshootPct: 52.7,
+    settlingTime: 6.52,
+    odeLatex: '',
+    tfLatex: '',
+    polesLatex: '',
+    showSPlane: true,
+  },
+  freqLab: {
+    presetId: 'rl-3pole',
+    k: 8.0,
+    param: 2.0,
+    showLocus: true,
+    cameraPreset: '3d',
+    isAnimating: false,
+  },
+  freqTelemetry: {
+    presetId: 'rl-3pole',
+    label: '3-Pole Cubic Locus',
+    mechatronicsLabel: '3-Stage Hydraulic Loop',
+    k: 8.0,
+    kMax: 36,
+    param: 2.0,
+    paramLabel: '3rd Pole p₃',
+    paramMin: 1.5,
+    paramMax: 5.0,
+    paramStep: 0.1,
+    showLocus: true,
+    closedLoopPoles: [],
+    gainCrossover: 1.6,
+    phaseMarginDeg: -8.0,
+    gainMarginDb: -2.5,
+    resonantPeakDb: 0,
+    stability: 'UNSTABLE',
+    olLatex: '',
+    clPolesLatex: '',
+  },
 };
 
 const activeInstances = {
@@ -662,15 +883,25 @@ function isLinAlgLesson() {
   return appState.lessonId === LINALG_LESSON_ID;
 }
 
+function isModelingLesson() {
+  return appState.lessonId === MODELING_LESSON_ID;
+}
+
 function isPidLesson() {
   return appState.lessonId === PID_LESSON_ID;
+}
+
+function isFreqLesson() {
+  return appState.lessonId === FREQ_LESSON_ID;
 }
 
 function getLessonStages() {
   if (isIntegralLesson()) return INTEGRAL_STAGES;
   if (isDiffEqLesson()) return DIFFEQ_STAGES;
   if (isLinAlgLesson()) return LINALG_STAGES;
+  if (isModelingLesson()) return MODELING_STAGES;
   if (isPidLesson()) return PID_STAGES;
+  if (isFreqLesson()) return FREQ_STAGES;
   return STAGES;
 }
 
@@ -678,7 +909,9 @@ function stageStoreKey(stageId) {
   if (isIntegralLesson()) return `int:${stageId}`;
   if (isDiffEqLesson()) return `de:${stageId}`;
   if (isLinAlgLesson()) return `la:${stageId}`;
+  if (isModelingLesson()) return `mod:${stageId}`;
   if (isPidLesson()) return `pid:${stageId}`;
+  if (isFreqLesson()) return `freq:${stageId}`;
   return stageId;
 }
 
@@ -805,6 +1038,63 @@ function getActivePidPreset(presets) {
   return presets.find((p) => p.id === appState.pidLab.presetId) || presets[0];
 }
 
+function normalizeModelingPresets() {
+  if (!MODELING_PRESETS) return [];
+  const list = Array.isArray(MODELING_PRESETS)
+    ? MODELING_PRESETS
+    : Object.entries(MODELING_PRESETS).map(([id, v]) => ({ id, ...v }));
+
+  return list.map((p, idx) => ({
+    id: p.id ?? p.key ?? `mod-preset-${idx}`,
+    name: p.label ?? p.name ?? `System ${idx + 1}`,
+    domain: p.domain ?? 'mechanical',
+    defaults: p.defaults ?? { m: 1.0, c: 1.2, k: 9.0, kp: 0.0 },
+    paramLabels: p.paramLabels ?? {
+      m: 'Mass m (kg)',
+      c: 'Damper c (N·s/m)',
+      k: 'Spring k (N/m)',
+    },
+    raw: p,
+  }));
+}
+
+function getActiveModelingPreset(presets) {
+  if (!presets.length) return null;
+  if (!appState.modelingLab.presetId) {
+    appState.modelingLab.presetId = presets[0].id;
+  }
+  return presets.find((p) => p.id === appState.modelingLab.presetId) || presets[0];
+}
+
+function normalizeFreqPresets() {
+  if (!FREQ_PRESETS) return [];
+  const list = Array.isArray(FREQ_PRESETS)
+    ? FREQ_PRESETS
+    : Object.entries(FREQ_PRESETS).map(([id, v]) => ({ id, ...v }));
+
+  return list.map((p, idx) => ({
+    id: p.id ?? p.key ?? `freq-preset-${idx}`,
+    name: p.label ?? p.name ?? `Loop ${idx + 1}`,
+    mechatronicsLabel: p.mechatronicsLabel ?? null,
+    defaultK: p.defaultK ?? 4.0,
+    kMax: p.kMax ?? 20,
+    defaultParam: p.defaultParam ?? 2.0,
+    paramLabel: p.paramLabel ?? 'Parameter',
+    paramMin: p.paramMin ?? 0.5,
+    paramMax: p.paramMax ?? 4.0,
+    paramStep: p.paramStep ?? 0.1,
+    raw: p,
+  }));
+}
+
+function getActiveFreqPreset(presets) {
+  if (!presets.length) return null;
+  if (!appState.freqLab.presetId) {
+    appState.freqLab.presetId = presets[0].id;
+  }
+  return presets.find((p) => p.id === appState.freqLab.presetId) || presets[0];
+}
+
 function getActiveDiffEqPreset(presets) {
   if (!presets.length) return null;
   if (!appState.diffeqLab.presetId) {
@@ -883,10 +1173,10 @@ function getMasterySnapshot() {
   return {
     percent,
     solvedProblems,
-    totalProblems: 74,
+    totalProblems: 94,
     solvedVisual,
-    totalVisual: 32,
-    totalStages: 20,
+    totalVisual: 44,
+    totalStages: 28,
     streak,
     accuracyPct: stats.accuracyPct ?? 100,
     completedStages,
@@ -1353,12 +1643,30 @@ function renderHubView() {
                 </button>
 
                 <button
-                  id="hub-hero-launch-pid"
+                  id="hub-hero-launch-modeling"
                   type="button"
                   class="col-span-2 sm:col-span-1 btn-glass w-full sm:w-auto !rounded-2xl !px-3.5 sm:!px-4 !py-2.5 !text-xs sm:!text-sm !border-amberGlow/55 !bg-amberGlow/[0.08] !text-amber-200 hover:!border-amberGlow/85 hover:!bg-amberGlow/15"
                 >
-                  <span>⚙ Mechatronics 01 · PID Control &amp; Stability</span>
+                  <span>🔩 Controls 01 · Modeling &amp; s-Plane</span>
                   <span aria-hidden="true" class="text-sm sm:text-base text-amberGlow">→</span>
+                </button>
+
+                <button
+                  id="hub-hero-launch-pid"
+                  type="button"
+                  class="btn-glass w-full sm:w-auto !rounded-2xl !px-3.5 sm:!px-4 !py-2.5 !text-xs sm:!text-sm !border-amberGlow/45 !text-amber-200 hover:!border-amberGlow/75 hover:!bg-amberGlow/10"
+                >
+                  <span>🎛️ Controls 02 · PID</span>
+                  <span aria-hidden="true" class="text-sm sm:text-base text-amberGlow">→</span>
+                </button>
+
+                <button
+                  id="hub-hero-launch-freq"
+                  type="button"
+                  class="btn-glass w-full sm:w-auto !rounded-2xl !px-3.5 sm:!px-4 !py-2.5 !text-xs sm:!text-sm !border-violetGlow/45 !text-violet-200 hover:!border-violetGlow/75 hover:!bg-violetGlow/10"
+                >
+                  <span>🏔️ Controls 03 · Bode</span>
+                  <span aria-hidden="true" class="text-sm sm:text-base text-violetGlow">→</span>
                 </button>
               </div>
             </div>
@@ -1490,9 +1798,19 @@ function renderHubView() {
     openLesson(LINALG_LESSON_ID, '3d-lab');
   });
 
+  document.getElementById('hub-hero-launch-modeling')?.addEventListener('click', () => {
+    playSfx('tick');
+    openLesson(MODELING_LESSON_ID, '3d-lab');
+  });
+
   document.getElementById('hub-hero-launch-pid')?.addEventListener('click', () => {
     playSfx('tick');
     openLesson(PID_LESSON_ID, '3d-lab');
+  });
+
+  document.getElementById('hub-hero-launch-freq')?.addEventListener('click', () => {
+    playSfx('tick');
+    openLesson(FREQ_LESSON_ID, '3d-lab');
   });
 
   document.getElementById('hub-preview-launch')?.addEventListener('click', () => {
@@ -1528,7 +1846,7 @@ function bindHubAudioToggle() {
 }
 
 // ---------------------------------------------------------------------------
-// VIEW 2 — Interactive Lesson Studio (`calc-derivatives`, `calc-integrals`, `math-diff-eq`, `math-lin-alg`, `mech-pid`)
+// VIEW 2 — Interactive Lesson Studio (`calc-*`, `math-*`, `mech-*`)
 // ---------------------------------------------------------------------------
 
 function openLesson(lessonId = LESSON_ID, stageId = '3d-lab') {
@@ -1536,7 +1854,9 @@ function openLesson(lessonId = LESSON_ID, stageId = '3d-lab') {
   if (lessonId === INTEGRAL_LESSON_ID) appState.lessonId = INTEGRAL_LESSON_ID;
   else if (lessonId === DIFFEQ_LESSON_ID) appState.lessonId = DIFFEQ_LESSON_ID;
   else if (lessonId === LINALG_LESSON_ID) appState.lessonId = LINALG_LESSON_ID;
+  else if (lessonId === MODELING_LESSON_ID) appState.lessonId = MODELING_LESSON_ID;
   else if (lessonId === PID_LESSON_ID) appState.lessonId = PID_LESSON_ID;
+  else if (lessonId === FREQ_LESSON_ID) appState.lessonId = FREQ_LESSON_ID;
   else appState.lessonId = LESSON_ID;
   appState.stage = stageId;
   renderLessonShell();
@@ -1559,10 +1879,20 @@ function getLessonSubtitleText(on) {
       ? 'Mechatronics Lens: Rigid-Body Frames SO(3), Jacobians & Principal Inertia Axes'
       : 'Linear Geometry Lens: 3D Matrix Warps, Eigenvector Spans, Determinants & SVD';
   }
+  if (isModelingLesson()) {
+    return on
+      ? 'Hardware Analogy Lens: Mass-Spring-Damper ↔ Series RLC, Motors & Closed-Loop Redesign'
+      : 'First-Principles Lens: Governing ODE → Laplace G(s) → s-Plane Poles → Closed Loop';
+  }
   if (isPidLesson()) {
     return on
       ? 'Hardware Rig Lens: Actuator Torque Saturation, Load Disturbance Rejection & Servo Tracking'
       : 'Control Theory Lens: Closed-Loop Transfer Functions, Routh-Hurwitz & Phase Margin';
+  }
+  if (isFreqLesson()) {
+    return on
+      ? 'Loop-Shaping Lens: Servo Resonance Mr, Bandwidth, Lead-Lag Compensators & Sensitivity'
+      : 'Frequency Lens: 3D |G(s)| Surface, Root Locus Branches, Bode Margins & Nyquist';
   }
   return on
     ? 'Mechatronics Lens: Displacement x(t) → Velocity v(t) & Actuator Dynamics'
@@ -1642,34 +1972,46 @@ function renderLessonShell() {
   const isInt = isIntegralLesson();
   const isDE = isDiffEqLesson();
   const isLA = isLinAlgLesson();
+  const isMod = isModelingLesson();
   const isPid = isPidLesson();
-  const lessonBadge = isPid
-    ? 'Mechatronics 01'
-    : isLA
-      ? 'Lesson 04'
-      : isDE
-        ? 'Lesson 03'
-        : isInt
-          ? 'Lesson 02'
-          : 'Lesson 01';
-  const lessonBadgeColor = isPid
-    ? 'text-amberGlow'
-    : isLA
-      ? 'text-emeraldGlow'
-      : isDE
-        ? 'text-amberGlow'
-        : isInt
-          ? 'text-violetGlow'
-          : 'text-cyanGlow';
-  const lessonTitle = isPid
-    ? 'PID Control Studio'
-    : isLA
-      ? 'Linear Algebra Studio'
-      : isDE
-        ? 'ODE & Laplace Studio'
-        : isInt
-          ? 'Integrals Studio'
-          : 'Derivatives Studio';
+  const isFreq = isFreqLesson();
+  const lessonBadge = isFreq
+    ? 'Controls 03'
+    : isPid
+      ? 'Controls 02'
+      : isMod
+        ? 'Controls 01'
+        : isLA
+          ? 'Lesson 04'
+          : isDE
+            ? 'Lesson 03'
+            : isInt
+              ? 'Lesson 02'
+              : 'Lesson 01';
+  const lessonBadgeColor = isFreq
+    ? 'text-violetGlow'
+    : isPid || isMod
+      ? 'text-amberGlow'
+      : isLA
+        ? 'text-emeraldGlow'
+        : isDE
+          ? 'text-amberGlow'
+          : isInt
+            ? 'text-violetGlow'
+            : 'text-cyanGlow';
+  const lessonTitle = isFreq
+    ? 'Root Locus & Bode'
+    : isPid
+      ? 'PID Control Studio'
+      : isMod
+        ? 'System Modeling Studio'
+        : isLA
+          ? 'Linear Algebra Studio'
+          : isDE
+            ? 'ODE & Laplace Studio'
+            : isInt
+              ? 'Integrals Studio'
+              : 'Derivatives Studio';
 
   root.innerHTML = `
     <div class="min-h-screen flex flex-col relative view-enter">
@@ -1845,9 +2187,15 @@ function propagateLensToActiveStage() {
     } else if (isLinAlgLesson()) {
       updateLinAlgStage1LensUI();
       updateLinAlgStage1TelemetryUI();
+    } else if (isModelingLesson()) {
+      updateModelingStage1LensUI();
+      updateModelingStage1TelemetryUI();
     } else if (isPidLesson()) {
       updatePidStage1LensUI();
       updatePidStage1TelemetryUI();
+    } else if (isFreqLesson()) {
+      updateFreqStage1LensUI();
+      updateFreqStage1TelemetryUI();
     } else {
       updateStage1LensUI();
       updateStage1TelemetryUI();
@@ -1870,10 +2218,18 @@ function propagateLensToActiveStage() {
         titleEl.textContent = on
           ? '2-DOF Robot Jacobian J & Manipulability Ellipse'
           : "Interactive 2D Linear Map A = [î'  ĵ'] & SVD Ellipse";
+      } else if (isModelingLesson()) {
+        titleEl.textContent = on
+          ? 'Series RLC Analogy (L↔m, R↔c, 1/C↔k) & s-Plane Locus'
+          : 'Physical Damping Sweep: s-Plane Pole Locus & Step Response';
       } else if (isPidLesson()) {
         titleEl.textContent = on
           ? 'Servo Position θ(t) & Motor Torque τ(t) (P/I/D Channels)'
           : 'Closed-Loop Output y(t) & P/I/D Effort Decomposition u(t)';
+      } else if (isFreqLesson()) {
+        titleEl.textContent = on
+          ? 'Closed-Loop Pole Migration & Servo Loop Robustness Margins'
+          : 'Interactive Root Locus 1 + KG(s) = 0 ↔ Bode Gain/Phase Margins';
       } else {
         titleEl.textContent = on
           ? 'Synchronized Position x(t) & Velocity v(t)'
@@ -1973,6 +2329,26 @@ function mountActiveStage() {
     return;
   }
 
+  if (isModelingLesson()) {
+    switch (appState.stage) {
+      case '3d-lab':
+        mountModelingStage1Lab3D(container);
+        break;
+      case 'intuition':
+        mountModelingStage2Intuition(container);
+        break;
+      case 'solver':
+        mountModelingStage3Solver(container);
+        break;
+      case 'word-problems':
+        mountStage4WordProblems(container);
+        break;
+      default:
+        mountModelingStage1Lab3D(container);
+    }
+    return;
+  }
+
   if (isPidLesson()) {
     switch (appState.stage) {
       case '3d-lab':
@@ -1989,6 +2365,26 @@ function mountActiveStage() {
         break;
       default:
         mountPidStage1Lab3D(container);
+    }
+    return;
+  }
+
+  if (isFreqLesson()) {
+    switch (appState.stage) {
+      case '3d-lab':
+        mountFreqStage1Lab3D(container);
+        break;
+      case 'intuition':
+        mountFreqStage2Intuition(container);
+        break;
+      case 'solver':
+        mountFreqStage3Solver(container);
+        break;
+      case 'word-problems':
+        mountStage4WordProblems(container);
+        break;
+      default:
+        mountFreqStage1Lab3D(container);
     }
     return;
   }
@@ -2772,7 +3168,7 @@ function mountStage2Intuition(container) {
   const on = isMechatronicsLens();
   const s = getStoreState();
   const solvedDerivQuizzes = (s.solvedQuizzes || []).filter(
-    (id) => !String(id).startsWith('int-quiz-') && !String(id).startsWith('de-quiz-') && !String(id).startsWith('la-quiz-') && !String(id).startsWith('pid-quiz-')
+    (id) => !String(id).startsWith('int-quiz-') && !String(id).startsWith('de-quiz-') && !String(id).startsWith('la-quiz-') && !String(id).startsWith('pid-quiz-') && !String(id).startsWith('mod-quiz-') && !String(id).startsWith('freq-quiz-')
   ).length;
   let activeSubTab = 'lab'; // 'lab' | 'quiz' on mobile (<lg)
 
@@ -2913,7 +3309,7 @@ function mountStage2Intuition(container) {
     try {
       const updateQuizTabCount = () => {
         const solvedDeriv = (getStoreState().solvedQuizzes || []).filter(
-          (id) => !String(id).startsWith('int-quiz-') && !String(id).startsWith('de-quiz-') && !String(id).startsWith('la-quiz-') && !String(id).startsWith('pid-quiz-')
+          (id) => !String(id).startsWith('int-quiz-') && !String(id).startsWith('de-quiz-') && !String(id).startsWith('la-quiz-') && !String(id).startsWith('pid-quiz-') && !String(id).startsWith('mod-quiz-') && !String(id).startsWith('freq-quiz-')
         ).length;
         const quizBtn = container.querySelector('[data-stage2-subtab="quiz"]');
         if (quizBtn) quizBtn.textContent = `🎯 Match Quiz (${solvedDeriv}/8)`;
@@ -6480,32 +6876,1708 @@ function mountPidStage3Solver(container) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// CONTROLS 01 — PHYSICAL SYSTEM MODELING & s-PLANE (`mech-modeling`) STAGES 1–3
+// ---------------------------------------------------------------------------
+
+function mountModelingStage1Lab3D(container) {
+  const presets = normalizeModelingPresets();
+  const activePreset = getActiveModelingPreset(presets);
+  const lensOn = isMechatronicsLens();
+  const pLabels = activePreset?.paramLabels || {
+    m: 'Mass m (kg)',
+    c: 'Damper c (N·s/m)',
+    k: 'Spring k (N/m)',
+  };
+  const clActive = appState.modelingLab.kp > 0.01;
+
+  container.innerHTML = `
+    <section class="space-y-1.5 sm:space-y-4 view-enter">
+      <!-- Top Physical System Preset Strip + Desktop Camera Presets -->
+      <div class="flex items-center justify-between gap-2 sm:gap-3">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar xl:flex-wrap flex-1 min-w-0 py-0.5" role="tablist" aria-label="Physical system presets">
+          ${presets
+            .map((p) => {
+              const isSelected = activePreset && p.id === activePreset.id;
+              return `
+                <button
+                  type="button"
+                  data-mod-preset-id="${escapeHtml(p.id)}"
+                  class="shrink-0 whitespace-nowrap px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-medium border transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-amberGlow/15 border-amberGlow/50 text-amber-200 shadow-[0_0_16px_rgba(245,158,11,0.2)]'
+                      : 'bg-slate-900/60 border-white/10 text-slate-300 hover:border-white/25 hover:text-white'
+                  }"
+                >
+                  ${escapeHtml(p.name)}
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+
+        <div class="hidden xl:flex items-center gap-1 bg-slate-900/75 p-1 rounded-xl border border-white/10 shrink-0">
+          ${[
+            { id: '3d', label: '3D Studio' },
+            { id: 'front', label: 'Front 2D Graph' },
+            { id: 'iso', label: 'Isometric' },
+          ]
+            .map((cam) => {
+              const active = appState.modelingLab.cameraPreset === cam.id;
+              return `
+                <button
+                  type="button"
+                  data-mod-camera-preset="${cam.id}"
+                  class="px-3 py-1.5 rounded-lg text-[11px] font-mono transition-all cursor-pointer ${
+                    active
+                      ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+                      : 'text-slate-400 border border-transparent hover:text-white'
+                  }"
+                >
+                  ${cam.label}
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+      </div>
+
+      <!-- Main Split-Screen Mobile / Full-Bleed Desktop 3D Physical Modeling Studio -->
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-2 sm:gap-4 items-stretch">
+        <!-- 3D Viewport Canvas Container -->
+        <div class="xl:col-span-8 canvas-stage relative h-[30dvh] min-h-[190px] max-h-[246px] sm:h-[420px] sm:max-h-none xl:h-[calc(100vh-210px)] xl:min-h-[540px] flex flex-col">
+          <div id="modeling-3d-canvas" class="absolute inset-0 w-full h-full"></div>
+
+          <!-- Top-Left Floating Governing ODE HUD -->
+          <div class="pointer-events-none relative z-10 flex items-start justify-between gap-2 p-2 sm:p-4">
+            <div class="pointer-events-auto rounded-xl sm:rounded-2xl px-2.5 py-1 sm:px-4 sm:py-2.5 bg-[#0B0D12]/80 backdrop-blur-xl border border-white/15 shadow-lg max-w-full">
+              <div class="hidden sm:flex items-center gap-2 mb-1">
+                <span class="w-2 h-2 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B]"></span>
+                <span id="mod-hud-title" class="text-[10px] font-mono uppercase tracking-widest text-slate-400">
+                  ${lensOn ? 'Physical Hardware ODE → s-Plane Rig' : 'Governing Differential Equation'}
+                </span>
+              </div>
+              <div class="flex flex-wrap items-center gap-x-2.5 text-[10px] sm:text-xs text-white">
+                <span id="mod-hud-ode-math" class="text-cyan-200"></span>
+              </div>
+            </div>
+
+            <!-- Hardware Rig Status Indicator -->
+            <div id="mod-hud-mech-indicator" class="hidden sm:block pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
+              lensOn
+                ? 'bg-amberGlow/15 border-amberGlow/45 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
+                : 'bg-[#0B0D12]/70 border-white/10 text-slate-400'
+            }">
+              <div class="flex items-center gap-2 text-[11px] font-mono">
+                <span class="w-2 h-2 rounded-full ${lensOn ? 'bg-amberGlow animate-pulse' : 'bg-slate-600'}"></span>
+                <span id="mod-hud-mech-text">${lensOn ? '2% Corridor & Root Locus: ON' : 'Physical Rig: Standard'}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Legend + Mobile Camera Switcher -->
+          <div class="pointer-events-none relative z-10 mt-auto p-1.5 sm:p-4 flex items-center justify-between gap-2">
+            <div class="hidden sm:inline-flex items-center gap-3 px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-300">
+              <span><span class="text-cyanGlow">×</span> s-Plane Poles</span>
+              <span><span class="text-emeraldGlow">—</span> Setpoint</span>
+              <span><span class="text-amberGlow">●</span> 3D Rig</span>
+            </div>
+
+            <div class="pointer-events-auto xl:hidden ml-auto flex items-center gap-0.5 bg-[#0B0D12]/80 backdrop-blur-md p-0.5 rounded-xl border border-white/15">
+              ${[
+                { id: '3d', label: '3D' },
+                { id: 'front', label: '2D' },
+                { id: 'iso', label: 'Iso' },
+              ]
+                .map((cam) => {
+                  const active = appState.modelingLab.cameraPreset === cam.id;
+                  return `
+                    <button
+                      type="button"
+                      data-mod-camera-preset="${cam.id}"
+                      class="px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all cursor-pointer ${
+                        active
+                          ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+                          : 'text-slate-400 border border-transparent hover:text-white'
+                      }"
+                    >
+                      ${cam.label}
+                    </button>
+                  `;
+                })
+                .join('')}
+            </div>
+
+            <div class="hidden xl:inline-flex items-center px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-400">
+              Drag to orbit • Scroll to zoom
+            </div>
+          </div>
+        </div>
+
+        <!-- Tactile Physical Parameters & Live s-Plane Telemetry -->
+        <aside class="xl:col-span-4 flex flex-col gap-1.5 sm:gap-4 xl:h-[calc(100vh-210px)] xl:overflow-y-auto studio-scroll pr-0.5">
+          <!-- Compact 1-Row Mobile Telemetry / Expanded Desktop Transfer Function Card -->
+          <div class="glass-panel p-2 sm:p-5 space-y-1.5 sm:space-y-4">
+            <div class="flex items-center justify-between gap-2">
+              <div class="hidden xl:block">
+                <div class="text-[10px] font-mono uppercase tracking-[0.14em] text-slate-400">Laplace &amp; Pole Telemetry</div>
+                <h2 class="font-display font-semibold text-sm text-white mt-0.5">Transfer Function &amp; Damping</h2>
+              </div>
+
+              <!-- Mobile Compact Inline Readout -->
+              <div class="flex xl:hidden items-center gap-1.5 min-w-0 flex-1">
+                <div class="flex-1 min-w-0 rounded-xl px-2 py-1 bg-cyanGlow/[0.08] border border-cyanGlow/25">
+                  <div class="text-[8.5px] font-mono uppercase tracking-wider text-cyanGlow/90 truncate">Damping ζ</div>
+                  <div id="mod-val-zeta-compact" class="font-mono font-semibold text-xs text-white leading-tight">0.20</div>
+                </div>
+                <div class="flex-1 min-w-0 rounded-xl px-2 py-1 bg-violetGlow/[0.08] border border-violetGlow/25">
+                  <div class="text-[8.5px] font-mono uppercase tracking-wider text-violetGlow/90 truncate">Freq ωₙ</div>
+                  <div id="mod-val-wn-compact" class="font-mono font-semibold text-xs text-violet-200 leading-tight">3.00</div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1 shrink-0">
+                <div
+                  id="mod-badge-regime"
+                  class="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-cyanGlow/15 border-cyanGlow/40 text-cyan-200"
+                >
+                  UNDERDAMPED
+                </div>
+                <button
+                  id="mod-btn-toggle-mobile-formula"
+                  type="button"
+                  aria-expanded="false"
+                  title="Toggle Transfer Function G(s) & poles"
+                  class="xl:hidden px-2 py-0.5 rounded-lg bg-white/[0.05] border border-white/15 text-[10px] font-mono text-amber-200 cursor-pointer"
+                >
+                  G(s) ▾
+                </button>
+              </div>
+            </div>
+
+            <!-- Collapsible on Mobile (<xl), Always Open on Desktop (xl:block) -->
+            <div id="mod-mobile-formula-drawer" class="hidden xl:block space-y-2.5 sm:space-y-3.5">
+              <div class="katex-card flex flex-col items-center justify-center gap-1.5 min-h-[64px] sm:min-h-[78px]">
+                <div id="mod-telemetry-tf-katex" class="text-amber-200 text-xs sm:text-sm overflow-x-auto"></div>
+                <div id="mod-telemetry-poles-katex" class="text-cyan-200 text-xs overflow-x-auto"></div>
+              </div>
+
+              <div class="hidden xl:grid grid-cols-3 gap-2">
+                <div class="rounded-2xl p-3 bg-cyanGlow/[0.06] border border-cyanGlow/25">
+                  <div class="text-[10px] font-mono uppercase tracking-wider text-cyanGlow/90">Damping ζ</div>
+                  <div id="mod-val-zeta" class="font-mono font-semibold text-base text-white mt-0.5">0.20</div>
+                </div>
+                <div class="rounded-2xl p-3 bg-violetGlow/[0.06] border border-violetGlow/25">
+                  <div class="text-[10px] font-mono uppercase tracking-wider text-violetGlow/90">ωₙ (rad/s)</div>
+                  <div id="mod-val-wn" class="font-mono font-semibold text-base text-violet-200 mt-0.5">3.00</div>
+                </div>
+                <div class="rounded-2xl p-3 bg-emeraldGlow/[0.06] border border-emeraldGlow/25">
+                  <div class="text-[10px] font-mono uppercase tracking-wider text-emeraldGlow/90">Overshoot</div>
+                  <div id="mod-val-os" class="font-mono font-semibold text-base text-emerald-200 mt-0.5">52.7%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Compact 3-Slider Physical Parameter Deck (m/L, c/R, k/(1/C)) -->
+          <div class="glass-panel p-2.5 sm:p-5 space-y-2 sm:space-y-3.5 flex-1 flex flex-col justify-between">
+            <div class="space-y-1.5 sm:space-y-3">
+              <!-- Inertia m / Inductance L -->
+              <div class="space-y-0.5 sm:space-y-1">
+                <div class="flex items-center justify-between">
+                  <label for="slider-mod-m" id="label-mod-m" class="text-[11px] sm:text-xs font-medium text-slate-200 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE]"></span>
+                    <span>${escapeHtml(pLabels.m)}</span>
+                  </label>
+                  <span id="readout-mod-m" class="px-1.5 py-0.5 rounded-lg bg-cyanGlow/15 border border-cyanGlow/30 font-mono text-[10px] sm:text-xs text-cyanGlow font-semibold">
+                    ${formatNum(appState.modelingLab.m, 1)}
+                  </span>
+                </div>
+                <input
+                  id="slider-mod-m"
+                  type="range"
+                  min="0.3"
+                  max="3.0"
+                  step="0.1"
+                  value="${appState.modelingLab.m}"
+                  class="studio-slider-cyan"
+                />
+              </div>
+
+              <!-- Damping c / Resistance R -->
+              <div class="space-y-0.5 sm:space-y-1">
+                <div class="flex items-center justify-between">
+                  <label for="slider-mod-c" id="label-mod-c" class="text-[11px] sm:text-xs font-medium text-slate-200 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B]"></span>
+                    <span>${escapeHtml(pLabels.c)}</span>
+                  </label>
+                  <span id="readout-mod-c" class="px-1.5 py-0.5 rounded-lg bg-amberGlow/15 border border-amberGlow/30 font-mono text-[10px] sm:text-xs text-amberGlow font-semibold">
+                    ${formatNum(appState.modelingLab.c, 1)}
+                  </span>
+                </div>
+                <input
+                  id="slider-mod-c"
+                  type="range"
+                  min="0.0"
+                  max="12.0"
+                  step="0.2"
+                  value="${appState.modelingLab.c}"
+                  class="studio-slider-amber"
+                />
+              </div>
+
+              <!-- Stiffness k / Elastance 1/C -->
+              <div class="space-y-0.5 sm:space-y-1">
+                <div class="flex items-center justify-between">
+                  <label for="slider-mod-k" id="label-mod-k" class="text-[11px] sm:text-xs font-medium text-slate-200 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emeraldGlow shadow-[0_0_8px_#34D399]"></span>
+                    <span>${escapeHtml(pLabels.k)}</span>
+                  </label>
+                  <span id="readout-mod-k" class="px-1.5 py-0.5 rounded-lg bg-emeraldGlow/15 border border-emeraldGlow/30 font-mono text-[10px] sm:text-xs text-emerald-200 font-semibold">
+                    ${formatNum(appState.modelingLab.k, 1)}
+                  </span>
+                </div>
+                <input
+                  id="slider-mod-k"
+                  type="range"
+                  min="1.0"
+                  max="16.0"
+                  step="0.5"
+                  value="${appState.modelingLab.k}"
+                  class="studio-slider-cyan"
+                />
+              </div>
+
+              <!-- Action Row: Run Step + Close Loop (+Kp) Toggle + s-Plane Toggle -->
+              <div class="flex items-center gap-1.5 pt-0.5">
+                <button
+                  id="btn-animate-mod"
+                  type="button"
+                  class="flex-1 py-2 sm:py-3 px-2.5 sm:px-4 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amberGlow via-cyanGlow to-emeraldGlow text-slate-950 font-display font-bold text-[11px] sm:text-sm tracking-wide shadow-[0_0_22px_rgba(34,211,238,0.25)] hover:brightness-110 active:scale-[0.985] transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <span id="mod-anim-icon" aria-hidden="true">▶</span>
+                  <span id="mod-anim-text">Run Step</span>
+                </button>
+
+                <button
+                  id="btn-toggle-mod-cl"
+                  type="button"
+                  aria-pressed="${clActive ? 'true' : 'false'}"
+                  class="shrink-0 py-2 sm:py-3 px-2.5 sm:px-3 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-mono font-semibold border transition-all cursor-pointer ${
+                    clActive
+                      ? 'bg-emeraldGlow/20 border-emeraldGlow/55 text-emerald-200 shadow-[0_0_16px_rgba(52,211,153,0.25)]'
+                      : 'bg-slate-900/70 border-white/15 text-slate-300 hover:border-white/30'
+                  }"
+                >
+                  ${clActive ? 'CL +Kp ON' : 'Loop: OL'}
+                </button>
+
+                <label class="xl:hidden shrink-0 inline-flex items-center gap-1 px-2 py-2 rounded-xl bg-cyanGlow/10 border border-cyanGlow/30 text-[10px] font-mono text-cyan-200 cursor-pointer select-none">
+                  <input
+                    id="toggle-mod-splane-mobile"
+                    type="checkbox"
+                    ${appState.modelingLab.showSPlane ? 'checked' : ''}
+                    class="w-3.5 h-3.5 rounded accent-cyan-400 cursor-pointer"
+                  />
+                  <span>s-Pl</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Desktop s-Plane Toggle + Stage 2 Forward Link -->
+            <div class="hidden xl:block pt-3 border-t border-white/10 space-y-2.5">
+              <label class="flex items-center justify-between gap-3 cursor-pointer select-none group">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-2.5 h-2.5 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE]"></span>
+                  <div>
+                    <div class="text-xs font-medium text-slate-200 group-hover:text-white">
+                      Show 3D Complex s-Plane Pole Plate
+                    </div>
+                    <div class="text-[11px] text-slate-400">Watch poles collide at critical damping &amp; split on real axis</div>
+                  </div>
+                </div>
+                <input
+                  id="toggle-mod-splane"
+                  type="checkbox"
+                  ${appState.modelingLab.showSPlane ? 'checked' : ''}
+                  class="w-4 h-4 rounded accent-cyan-400 cursor-pointer"
+                />
+              </label>
+
+              <button
+                id="btn-mod-next-intuition"
+                type="button"
+                class="btn-glass w-full !justify-between !text-xs"
+              >
+                <span>Continue to Stage 2: s-Plane Locus &amp; Analogy Lab</span>
+                <span class="text-amberGlow" aria-hidden="true">→</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  `;
+
+  const sliderM = document.getElementById('slider-mod-m');
+  const sliderC = document.getElementById('slider-mod-c');
+  const sliderK = document.getElementById('slider-mod-k');
+  syncSliderTrackFill(sliderM);
+  syncSliderTrackFill(sliderC);
+  syncSliderTrackFill(sliderK);
+
+  const canvasHost = document.getElementById('modeling-3d-canvas');
+
+  const handleModelingTelemetry = (m = {}) => {
+    appState.modelingTelemetry = {
+      ...appState.modelingTelemetry,
+      ...m,
+    };
+    updateModelingStage1TelemetryUI();
+  };
+
+  if (canvasHost && typeof Modeling3DStudio === 'function') {
+    try {
+      const studio = new Modeling3DStudio();
+      studio.init(canvasHost, {
+        presetId: activePreset?.id || 'msd-underdamped',
+        m: appState.modelingLab.m,
+        c: appState.modelingLab.c,
+        k: appState.modelingLab.k,
+        kp: appState.modelingLab.kp,
+        showSPlane: appState.modelingLab.showSPlane,
+        mechatronicsLens: isMechatronicsLens(),
+        onTelemetry: handleModelingTelemetry,
+      });
+      studio.setCameraPreset?.(appState.modelingLab.cameraPreset);
+      activeInstances.studio3D = studio;
+      if (typeof studio.getTelemetry === 'function') {
+        handleModelingTelemetry(studio.getTelemetry());
+      }
+    } catch (err) {
+      console.error('[EIGENLAB] Modeling3DStudio init error:', err);
+      canvasHost.innerHTML = `
+        <div class="w-full h-full flex items-center justify-center p-6 text-center text-sm text-slate-400">
+          3D Physical Modeling viewport could not initialize on this device.
+        </div>
+      `;
+    }
+  }
+
+  updateModelingStage1LensUI();
+  updateModelingStage1TelemetryUI();
+
+  const mobBtn = document.getElementById('mod-btn-toggle-mobile-formula');
+  const mobDrawer = document.getElementById('mod-mobile-formula-drawer');
+  mobBtn?.addEventListener('click', () => {
+    playSfx('tick');
+    const isHidden = mobDrawer?.classList.toggle('hidden');
+    mobBtn.setAttribute('aria-expanded', String(!isHidden));
+    mobBtn.textContent = isHidden ? 'G(s) ▾' : 'G(s) ▴';
+  });
+
+  const syncClBtn = () => {
+    const btn = document.getElementById('btn-toggle-mod-cl');
+    if (!btn) return;
+    const on = appState.modelingLab.kp > 0.01;
+    btn.setAttribute('aria-pressed', String(on));
+    btn.textContent = on ? 'CL +Kp ON' : 'Loop: OL';
+    btn.className = `shrink-0 py-2 sm:py-3 px-2.5 sm:px-3 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-mono font-semibold border transition-all cursor-pointer ${
+      on
+        ? 'bg-emeraldGlow/20 border-emeraldGlow/55 text-emerald-200 shadow-[0_0_16px_rgba(52,211,153,0.25)]'
+        : 'bg-slate-900/70 border-white/15 text-slate-300 hover:border-white/30'
+    }`;
+  };
+
+  container.querySelectorAll('[data-mod-preset-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-mod-preset-id');
+      if (!id || id === appState.modelingLab.presetId) return;
+      playSfx('tick');
+      appState.modelingLab.presetId = id;
+      const preset = getActiveModelingPreset(presets);
+      if (preset) {
+        const d = preset.defaults;
+        appState.modelingLab.m = d.m;
+        appState.modelingLab.c = d.c;
+        appState.modelingLab.k = d.k;
+        appState.modelingLab.kp = d.kp;
+
+        if (sliderM) {
+          sliderM.value = String(d.m);
+          syncSliderTrackFill(sliderM);
+        }
+        if (sliderC) {
+          sliderC.value = String(d.c);
+          syncSliderTrackFill(sliderC);
+        }
+        if (sliderK) {
+          sliderK.value = String(d.k);
+          syncSliderTrackFill(sliderK);
+        }
+        const lm = document.getElementById('label-mod-m');
+        const lc = document.getElementById('label-mod-c');
+        const lk = document.getElementById('label-mod-k');
+        if (lm) lm.innerHTML = `<span class="w-2 h-2 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE]"></span><span>${escapeHtml(preset.paramLabels.m)}</span>`;
+        if (lc) lc.innerHTML = `<span class="w-2 h-2 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B]"></span><span>${escapeHtml(preset.paramLabels.c)}</span>`;
+        if (lk) lk.innerHTML = `<span class="w-2 h-2 rounded-full bg-emeraldGlow shadow-[0_0_8px_#34D399]"></span><span>${escapeHtml(preset.paramLabels.k)}</span>`;
+
+        const rm = document.getElementById('readout-mod-m');
+        const rc = document.getElementById('readout-mod-c');
+        const rk = document.getElementById('readout-mod-k');
+        if (rm) rm.textContent = formatNum(d.m, 1);
+        if (rc) rc.textContent = formatNum(d.c, 1);
+        if (rk) rk.textContent = formatNum(d.k, 1);
+        syncClBtn();
+      }
+
+      container.querySelectorAll('[data-mod-preset-id]').forEach((b) => {
+        const sel = b.getAttribute('data-mod-preset-id') === id;
+        b.className = `shrink-0 whitespace-nowrap px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-medium border transition-all cursor-pointer ${
+          sel
+            ? 'bg-amberGlow/15 border-amberGlow/50 text-amber-200 shadow-[0_0_16px_rgba(245,158,11,0.2)]'
+            : 'bg-slate-900/60 border-white/10 text-slate-300 hover:border-white/25 hover:text-white'
+        }`;
+      });
+
+      activeInstances.studio3D?.setPreset?.(id);
+      if (typeof activeInstances.studio3D?.getTelemetry === 'function') {
+        handleModelingTelemetry(activeInstances.studio3D.getTelemetry());
+      }
+      markStageDone('3d-lab');
+    });
+  });
+
+  container.querySelectorAll('[data-mod-camera-preset]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const camId = btn.getAttribute('data-mod-camera-preset');
+      if (!camId) return;
+      playSfx('tick');
+      appState.modelingLab.cameraPreset = camId;
+      container.querySelectorAll('[data-mod-camera-preset]').forEach((b) => {
+        const act = b.getAttribute('data-mod-camera-preset') === camId;
+        const isCompact = b.textContent.trim().length <= 3;
+        b.className = `${isCompact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'} rounded-lg font-mono transition-all cursor-pointer ${
+          act
+            ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+            : 'text-slate-400 border border-transparent hover:text-white'
+        }`;
+      });
+      activeInstances.studio3D?.setCameraPreset?.(camId);
+    });
+  });
+
+  const applyParams = () => {
+    activeInstances.studio3D?.setParams?.({
+      m: appState.modelingLab.m,
+      c: appState.modelingLab.c,
+      k: appState.modelingLab.k,
+      kp: appState.modelingLab.kp,
+    });
+    markStageDone('3d-lab');
+  };
+
+  sliderM?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    appState.modelingLab.m = val;
+    syncSliderTrackFill(sliderM);
+    const r = document.getElementById('readout-mod-m');
+    if (r) r.textContent = formatNum(val, 1);
+    applyParams();
+  });
+
+  sliderC?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    appState.modelingLab.c = val;
+    syncSliderTrackFill(sliderC);
+    const r = document.getElementById('readout-mod-c');
+    if (r) r.textContent = formatNum(val, 1);
+    applyParams();
+  });
+
+  sliderK?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    appState.modelingLab.k = val;
+    syncSliderTrackFill(sliderK);
+    const r = document.getElementById('readout-mod-k');
+    if (r) r.textContent = formatNum(val, 1);
+    applyParams();
+  });
+
+  document.getElementById('btn-toggle-mod-cl')?.addEventListener('click', () => {
+    playSfx('snap');
+    appState.modelingLab.kp = appState.modelingLab.kp > 0.01 ? 0.0 : 6.0;
+    syncClBtn();
+    applyParams();
+  });
+
+  const spToggle = document.getElementById('toggle-mod-splane');
+  const spToggleMob = document.getElementById('toggle-mod-splane-mobile');
+  const handleSPlaneToggle = (checked) => {
+    playSfx('tick');
+    appState.modelingLab.showSPlane = !!checked;
+    if (spToggle) spToggle.checked = appState.modelingLab.showSPlane;
+    if (spToggleMob) spToggleMob.checked = appState.modelingLab.showSPlane;
+    activeInstances.studio3D?.toggleSPlane?.(appState.modelingLab.showSPlane);
+  };
+  spToggle?.addEventListener('change', (e) => handleSPlaneToggle(e.target.checked));
+  spToggleMob?.addEventListener('change', (e) => handleSPlaneToggle(e.target.checked));
+
+  document.getElementById('btn-animate-mod')?.addEventListener('click', () => {
+    if (appState.modelingLab.isAnimating) return;
+    playSfx('snap');
+    appState.modelingLab.isAnimating = true;
+    const icon = document.getElementById('mod-anim-icon');
+    const txt = document.getElementById('mod-anim-text');
+    if (icon) icon.textContent = '◌';
+    if (txt) txt.textContent = 'Running...';
+
+    const finishAnim = () => {
+      appState.modelingLab.isAnimating = false;
+      if (icon) icon.textContent = '▶';
+      if (txt) txt.textContent = 'Run Step';
+      playSfx('success');
+      markStageDone('3d-lab');
+    };
+
+    if (typeof activeInstances.studio3D?.animateResponse === 'function') {
+      activeInstances.studio3D.animateResponse(finishAnim);
+    } else {
+      finishAnim();
+    }
+  });
+
+  document.getElementById('btn-mod-next-intuition')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('intuition');
+  });
+}
+
+function updateModelingStage1LensUI() {
+  const on = isMechatronicsLens();
+  const titleEl = document.getElementById('mod-hud-title');
+  if (titleEl) {
+    titleEl.textContent = on
+      ? 'Physical Hardware ODE → s-Plane Rig'
+      : 'Governing Differential Equation';
+  }
+  const mechBox = document.getElementById('mod-hud-mech-indicator');
+  const mechTxt = document.getElementById('mod-hud-mech-text');
+  if (mechBox) {
+    mechBox.className = `hidden sm:block pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
+      on
+        ? 'bg-amberGlow/15 border-amberGlow/45 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
+        : 'bg-[#0B0D12]/70 border-white/10 text-slate-400'
+    }`;
+    const dot = mechBox.querySelector('span.rounded-full');
+    if (dot) dot.className = `w-2 h-2 rounded-full ${on ? 'bg-amberGlow animate-pulse' : 'bg-slate-600'}`;
+  }
+  if (mechTxt) {
+    mechTxt.textContent = on ? '2% Corridor & Root Locus: ON' : 'Physical Rig: Standard';
+  }
+}
+
+function updateModelingStage1TelemetryUI() {
+  const t = appState.modelingTelemetry;
+  const zStr = formatNum(t.zeta ?? 0.2, 2);
+  const wnStr = formatNum(t.wn ?? 3.0, 2);
+  const osStr = Number.isFinite(t.overshootPct) ? `${formatNum(t.overshootPct, 1)}%` : '0.0%';
+
+  const zEl = document.getElementById('mod-val-zeta');
+  const zMobEl = document.getElementById('mod-val-zeta-compact');
+  if (zEl) zEl.textContent = zStr;
+  if (zMobEl) zMobEl.textContent = zStr;
+
+  const wnEl = document.getElementById('mod-val-wn');
+  const wnMobEl = document.getElementById('mod-val-wn-compact');
+  if (wnEl) wnEl.textContent = wnStr;
+  if (wnMobEl) wnMobEl.textContent = wnStr;
+
+  const osEl = document.getElementById('mod-val-os');
+  if (osEl) osEl.textContent = osStr;
+
+  const badge = document.getElementById('mod-badge-regime');
+  if (badge) {
+    const reg = t.regime || 'UNDERDAMPED';
+    badge.textContent = reg;
+    if (reg === 'CRITICAL') {
+      badge.className =
+        'px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-emeraldGlow/15 border-emeraldGlow/45 text-emerald-200';
+    } else if (reg === 'OVERDAMPED') {
+      badge.className =
+        'px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-violetGlow/15 border-violetGlow/45 text-violet-200';
+    } else if (reg === 'UNDAMPED') {
+      badge.className =
+        'px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-amberGlow/15 border-amberGlow/45 text-amber-200';
+    } else {
+      badge.className =
+        'px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-cyanGlow/15 border-cyanGlow/40 text-cyan-200';
+    }
+  }
+
+  const odeEl = document.getElementById('mod-hud-ode-math');
+  if (odeEl && t.odeLatex) typesetMath(odeEl, t.odeLatex, false);
+
+  const tfEl = document.getElementById('mod-telemetry-tf-katex');
+  if (tfEl && t.tfLatex) typesetMath(tfEl, t.tfLatex, false);
+
+  const polesEl = document.getElementById('mod-telemetry-poles-katex');
+  if (polesEl && t.polesLatex) typesetMath(polesEl, t.polesLatex, false);
+}
+
+function mountModelingStage2Intuition(container) {
+  const on = isMechatronicsLens();
+  const s = getStoreState();
+  const solvedModQuizzes = (s.solvedQuizzes || []).filter((id) =>
+    String(id).startsWith('mod-quiz-')
+  ).length;
+  let activeSubTab = 'lab';
+
+  container.innerHTML = `
+    <section class="space-y-3 lg:space-y-6 view-enter">
+      <!-- Mobile Segmented Sub-Tab Switcher (<lg) -->
+      <div class="lg:hidden grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[#0E121C]/90 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+        <button
+          type="button"
+          data-stage2-subtab="lab"
+          class="py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer bg-amberGlow/20 border border-amberGlow/45 text-amber-100 shadow-sm"
+        >
+          📐 s-Plane Locus
+        </button>
+        <button
+          type="button"
+          data-stage2-subtab="quiz"
+          class="py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer border border-transparent text-slate-300 hover:text-white"
+        >
+          🎯 Match Quiz (${solvedModQuizzes}/6)
+        </button>
+      </div>
+
+      <!-- Interactive s-Plane Damping Locus & Mechanical ↔ Electrical Analogy Lab -->
+      <div id="stage2-panel-lab" class="glass-panel p-2.5 sm:p-5 lg:p-6 space-y-2.5 sm:space-y-4">
+        <div class="hidden sm:flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-amberGlow">Physical Parameters ↔ Complex Poles</div>
+            <h2 id="stage2-lab-title" class="font-display font-bold text-xl text-white mt-0.5">
+              ${on ? 'Series RLC Analogy (L↔m, R↔c, 1/C↔k) & s-Plane Locus' : 'Physical Damping Sweep: s-Plane Pole Locus & Step Response'}
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Drag the pole along the constant-ωₙ semicircle to watch underdamped pairs collide at critical damping (−ωₙ) and split into overdamped real poles.
+            </p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-[11px] font-mono bg-white/[0.04] border border-white/10 text-slate-300">
+            Drag pole or scrub ζ
+          </span>
+        </div>
+
+        <div id="modeling-splane-lab-host" class="w-full min-h-[300px] sm:min-h-[380px]"></div>
+      </div>
+
+      <!-- Visual Modeling & s-Plane Quiz Engine -->
+      <div id="stage2-panel-quiz" class="hidden lg:block glass-panel p-2.5 sm:p-5 lg:p-6 space-y-2.5 sm:space-y-4">
+        <div class="hidden sm:flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-cyanGlow">First-Principles Pattern Mastery</div>
+            <h2 class="font-display font-bold text-xl text-white mt-0.5">Modeling &amp; s-Plane Visual Challenges</h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Diagnose critical damping, constant-ωₙ damping sweeps, dominant overdamped poles, RLC analogies, and closed-loop stiffness shifts.
+            </p>
+          </div>
+          <button
+            id="btn-next-solver"
+            type="button"
+            class="btn-glass !text-xs"
+          >
+            Next: Deep Multi-Part Solver →
+          </button>
+        </div>
+
+        <div id="modeling-quiz-engine-host" class="w-full min-h-[280px] sm:min-h-[320px]"></div>
+      </div>
+    </section>
+  `;
+
+  const panelLab = document.getElementById('stage2-panel-lab');
+  const panelQuiz = document.getElementById('stage2-panel-quiz');
+  const setSubTab = (tab) => {
+    activeSubTab = tab;
+    if (panelLab && panelQuiz) {
+      panelLab.classList.toggle('hidden', tab !== 'lab');
+      panelLab.classList.add('lg:block');
+      panelQuiz.classList.toggle('hidden', tab !== 'quiz');
+      panelQuiz.classList.add('lg:block');
+    }
+    container.querySelectorAll('[data-stage2-subtab]').forEach((btn) => {
+      const isAct = btn.getAttribute('data-stage2-subtab') === tab;
+      btn.className = isAct
+        ? 'py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer bg-amberGlow/20 border border-amberGlow/45 text-amber-100 shadow-sm'
+        : 'py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer border border-transparent text-slate-300 hover:text-white';
+    });
+    requestAnimationFrame(() => {
+      if (tab === 'lab') {
+        activeInstances.stackedLab?._resizeAll?.();
+        activeInstances.stackedLab?._drawAll?.();
+      } else {
+        activeInstances.quizEngine?._resizeCanvases?.();
+        activeInstances.quizEngine?._drawCanvases?.();
+      }
+      window.dispatchEvent(new Event('resize'));
+    });
+  };
+
+  container.querySelectorAll('[data-stage2-subtab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const next = btn.getAttribute('data-stage2-subtab');
+      if (next && next !== activeSubTab) {
+        playSfx('tick');
+        setSubTab(next);
+      }
+    });
+  });
+
+  const labHost = document.getElementById('modeling-splane-lab-host');
+  if (labHost && typeof ModelingSPlaneLab === 'function') {
+    try {
+      activeInstances.stackedLab = new ModelingSPlaneLab(labHost, {
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onInteract: () => markStageDone('intuition'),
+        onOpenQuiz: () => {
+          playSfx('tick');
+          setSubTab('quiz');
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] ModelingSPlaneLab mount error:', err);
+    }
+  }
+
+  const quizHost = document.getElementById('modeling-quiz-engine-host');
+  if (quizHost && typeof ModelingVisualQuizEngine === 'function') {
+    try {
+      const updateTabCount = (payload) => {
+        const count =
+          payload?.solvedCount ??
+          (getStoreState().solvedQuizzes || []).filter((id) =>
+            String(id).startsWith('mod-quiz-')
+          ).length;
+        const quizBtn = container.querySelector('[data-stage2-subtab="quiz"]');
+        if (quizBtn) quizBtn.textContent = `🎯 Match Quiz (${count}/6)`;
+      };
+      activeInstances.quizEngine = new ModelingVisualQuizEngine(quizHost, {
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onAnswer: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+        onProgress: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+        onComplete: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] ModelingVisualQuizEngine mount error:', err);
+    }
+  }
+
+  document.getElementById('btn-next-solver')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('solver');
+  });
+}
+
+function mountModelingStage3Solver(container) {
+  container.innerHTML = `
+    <section class="max-w-4xl mx-auto space-y-3 sm:space-y-5 view-enter">
+      <div class="hidden md:flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-amberGlow">End-to-End Physical Modeling Drills</div>
+          <h2 class="font-display font-bold text-2xl text-white mt-0.5">ODE → Laplace → s-Plane → Closed-Loop Solver</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+            10 deep 5-to-6-part engineering pipelines (Mass-Spring-Damper, Series/Parallel RLC, DC Motor, Thermal, PD Placement) with Why &amp; System Impact insights at every step.
+          </p>
+        </div>
+
+        <button
+          id="btn-next-word-problems"
+          type="button"
+          class="btn-glass !text-xs"
+        >
+          Next: Word Problems →
+        </button>
+      </div>
+
+      <div id="paperless-solver-host" class="glass-panel p-2.5 sm:p-5 md:p-6 min-h-[420px]"></div>
+    </section>
+  `;
+
+  const host = document.getElementById('paperless-solver-host');
+  if (host && typeof PaperlessStepSolver === 'function') {
+    try {
+      activeInstances.stepSolver = new PaperlessStepSolver(host, {
+        mode: 'modeling',
+        problems: MODELING_PROBLEMS,
+        tiers: MODELING_SOLVER_TIERS,
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onSolve: () => {
+          markStageDone('solver');
+          updateLessonStageDotsUI();
+        },
+        onProblemSolved: () => {
+          markStageDone('solver');
+          updateLessonStageDotsUI();
+        },
+        onProgress: (info) => {
+          if (!info || (info.solvedCount ?? 1) >= 1) {
+            markStageDone('solver');
+            updateLessonStageDotsUI();
+          }
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] Modeling PaperlessStepSolver mount error:', err);
+    }
+  }
+
+  document.getElementById('btn-next-word-problems')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('word-problems');
+  });
+}
+
+// ---------------------------------------------------------------------------
+// CONTROLS 03 — ROOT LOCUS, BODE & LEAD-LAG DESIGN (`mech-root-bode`) STAGES 1–3
+// ---------------------------------------------------------------------------
+
+function mountFreqStage1Lab3D(container) {
+  const presets = normalizeFreqPresets();
+  const activePreset = getActiveFreqPreset(presets);
+  const lensOn = isMechatronicsLens();
+
+  container.innerHTML = `
+    <section class="space-y-2 sm:space-y-4 view-enter">
+      <!-- Top Control Topology Preset Strip + Desktop Camera Presets -->
+      <div class="flex items-center justify-between gap-2 sm:gap-3">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar xl:flex-wrap flex-1 min-w-0 py-0.5" role="tablist" aria-label="Root locus and frequency presets">
+          ${presets
+            .map((p) => {
+              const isSelected = activePreset && p.id === activePreset.id;
+              return `
+                <button
+                  type="button"
+                  data-freq-preset-id="${escapeHtml(p.id)}"
+                  class="shrink-0 whitespace-nowrap px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-medium border transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-violetGlow/20 border-violetGlow/55 text-violet-200 shadow-[0_0_16px_rgba(167,139,250,0.22)]'
+                      : 'bg-slate-900/60 border-white/10 text-slate-300 hover:border-white/25 hover:text-white'
+                  }"
+                >
+                  ${escapeHtml(p.name)}
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+
+        <div class="hidden xl:flex items-center gap-1 bg-slate-900/75 p-1 rounded-xl border border-white/10 shrink-0">
+          ${[
+            { id: '3d', label: '3D Studio' },
+            { id: 'front', label: 'Front 2D Graph' },
+            { id: 'iso', label: 'Isometric' },
+          ]
+            .map((cam) => {
+              const active = appState.freqLab.cameraPreset === cam.id;
+              return `
+                <button
+                  type="button"
+                  data-freq-camera-preset="${cam.id}"
+                  class="px-3 py-1.5 rounded-lg text-[11px] font-mono transition-all cursor-pointer ${
+                    active
+                      ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+                      : 'text-slate-400 border border-transparent hover:text-white'
+                  }"
+                >
+                  ${cam.label}
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+      </div>
+
+      <!-- Main Split-Screen Mobile / Full-Bleed Desktop 3D |G(s)| & Root Locus Studio -->
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-2.5 sm:gap-4 items-stretch">
+        <!-- 3D Viewport Canvas Container -->
+        <div class="xl:col-span-8 canvas-stage relative h-[35dvh] min-h-[210px] max-h-[290px] sm:h-[420px] sm:max-h-none xl:h-[calc(100vh-210px)] xl:min-h-[540px] flex flex-col">
+          <div id="freq-3d-canvas" class="absolute inset-0 w-full h-full"></div>
+
+          <!-- Top-Left Floating Open-Loop L(s) HUD -->
+          <div class="pointer-events-none relative z-10 flex items-start justify-between gap-2 p-2.5 sm:p-4">
+            <div class="pointer-events-auto rounded-xl sm:rounded-2xl px-2.5 py-1.5 sm:px-4 sm:py-3 bg-[#0B0D12]/80 backdrop-blur-xl border border-white/15 shadow-lg max-w-full">
+              <div class="hidden sm:flex items-center gap-2 mb-1">
+                <span class="w-2 h-2 rounded-full bg-violetGlow shadow-[0_0_8px_#A78BFA]"></span>
+                <span id="freq-hud-title" class="text-[10px] font-mono uppercase tracking-widest text-slate-400">
+                  ${lensOn ? '3D Loop-Shaping |L(s)| & Robustness Wall' : '3D Laplace Surface |KG(s)| & jω Bode Slice'}
+                </span>
+              </div>
+              <div class="flex flex-wrap items-center gap-x-2.5 text-[10px] sm:text-xs text-white">
+                <span id="freq-hud-ol-math" class="text-cyan-200"></span>
+              </div>
+            </div>
+
+            <!-- Loop-Shaping Caliper Indicator -->
+            <div id="freq-hud-mech-indicator" class="hidden sm:block pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
+              lensOn
+                ? 'bg-amberGlow/15 border-amberGlow/45 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
+                : 'bg-[#0B0D12]/70 border-white/10 text-slate-400'
+            }">
+              <div class="flex items-center gap-2 text-[11px] font-mono">
+                <span class="w-2 h-2 rounded-full ${lensOn ? 'bg-amberGlow animate-pulse' : 'bg-slate-600'}"></span>
+                <span id="freq-hud-mech-text">${lensOn ? 'PM / GM / Mr Calipers: LIVE' : 'Stability Calipers: Standby'}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Legend + Mobile Camera Switcher -->
+          <div class="pointer-events-none relative z-10 mt-auto p-2 sm:p-4 flex items-center justify-between gap-2">
+            <div class="hidden sm:inline-flex items-center gap-3 px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-300">
+              <span><span class="text-cyanGlow">▲</span> |KG(s)| Surface</span>
+              <span><span class="text-amberGlow">━</span> jω Bode Slice</span>
+              <span><span class="text-emeraldGlow">●</span> Root Locus</span>
+            </div>
+
+            <div class="pointer-events-auto xl:hidden ml-auto flex items-center gap-0.5 bg-[#0B0D12]/80 backdrop-blur-md p-0.5 rounded-xl border border-white/15">
+              ${[
+                { id: '3d', label: '3D' },
+                { id: 'front', label: '2D' },
+                { id: 'iso', label: 'Iso' },
+              ]
+                .map((cam) => {
+                  const active = appState.freqLab.cameraPreset === cam.id;
+                  return `
+                    <button
+                      type="button"
+                      data-freq-camera-preset="${cam.id}"
+                      class="px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all cursor-pointer ${
+                        active
+                          ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+                          : 'text-slate-400 border border-transparent hover:text-white'
+                      }"
+                    >
+                      ${cam.label}
+                    </button>
+                  `;
+                })
+                .join('')}
+            </div>
+
+            <div class="hidden xl:inline-flex items-center px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-400">
+              Drag to orbit • Scroll to zoom
+            </div>
+          </div>
+        </div>
+
+        <!-- Tactile Bode Margin Telemetry + Loop Gain K & Parameter Sliders -->
+        <aside class="xl:col-span-4 flex flex-col gap-2 sm:gap-4 xl:h-[calc(100vh-210px)] xl:overflow-y-auto studio-scroll pr-0.5">
+          <!-- Compact 1-Row Mobile Telemetry / Expanded Desktop Margin Card -->
+          <div class="glass-panel p-2.5 sm:p-5 space-y-2 sm:space-y-4">
+            <div class="flex items-center justify-between gap-2">
+              <div class="hidden xl:block">
+                <div class="text-[10px] font-mono uppercase tracking-[0.14em] text-slate-400">Frequency &amp; Locus Telemetry</div>
+                <h2 class="font-display font-semibold text-sm text-white mt-0.5">Phase Margin, Gain Margin &amp; Poles</h2>
+              </div>
+
+              <!-- Mobile Compact Inline Readout -->
+              <div class="flex xl:hidden items-center gap-1.5 min-w-0 flex-1">
+                <div class="flex-1 min-w-0 rounded-xl px-2.5 py-1 bg-cyanGlow/[0.08] border border-cyanGlow/25">
+                  <div class="text-[9px] font-mono uppercase tracking-wider text-cyanGlow/90 truncate">Phase Margin</div>
+                  <div id="freq-val-pm-compact" class="font-mono font-semibold text-sm text-white leading-tight">—</div>
+                </div>
+                <div class="flex-1 min-w-0 rounded-xl px-2.5 py-1 bg-violetGlow/[0.08] border border-violetGlow/25">
+                  <div class="text-[9px] font-mono uppercase tracking-wider text-violetGlow/90 truncate">Gain Margin</div>
+                  <div id="freq-val-gm-compact" class="font-mono font-semibold text-sm text-violet-200 leading-tight">—</div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5 shrink-0">
+                <div
+                  id="freq-badge-stability"
+                  class="px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-emeraldGlow/15 border-emeraldGlow/40 text-emerald-200"
+                >
+                  STABLE
+                </div>
+                <button
+                  id="freq-btn-toggle-mobile-formula"
+                  type="button"
+                  aria-expanded="false"
+                  title="Toggle closed-loop pole locations"
+                  class="xl:hidden px-2 py-1 rounded-lg bg-white/[0.05] border border-white/15 text-[11px] font-mono text-violet-200 cursor-pointer"
+                >
+                  s ▾
+                </button>
+              </div>
+            </div>
+
+            <!-- Collapsible on Mobile (<xl), Always Open on Desktop (xl:block) -->
+            <div id="freq-mobile-formula-drawer" class="hidden xl:block space-y-2.5 sm:space-y-3.5">
+              <div class="katex-card flex flex-col items-center justify-center gap-1.5 min-h-[60px] sm:min-h-[72px]">
+                <div id="freq-telemetry-poles-katex" class="text-violet-200 text-xs sm:text-sm overflow-x-auto"></div>
+              </div>
+
+              <div class="hidden xl:grid grid-cols-3 gap-2">
+                <div class="rounded-2xl p-3 bg-cyanGlow/[0.06] border border-cyanGlow/25">
+                  <div class="text-[10px] font-mono uppercase tracking-wider text-cyanGlow/90">Phase Margin</div>
+                  <div id="freq-val-pm" class="font-mono font-semibold text-base text-white mt-0.5">—</div>
+                </div>
+                <div class="rounded-2xl p-3 bg-violetGlow/[0.06] border border-violetGlow/25">
+                  <div class="text-[10px] font-mono uppercase tracking-wider text-violetGlow/90">Gain Margin</div>
+                  <div id="freq-val-gm" class="font-mono font-semibold text-base text-violet-200 mt-0.5">—</div>
+                </div>
+                <div class="rounded-2xl p-3 bg-amberGlow/[0.06] border border-amberGlow/25">
+                  <div class="text-[10px] font-mono uppercase tracking-wider text-amberGlow/90">Peak Mr</div>
+                  <div id="freq-val-mr" class="font-mono font-semibold text-base text-amber-200 mt-0.5">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tactile Loop Gain K & Topology Parameter Sliders -->
+          <div class="glass-panel p-2.5 sm:p-5 space-y-2.5 sm:space-y-4 flex-1 flex flex-col justify-between">
+            <div class="space-y-2 sm:space-y-4">
+              <!-- Loop Gain K Slider (Cyan) -->
+              <div class="space-y-1 sm:space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label for="slider-freq-k" class="text-xs font-medium text-slate-200 flex items-center gap-2">
+                    <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE]"></span>
+                    <span>Loop Gain K</span>
+                  </label>
+                  <span id="readout-freq-k" class="px-2 py-0.5 rounded-lg bg-cyanGlow/15 border border-cyanGlow/30 font-mono text-[11px] sm:text-xs text-cyanGlow font-semibold">
+                    ${formatNum(appState.freqLab.k, 1)}
+                  </span>
+                </div>
+                <input
+                  id="slider-freq-k"
+                  type="range"
+                  min="0.2"
+                  max="${activePreset?.kMax ?? 36}"
+                  step="0.2"
+                  value="${appState.freqLab.k}"
+                  class="studio-slider-cyan"
+                />
+              </div>
+
+              <!-- Topology Parameter Slider (Amber) -->
+              <div class="space-y-1 sm:space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label for="slider-freq-param" id="label-freq-param" class="text-xs font-medium text-slate-200 flex items-center gap-2">
+                    <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B]"></span>
+                    <span>${escapeHtml(activePreset?.paramLabel || '3rd Pole p₃')}</span>
+                  </label>
+                  <span id="readout-freq-param" class="px-2 py-0.5 rounded-lg bg-amberGlow/15 border border-amberGlow/30 font-mono text-[11px] sm:text-xs text-amberGlow font-semibold">
+                    ${formatNum(appState.freqLab.param, 2)}
+                  </span>
+                </div>
+                <input
+                  id="slider-freq-param"
+                  type="range"
+                  min="${activePreset?.paramMin ?? 1.5}"
+                  max="${activePreset?.paramMax ?? 5.0}"
+                  step="${activePreset?.paramStep ?? 0.1}"
+                  value="${appState.freqLab.param}"
+                  class="studio-slider-amber"
+                />
+              </div>
+
+              <!-- Action Row: Sweep Gain K + Mobile Locus Toggle -->
+              <div class="flex items-center gap-2 pt-0.5">
+                <button
+                  id="btn-animate-freq"
+                  type="button"
+                  class="flex-1 py-2.5 sm:py-3.5 px-3 sm:px-4 rounded-xl sm:rounded-2xl bg-gradient-to-r from-violetGlow via-cyanGlow to-amberGlow text-slate-950 font-display font-bold text-xs sm:text-sm tracking-wide shadow-[0_0_24px_rgba(167,139,250,0.28)] hover:brightness-110 active:scale-[0.985] transition-all cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2"
+                >
+                  <span id="freq-anim-icon" aria-hidden="true">▶</span>
+                  <span id="freq-anim-text">Sweep Gain K</span>
+                </button>
+
+                <label class="xl:hidden shrink-0 inline-flex items-center gap-1.5 px-2.5 py-2.5 rounded-xl bg-emeraldGlow/10 border border-emeraldGlow/30 text-[11px] font-mono text-emerald-200 cursor-pointer select-none">
+                  <input
+                    id="toggle-freq-locus-mobile"
+                    type="checkbox"
+                    ${appState.freqLab.showLocus ? 'checked' : ''}
+                    class="w-3.5 h-3.5 rounded accent-emerald-400 cursor-pointer"
+                  />
+                  <span>Locus</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Desktop Locus Toggle + Stage 2 Forward Link -->
+            <div class="hidden xl:block pt-4 border-t border-white/10 space-y-3">
+              <label class="flex items-center justify-between gap-3 cursor-pointer select-none group">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-2.5 h-2.5 rounded-full bg-emeraldGlow shadow-[0_0_8px_#34D399]"></span>
+                  <div>
+                    <div class="text-xs font-medium text-slate-200 group-hover:text-white">
+                      Show 3D Root Locus Branches &amp; Pole Orbs
+                    </div>
+                    <div class="text-[11px] text-slate-400">Trace closed-loop poles on s-plane floor as gain K rises</div>
+                  </div>
+                </div>
+                <input
+                  id="toggle-freq-locus"
+                  type="checkbox"
+                  ${appState.freqLab.showLocus ? 'checked' : ''}
+                  class="w-4 h-4 rounded accent-emerald-400 cursor-pointer"
+                />
+              </label>
+
+              <button
+                id="btn-freq-next-intuition"
+                type="button"
+                class="btn-glass w-full !justify-between !text-xs"
+              >
+                <span>Continue to Stage 2: Root Locus ↔ Bode Lab</span>
+                <span class="text-violetGlow" aria-hidden="true">→</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  `;
+
+  const sliderK = document.getElementById('slider-freq-k');
+  const sliderParam = document.getElementById('slider-freq-param');
+  syncSliderTrackFill(sliderK);
+  syncSliderTrackFill(sliderParam);
+
+  const canvasHost = document.getElementById('freq-3d-canvas');
+
+  const handleFreqTelemetry = (m = {}) => {
+    appState.freqTelemetry = {
+      ...appState.freqTelemetry,
+      ...m,
+    };
+    if (typeof m.k === 'number') {
+      appState.freqLab.k = m.k;
+      if (sliderK) {
+        sliderK.value = String(m.k);
+        syncSliderTrackFill(sliderK);
+      }
+      const rK = document.getElementById('readout-freq-k');
+      if (rK) rK.textContent = formatNum(m.k, 1);
+    }
+    updateFreqStage1TelemetryUI();
+  };
+
+  if (canvasHost && typeof Freq3DStudio === 'function') {
+    try {
+      const studio = new Freq3DStudio();
+      studio.init(canvasHost, {
+        presetId: activePreset?.id || 'rl-3pole',
+        k: appState.freqLab.k,
+        param: appState.freqLab.param,
+        showLocus: appState.freqLab.showLocus,
+        mechatronicsLens: isMechatronicsLens(),
+        onTelemetry: handleFreqTelemetry,
+      });
+      studio.setCameraPreset?.(appState.freqLab.cameraPreset);
+      activeInstances.studio3D = studio;
+      if (typeof studio.getTelemetry === 'function') {
+        handleFreqTelemetry(studio.getTelemetry());
+      }
+    } catch (err) {
+      console.error('[EIGENLAB] Freq3DStudio init error:', err);
+      canvasHost.innerHTML = `
+        <div class="w-full h-full flex items-center justify-center p-6 text-center text-sm text-slate-400">
+          3D WebGL |G(s)| &amp; Root Locus viewport could not initialize on this device.
+        </div>
+      `;
+    }
+  }
+
+  updateFreqStage1LensUI();
+  updateFreqStage1TelemetryUI();
+
+  const mobBtn = document.getElementById('freq-btn-toggle-mobile-formula');
+  const mobDrawer = document.getElementById('freq-mobile-formula-drawer');
+  mobBtn?.addEventListener('click', () => {
+    playSfx('tick');
+    const isHidden = mobDrawer?.classList.toggle('hidden');
+    mobBtn.setAttribute('aria-expanded', String(!isHidden));
+    mobBtn.textContent = isHidden ? 's ▾' : 's ▴';
+  });
+
+  container.querySelectorAll('[data-freq-preset-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-freq-preset-id');
+      if (!id || id === appState.freqLab.presetId) return;
+      playSfx('tick');
+      appState.freqLab.presetId = id;
+      const preset = getActiveFreqPreset(presets);
+      if (preset) {
+        appState.freqLab.k = preset.defaultK;
+        appState.freqLab.param = preset.defaultParam;
+        if (sliderK) {
+          sliderK.max = String(preset.kMax);
+          sliderK.value = String(preset.defaultK);
+          syncSliderTrackFill(sliderK);
+        }
+        if (sliderParam) {
+          sliderParam.min = String(preset.paramMin);
+          sliderParam.max = String(preset.paramMax);
+          sliderParam.step = String(preset.paramStep);
+          sliderParam.value = String(preset.defaultParam);
+          syncSliderTrackFill(sliderParam);
+        }
+        const lbl = document.getElementById('label-freq-param');
+        if (lbl) {
+          lbl.innerHTML = `<span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B]"></span><span>${escapeHtml(preset.paramLabel)}</span>`;
+        }
+        const rK = document.getElementById('readout-freq-k');
+        const rP = document.getElementById('readout-freq-param');
+        if (rK) rK.textContent = formatNum(preset.defaultK, 1);
+        if (rP) rP.textContent = formatNum(preset.defaultParam, 2);
+      }
+
+      container.querySelectorAll('[data-freq-preset-id]').forEach((b) => {
+        const sel = b.getAttribute('data-freq-preset-id') === id;
+        b.className = `shrink-0 whitespace-nowrap px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-medium border transition-all cursor-pointer ${
+          sel
+            ? 'bg-violetGlow/20 border-violetGlow/55 text-violet-200 shadow-[0_0_16px_rgba(167,139,250,0.22)]'
+            : 'bg-slate-900/60 border-white/10 text-slate-300 hover:border-white/25 hover:text-white'
+        }`;
+      });
+
+      activeInstances.studio3D?.setPreset?.(id);
+      if (typeof activeInstances.studio3D?.getTelemetry === 'function') {
+        handleFreqTelemetry(activeInstances.studio3D.getTelemetry());
+      }
+      markStageDone('3d-lab');
+    });
+  });
+
+  container.querySelectorAll('[data-freq-camera-preset]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const camId = btn.getAttribute('data-freq-camera-preset');
+      if (!camId) return;
+      playSfx('tick');
+      appState.freqLab.cameraPreset = camId;
+      container.querySelectorAll('[data-freq-camera-preset]').forEach((b) => {
+        const act = b.getAttribute('data-freq-camera-preset') === camId;
+        const isCompact = b.textContent.trim().length <= 3;
+        b.className = `${isCompact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'} rounded-lg font-mono transition-all cursor-pointer ${
+          act
+            ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+            : 'text-slate-400 border border-transparent hover:text-white'
+        }`;
+      });
+      activeInstances.studio3D?.setCameraPreset?.(camId);
+    });
+  });
+
+  sliderK?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    appState.freqLab.k = val;
+    syncSliderTrackFill(sliderK);
+    const r = document.getElementById('readout-freq-k');
+    if (r) r.textContent = formatNum(val, 1);
+    activeInstances.studio3D?.setGainK?.(val);
+    markStageDone('3d-lab');
+  });
+
+  sliderParam?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    appState.freqLab.param = val;
+    syncSliderTrackFill(sliderParam);
+    const r = document.getElementById('readout-freq-param');
+    if (r) r.textContent = formatNum(val, 2);
+    activeInstances.studio3D?.setParam?.(val);
+    markStageDone('3d-lab');
+  });
+
+  const locToggle = document.getElementById('toggle-freq-locus');
+  const locToggleMob = document.getElementById('toggle-freq-locus-mobile');
+  const handleLocusToggle = (checked) => {
+    playSfx('tick');
+    appState.freqLab.showLocus = !!checked;
+    if (locToggle) locToggle.checked = appState.freqLab.showLocus;
+    if (locToggleMob) locToggleMob.checked = appState.freqLab.showLocus;
+    activeInstances.studio3D?.toggleLocus?.(appState.freqLab.showLocus);
+  };
+  locToggle?.addEventListener('change', (e) => handleLocusToggle(e.target.checked));
+  locToggleMob?.addEventListener('change', (e) => handleLocusToggle(e.target.checked));
+
+  document.getElementById('btn-animate-freq')?.addEventListener('click', () => {
+    if (appState.freqLab.isAnimating) return;
+    playSfx('snap');
+    appState.freqLab.isAnimating = true;
+    const icon = document.getElementById('freq-anim-icon');
+    const txt = document.getElementById('freq-anim-text');
+    if (icon) icon.textContent = '◌';
+    if (txt) txt.textContent = 'Sweeping K...';
+
+    const finishAnim = () => {
+      appState.freqLab.isAnimating = false;
+      if (icon) icon.textContent = '▶';
+      if (txt) txt.textContent = 'Sweep Gain K';
+      playSfx('success');
+      markStageDone('3d-lab');
+    };
+
+    if (typeof activeInstances.studio3D?.animateGainSweep === 'function') {
+      activeInstances.studio3D.animateGainSweep(finishAnim);
+    } else {
+      finishAnim();
+    }
+  });
+
+  document.getElementById('btn-freq-next-intuition')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('intuition');
+  });
+}
+
+function updateFreqStage1LensUI() {
+  const on = isMechatronicsLens();
+  const titleEl = document.getElementById('freq-hud-title');
+  if (titleEl) {
+    titleEl.textContent = on
+      ? '3D Loop-Shaping |L(s)| & Robustness Wall'
+      : '3D Laplace Surface |KG(s)| & jω Bode Slice';
+  }
+  const mechBox = document.getElementById('freq-hud-mech-indicator');
+  const mechTxt = document.getElementById('freq-hud-mech-text');
+  if (mechBox) {
+    mechBox.className = `hidden sm:block pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
+      on
+        ? 'bg-amberGlow/15 border-amberGlow/45 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
+        : 'bg-[#0B0D12]/70 border-white/10 text-slate-400'
+    }`;
+    const dot = mechBox.querySelector('span.rounded-full');
+    if (dot) dot.className = `w-2 h-2 rounded-full ${on ? 'bg-amberGlow animate-pulse' : 'bg-slate-600'}`;
+  }
+  if (mechTxt) {
+    mechTxt.textContent = on ? 'PM / GM / Mr Calipers: LIVE' : 'Stability Calipers: Standby';
+  }
+}
+
+function updateFreqStage1TelemetryUI() {
+  const t = appState.freqTelemetry;
+  const pmStr = Number.isFinite(t.phaseMarginDeg) ? `${formatNum(t.phaseMarginDeg, 1)}°` : '∞';
+  const gmStr = Number.isFinite(t.gainMarginDb) ? `${formatNum(t.gainMarginDb, 1)} dB` : '∞ dB';
+  const mrStr = Number.isFinite(t.resonantPeakDb) ? `${formatNum(t.resonantPeakDb, 1)} dB` : '—';
+
+  const pmEl = document.getElementById('freq-val-pm');
+  const pmMobEl = document.getElementById('freq-val-pm-compact');
+  if (pmEl) pmEl.textContent = pmStr;
+  if (pmMobEl) pmMobEl.textContent = pmStr;
+
+  const gmEl = document.getElementById('freq-val-gm');
+  const gmMobEl = document.getElementById('freq-val-gm-compact');
+  if (gmEl) gmEl.textContent = gmStr;
+  if (gmMobEl) gmMobEl.textContent = gmStr;
+
+  const mrEl = document.getElementById('freq-val-mr');
+  if (mrEl) mrEl.textContent = mrStr;
+
+  const badge = document.getElementById('freq-badge-stability');
+  if (badge) {
+    const st = t.stability || 'STABLE';
+    badge.textContent = st;
+    if (st === 'UNSTABLE') {
+      badge.className =
+        'px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-rose-500/20 border-rose-400/50 text-rose-200';
+    } else if (st === 'MARGINAL') {
+      badge.className =
+        'px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-amberGlow/15 border-amberGlow/45 text-amber-200';
+    } else {
+      badge.className =
+        'px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-emeraldGlow/15 border-emeraldGlow/40 text-emerald-200';
+    }
+  }
+
+  const olEl = document.getElementById('freq-hud-ol-math');
+  if (olEl && t.olLatex) typesetMath(olEl, t.olLatex, false);
+
+  const polesEl = document.getElementById('freq-telemetry-poles-katex');
+  if (polesEl && t.clPolesLatex) typesetMath(polesEl, t.clPolesLatex, false);
+}
+
+function mountFreqStage2Intuition(container) {
+  const on = isMechatronicsLens();
+  const s = getStoreState();
+  const solvedFreqQuizzes = (s.solvedQuizzes || []).filter((id) =>
+    String(id).startsWith('freq-quiz-')
+  ).length;
+  let activeSubTab = 'lab';
+
+  container.innerHTML = `
+    <section class="space-y-3 lg:space-y-6 view-enter">
+      <!-- Mobile Segmented Sub-Tab Switcher (<lg) -->
+      <div class="lg:hidden grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[#0E121C]/90 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+        <button
+          type="button"
+          data-stage2-subtab="lab"
+          class="py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer bg-violetGlow/20 border border-violetGlow/45 text-violet-100 shadow-sm"
+        >
+          📈 Locus &amp; Bode
+        </button>
+        <button
+          type="button"
+          data-stage2-subtab="quiz"
+          class="py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer border border-transparent text-slate-300 hover:text-white"
+        >
+          🎯 Bode Quiz (${solvedFreqQuizzes}/6)
+        </button>
+      </div>
+
+      <!-- Interactive Root Locus <-> Bode Margin Lab -->
+      <div id="stage2-panel-lab" class="glass-panel p-2.5 sm:p-5 lg:p-6 space-y-2.5 sm:space-y-4">
+        <div class="hidden sm:flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-violetGlow">Closed-Loop Poles ↔ Frequency Margins</div>
+            <h2 id="stage2-lab-title" class="font-display font-bold text-xl text-white mt-0.5">
+              ${on ? 'Closed-Loop Pole Migration & Servo Loop Robustness Margins' : 'Interactive Root Locus 1 + KG(s) = 0 ↔ Bode Gain/Phase Margins'}
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Sweep Loop Gain K to watch poles migrate along the Root Locus while the Bode magnitude shifts vertically and Phase/Gain Margins tighten.
+            </p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-[11px] font-mono bg-white/[0.04] border border-white/10 text-slate-300">
+            Scrub Loop Gain K
+          </span>
+        </div>
+
+        <div id="freq-root-bode-lab-host" class="w-full min-h-[300px] sm:min-h-[380px]"></div>
+      </div>
+
+      <!-- Visual Root Locus & Bode Quiz Engine -->
+      <div id="stage2-panel-quiz" class="hidden lg:block glass-panel p-2.5 sm:p-5 lg:p-6 space-y-2.5 sm:space-y-4">
+        <div class="hidden sm:flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-amberGlow">Frequency-Domain Mastery</div>
+            <h2 class="font-display font-bold text-xl text-white mt-0.5">Root Locus &amp; Bode Visual Challenges</h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Master real-axis locus rules, stabilizing Lead zeros, Phase Margin angles, resonant peaks, and negative Gain Margin instability.
+            </p>
+          </div>
+          <button
+            id="btn-next-solver"
+            type="button"
+            class="btn-glass !text-xs"
+          >
+            Next: Lead-Lag &amp; Bode Solver →
+          </button>
+        </div>
+
+        <div id="freq-quiz-engine-host" class="w-full min-h-[280px] sm:min-h-[320px]"></div>
+      </div>
+    </section>
+  `;
+
+  const panelLab = document.getElementById('stage2-panel-lab');
+  const panelQuiz = document.getElementById('stage2-panel-quiz');
+  const setSubTab = (tab) => {
+    activeSubTab = tab;
+    if (panelLab && panelQuiz) {
+      panelLab.classList.toggle('hidden', tab !== 'lab');
+      panelLab.classList.add('lg:block');
+      panelQuiz.classList.toggle('hidden', tab !== 'quiz');
+      panelQuiz.classList.add('lg:block');
+    }
+    container.querySelectorAll('[data-stage2-subtab]').forEach((btn) => {
+      const isAct = btn.getAttribute('data-stage2-subtab') === tab;
+      btn.className = isAct
+        ? 'py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer bg-violetGlow/20 border border-violetGlow/45 text-violet-100 shadow-sm'
+        : 'py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer border border-transparent text-slate-300 hover:text-white';
+    });
+    requestAnimationFrame(() => {
+      if (tab === 'lab') {
+        activeInstances.stackedLab?._resizeAll?.();
+        activeInstances.stackedLab?._drawAll?.();
+      } else {
+        activeInstances.quizEngine?._resizeCanvases?.();
+        activeInstances.quizEngine?._drawCanvases?.();
+      }
+      window.dispatchEvent(new Event('resize'));
+    });
+  };
+
+  container.querySelectorAll('[data-stage2-subtab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const next = btn.getAttribute('data-stage2-subtab');
+      if (next && next !== activeSubTab) {
+        playSfx('tick');
+        setSubTab(next);
+      }
+    });
+  });
+
+  const labHost = document.getElementById('freq-root-bode-lab-host');
+  if (labHost && typeof RootBodeLab === 'function') {
+    try {
+      activeInstances.stackedLab = new RootBodeLab(labHost, {
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onInteract: () => markStageDone('intuition'),
+        onOpenQuiz: () => {
+          playSfx('tick');
+          setSubTab('quiz');
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] RootBodeLab mount error:', err);
+    }
+  }
+
+  const quizHost = document.getElementById('freq-quiz-engine-host');
+  if (quizHost && typeof FreqVisualQuizEngine === 'function') {
+    try {
+      const updateTabCount = (payload) => {
+        const count =
+          payload?.solvedCount ??
+          (getStoreState().solvedQuizzes || []).filter((id) =>
+            String(id).startsWith('freq-quiz-')
+          ).length;
+        const quizBtn = container.querySelector('[data-stage2-subtab="quiz"]');
+        if (quizBtn) quizBtn.textContent = `🎯 Bode Quiz (${count}/6)`;
+      };
+      activeInstances.quizEngine = new FreqVisualQuizEngine(quizHost, {
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onAnswer: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+        onProgress: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+        onComplete: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] FreqVisualQuizEngine mount error:', err);
+    }
+  }
+
+  document.getElementById('btn-next-solver')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('solver');
+  });
+}
+
+function mountFreqStage3Solver(container) {
+  container.innerHTML = `
+    <section class="max-w-4xl mx-auto space-y-3 sm:space-y-5 view-enter">
+      <div class="hidden md:flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-violetGlow">Compensator &amp; Robustness Design Drills</div>
+          <h2 class="font-display font-bold text-2xl text-white mt-0.5">Root Locus, Bode &amp; Lead-Lag Step Solver</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+            10 deep 5-to-6-part design drills covering Root Locus asymptotes/zeros, exact Bode GM/PM, Phase-Lead &amp; Phase-Lag synthesis, Sensitivity S+T=1, and Nyquist stability.
+          </p>
+        </div>
+
+        <button
+          id="btn-next-word-problems"
+          type="button"
+          class="btn-glass !text-xs"
+        >
+          Next: Word Problems →
+        </button>
+      </div>
+
+      <div id="paperless-solver-host" class="glass-panel p-2.5 sm:p-5 md:p-6 min-h-[420px]"></div>
+    </section>
+  `;
+
+  const host = document.getElementById('paperless-solver-host');
+  if (host && typeof PaperlessStepSolver === 'function') {
+    try {
+      activeInstances.stepSolver = new PaperlessStepSolver(host, {
+        mode: 'freq',
+        problems: FREQ_PROBLEMS,
+        tiers: FREQ_SOLVER_TIERS,
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onSolve: () => {
+          markStageDone('solver');
+          updateLessonStageDotsUI();
+        },
+        onProblemSolved: () => {
+          markStageDone('solver');
+          updateLessonStageDotsUI();
+        },
+        onProgress: (info) => {
+          if (!info || (info.solvedCount ?? 1) >= 1) {
+            markStageDone('solver');
+            updateLessonStageDotsUI();
+          }
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] Freq PaperlessStepSolver mount error:', err);
+    }
+  }
+
+  document.getElementById('btn-next-word-problems')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('word-problems');
+  });
+}
+
 function mountStage4WordProblems(container) {
   if (!container) return;
 
   const isInt = isIntegralLesson();
   const isDE = isDiffEqLesson();
   const isLA = isLinAlgLesson();
+  const isMod = isModelingLesson();
   const isPid = isPidLesson();
-  const fallbackData = isPid
-    ? FALLBACK_PID_WORD_PROBLEMS
-    : isLA
-      ? FALLBACK_LINALG_WORD_PROBLEMS
-      : isDE
-        ? FALLBACK_DIFFEQ_WORD_PROBLEMS
-        : isInt
-          ? FALLBACK_INTEGRAL_WORD_PROBLEMS
-          : FALLBACK_WORD_PROBLEMS;
+  const isFreq = isFreqLesson();
+  const fallbackData = isFreq
+    ? FALLBACK_FREQ_WORD_PROBLEMS
+    : isPid
+      ? FALLBACK_PID_WORD_PROBLEMS
+      : isMod
+        ? FALLBACK_MODELING_WORD_PROBLEMS
+        : isLA
+          ? FALLBACK_LINALG_WORD_PROBLEMS
+          : isDE
+            ? FALLBACK_DIFFEQ_WORD_PROBLEMS
+            : isInt
+              ? FALLBACK_INTEGRAL_WORD_PROBLEMS
+              : FALLBACK_WORD_PROBLEMS;
   const data = appState.wordProblemsByLesson?.[appState.lessonId] || fallbackData;
-  const jsonFilePath = isPid
-    ? 'data/lessons/pid-word-problems.json'
-    : isLA
-      ? 'data/lessons/linalg-word-problems.json'
-      : isDE
-        ? 'data/lessons/diffeq-word-problems.json'
-        : isInt
-          ? 'data/lessons/integrals-word-problems.json'
-          : 'data/lessons/derivatives-word-problems.json';
+  const jsonFilePath = isFreq
+    ? 'data/lessons/freq-word-problems.json'
+    : isPid
+      ? 'data/lessons/pid-word-problems.json'
+      : isMod
+        ? 'data/lessons/modeling-word-problems.json'
+        : isLA
+          ? 'data/lessons/linalg-word-problems.json'
+          : isDE
+            ? 'data/lessons/diffeq-word-problems.json'
+            : isInt
+              ? 'data/lessons/integrals-word-problems.json'
+              : 'data/lessons/derivatives-word-problems.json';
   const problems = Array.isArray(data.problems) ? data.problems : [];
   const rawPlanned =
     Array.isArray(data.plannedTopics) && data.plannedTopics.length
@@ -6543,29 +8615,37 @@ function mountStage4WordProblems(container) {
             <h2 class="font-display font-bold text-xl sm:text-3xl text-white">
               ${escapeHtml(
                 data.title ||
-                  (isPid
-                    ? 'Applied PID Control & Mechatronics Stabilization Problems'
-                    : isLA
-                      ? 'Applied Linear Algebra & Eigen-Engineering Problems'
-                      : isDE
-                        ? 'Applied ODE & Laplace Engineering Problems'
-                        : isInt
-                          ? 'Applied Integral Word Problems'
-                          : 'Applied Engineering Word Problems')
+                  (isFreq
+                    ? 'Applied Root Locus, Bode & Loop-Shaping Design Cases'
+                    : isPid
+                      ? 'Applied PID Control & Mechatronics Stabilization Problems'
+                      : isMod
+                        ? 'Applied Physical Modeling & s-Plane Design Problems'
+                        : isLA
+                          ? 'Applied Linear Algebra & Eigen-Engineering Problems'
+                          : isDE
+                            ? 'Applied ODE & Laplace Engineering Problems'
+                            : isInt
+                              ? 'Applied Integral Word Problems'
+                              : 'Applied Engineering Word Problems')
               )}
             </h2>
             <p class="text-xs sm:text-sm text-slate-300/90 leading-relaxed">
               ${escapeHtml(
                 data.subtitle ||
-                  (isPid
-                    ? 'Design cascaded drone attitude controllers, anti-windup CNC servos, lead-compensated inverted pendulums, and Smith predictors for delayed thermal plants.'
-                    : isLA
-                      ? 'Apply Jacobians, rigid-body inertia tensors, Kalman covariance propagation, and low-rank SVD compression to real robotics and AI pipelines.'
-                      : isDE
-                        ? 'Model RLC transients, closed-loop DC motor transfer functions, suspension damping, and continuous Neural ODEs.'
-                        : isInt
-                          ? 'Translate velocity profiles, variable force paths, pulsed currents, and probability densities into definite integrals.'
-                          : 'Translate physical mechatronics, electronics, thermal, and machine learning narratives into differential models and solve them interactively.')
+                  (isFreq
+                    ? 'Synthesize dual-stage HDD lead-lag servos, flexible-link notch filters, maglev Nyquist loops, and satellite attitude sensitivity budgets.'
+                    : isPid
+                      ? 'Design cascaded drone attitude controllers, anti-windup CNC servos, lead-compensated inverted pendulums, and Smith predictors for delayed thermal plants.'
+                      : isMod
+                        ? 'Model coupled quarter-car suspensions, voice-coil actuators, interacting hydraulic tanks, and MEMS proof-mass sensors from first principles.'
+                        : isLA
+                          ? 'Apply Jacobians, rigid-body inertia tensors, Kalman covariance propagation, and low-rank SVD compression to real robotics and AI pipelines.'
+                          : isDE
+                            ? 'Model RLC transients, closed-loop DC motor transfer functions, suspension damping, and continuous Neural ODEs.'
+                            : isInt
+                              ? 'Translate velocity profiles, variable force paths, pulsed currents, and probability densities into definite integrals.'
+                              : 'Translate physical mechatronics, electronics, thermal, and machine learning narratives into differential models and solve them interactively.')
               )}
             </p>
           </div>
@@ -6745,7 +8825,9 @@ async function boot() {
     intWordProblems,
     deWordProblems,
     laWordProblems,
+    modWordProblems,
     pidWordProblems,
+    freqWordProblems,
   ] = await Promise.all([
     fetchJsonSafe('./data/curriculum.json', FALLBACK_CURRICULUM),
     fetchJsonSafe('./data/lessons/derivatives-word-problems.json', FALLBACK_WORD_PROBLEMS),
@@ -6761,7 +8843,12 @@ async function boot() {
       './data/lessons/linalg-word-problems.json',
       FALLBACK_LINALG_WORD_PROBLEMS
     ),
+    fetchJsonSafe(
+      './data/lessons/modeling-word-problems.json',
+      FALLBACK_MODELING_WORD_PROBLEMS
+    ),
     fetchJsonSafe('./data/lessons/pid-word-problems.json', FALLBACK_PID_WORD_PROBLEMS),
+    fetchJsonSafe('./data/lessons/freq-word-problems.json', FALLBACK_FREQ_WORD_PROBLEMS),
     waitForKatex(),
   ]);
 
@@ -6781,8 +8868,14 @@ async function boot() {
   if (laWordProblems && typeof laWordProblems === 'object') {
     appState.wordProblemsByLesson['math-lin-alg'] = laWordProblems;
   }
+  if (modWordProblems && typeof modWordProblems === 'object') {
+    appState.wordProblemsByLesson['mech-modeling'] = modWordProblems;
+  }
   if (pidWordProblems && typeof pidWordProblems === 'object') {
     appState.wordProblemsByLesson['mech-pid'] = pidWordProblems;
+  }
+  if (freqWordProblems && typeof freqWordProblems === 'object') {
+    appState.wordProblemsByLesson['mech-root-bode'] = freqWordProblems;
   }
 
   subscribeToStoreUpdates();

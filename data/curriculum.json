@@ -80,12 +80,40 @@
       "symbol": "G(s)",
       "lessons": [
         {
+          "id": "mech-modeling",
+          "status": "live",
+          "title": "Physical System Modeling & Transfer Functions",
+          "tag": "Controls 01 • Mass-Spring, RLC, ODE → s-Plane",
+          "description": "Start from first principles: derive governing ODEs for mass-spring-damper rigs, RLC circuits, and DC motors, convert to Laplace transfer functions, locate under/critical/overdamped s-plane poles, and close the loop in deep multi-part engineering drills.",
+          "estimatedMinutes": 40,
+          "stages": [
+            "3d-lab",
+            "intuition",
+            "solver",
+            "word-problems"
+          ]
+        },
+        {
           "id": "mech-pid",
           "status": "live",
           "title": "PID Control & Feedback Stability",
-          "tag": "Mechatronics 01 • 3D PID Rig, Decomposition & Solver",
+          "tag": "Controls 02 • 3D PID Rig, Decomposition & Solver",
           "description": "Tune live P, I, and D gains on a 3D servo & disturbance rig, dissect proportional/integral/derivative control effort waveforms, and master closed-loop transfer functions, Routh-Hurwitz stability, Ziegler-Nichols tuning, and phase margins step by step.",
           "estimatedMinutes": 35,
+          "stages": [
+            "3d-lab",
+            "intuition",
+            "solver",
+            "word-problems"
+          ]
+        },
+        {
+          "id": "mech-root-bode",
+          "status": "live",
+          "title": "Root Locus, Bode & Lead-Lag Design",
+          "tag": "Controls 03 • 3D |G(s)| Surface, Bode & Compensators",
+          "description": "Slice the 3D Laplace magnitude surface |G(s)| along the jω-axis to see Bode curves emerge, trace Root Locus asymptotes and breakaway points, and synthesize Phase-Lead, Phase-Lag, and Nyquist-stable compensators in multi-part drills.",
+          "estimatedMinutes": 40,
           "stages": [
             "3d-lab",
             "intuition",

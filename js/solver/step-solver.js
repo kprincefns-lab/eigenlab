@@ -1,8 +1,10 @@
 /**
- * EIGENLAB — Paperless Multi-Step Symbolic Solver (Derivatives, Integrals, Diff Eq / Laplace, Linear Algebra & PID Control)
+ * EIGENLAB — Paperless Multi-Step Symbolic Solver
+ * Supports Derivatives, Integrals, Diff Eq / Laplace, Linear Algebra,
+ * Physical Modeling & s-Plane, PID Control, and Root Locus & Bode Frequency Design.
  * Zero scratch paper required: every completed micro-step locks into a persistent
- * Working Step Ledger directly above tactile KaTeX choice tiles, culminating in
- * a high-DPI interactive numerical or geometric verification plot.
+ * Working Step Ledger with per-step "Why This Step?" and "⚡ System Impact" insights,
+ * culminating in a high-DPI interactive numerical or geometric verification plot.
  */
 
 import { DERIVATIVE_PROBLEMS, SOLVER_TIERS } from '../../data/lessons/derivatives-problems.js';
@@ -22,6 +24,14 @@ import {
   PID_PROBLEMS,
   PID_SOLVER_TIERS,
 } from '../../data/lessons/pid-problems.js';
+import {
+  MODELING_PROBLEMS,
+  MODELING_SOLVER_TIERS,
+} from '../../data/lessons/modeling-problems.js';
+import {
+  FREQ_PROBLEMS,
+  FREQ_SOLVER_TIERS,
+} from '../../data/lessons/freq-problems.js';
 import { store, sound, renderKatex, renderInlineMathText } from '../store.js';
 
 const CHEAT_SHEET_RULES = [
@@ -249,6 +259,96 @@ const PID_CHEAT_SHEET_RULES = [
   },
 ];
 
+const MODELING_CHEAT_SHEET_RULES = [
+  {
+    name: 'Mass-Spring-Damper',
+    tag: 'Newton 2nd Law',
+    latex:
+      '\\textcolor{#22D3EE}{m}\\ddot{x}+\\textcolor{#F59E0B}{c}\\dot{x}+\\textcolor{#22D3EE}{k}x=f \\implies G(s)=\\textcolor{#34D399}{\\frac{1}{ms^2+cs+k}}',
+  },
+  {
+    name: 'Rotational & Analogies',
+    tag: 'Cross-Domain',
+    latex:
+      'J\\ddot{\\theta}+b\\dot{\\theta}+k_\\theta\\theta=\\tau, \\qquad \\textcolor{#22D3EE}{L\\leftrightarrow m},\\; \\textcolor{#F59E0B}{R\\leftrightarrow c},\\; \\textcolor{#34D399}{\\tfrac{1}{C}\\leftrightarrow k}',
+  },
+  {
+    name: 'Canonical 2nd-Order',
+    tag: 'ωn, ζ, σ, ωd',
+    latex:
+      's^2 + 2\\textcolor{#F59E0B}{\\zeta}\\textcolor{#22D3EE}{\\omega_n}s + \\textcolor{#22D3EE}{\\omega_n}^2, \\quad s = -\\sigma \\pm j\\textcolor{#34D399}{\\omega_n\\sqrt{1-\\zeta^2}}',
+  },
+  {
+    name: 'Damping Regimes',
+    tag: 'ζ Classification',
+    latex:
+      '\\textcolor{#22D3EE}{\\zeta<1}:\\text{complex}, \\;\; \\textcolor{#34D399}{\\zeta=1}:\\text{repeated } t e^{-\\sigma t}, \\;\; \\textcolor{#F59E0B}{\\zeta>1}:\\text{real } p_1,p_2',
+  },
+  {
+    name: 'Series vs Parallel RLC',
+    tag: 'Critical Damping',
+    latex:
+      '\\textcolor{#34D399}{R_{\\text{crit}}^{\\text{ser}} = 2\\sqrt{\\tfrac{L}{C}}}, \\qquad \\textcolor{#F59E0B}{\\sigma_{\\parallel} = \\frac{1}{2RC}} \\;\\;(\\text{smaller }R\\uparrow\\zeta)',
+  },
+  {
+    name: 'DC Motor Back-EMF',
+    tag: 'Type-1 Plant',
+    latex:
+      'b_{\\text{eff}} = b + \\textcolor{#F59E0B}{\\frac{K_t K_e}{R_a}}, \\qquad \\frac{\\Theta(s)}{V_a(s)} = \\textcolor{#34D399}{\\frac{K_m}{s(s + p_m)}}',
+  },
+  {
+    name: 's-Plane Spec Region',
+    tag: 'Ts & %OS Bounds',
+    latex:
+      '\\textcolor{#34D399}{\\sigma \\ge \\frac{4}{T_s}}, \\qquad \\textcolor{#F59E0B}{\\theta = \\arccos(\\zeta)}, \\qquad T(s) = \\frac{\\textcolor{#22D3EE}{L}}{1+\\textcolor{#22D3EE}{L}}',
+  },
+];
+
+const FREQ_CHEAT_SHEET_RULES = [
+  {
+    name: 'Root Locus Geometry',
+    tag: 'Odd Rule & φk',
+    latex:
+      '\\text{Real axis: odd count right}, \\qquad \\textcolor{#34D399}{\\phi_k = \\frac{(2k+1)180^\\circ}{n - m}}',
+  },
+  {
+    name: 'Centroid & Breakaway',
+    tag: 'σa & dK/ds = 0',
+    latex:
+      '\\textcolor{#22D3EE}{\\sigma_a = \\frac{\\sum p_i - \\sum z_j}{n - m}}, \\qquad \\textcolor{#F59E0B}{\\frac{dK}{ds} = 0}',
+  },
+  {
+    name: 'Angle & Magnitude',
+    tag: 'Exact Placement',
+    latex:
+      '\\angle\\textcolor{#22D3EE}{L(s_d)} = -180^\\circ, \\qquad \\textcolor{#34D399}{K = \\frac{\\prod|s_d - p_i|}{\\prod|s_d - z_j|}}',
+  },
+  {
+    name: 'Resonance Peak Mr',
+    tag: 'ζ < 0.707',
+    latex:
+      '\\textcolor{#22D3EE}{\\omega_r = \\omega_n\\sqrt{1-2\\zeta^2}}, \\qquad \\textcolor{#F59E0B}{M_r = \\frac{1}{2\\zeta\\sqrt{1-\\zeta^2}}}',
+  },
+  {
+    name: 'GM, PM & Delay',
+    tag: 'Bode Margins',
+    latex:
+      '\\textcolor{#34D399}{\\text{GM}=\\tfrac{1}{|L(j\\omega_{pc})|}},\\; \\textcolor{#34D399}{\\text{PM}=180^\\circ+\\angle L(j\\omega_{gc})},\\; \\textcolor{#F59E0B}{\\tau_{\\max}=\\tfrac{\\text{PM}_{\\text{rad}}}{\\omega_{gc}}}',
+  },
+  {
+    name: 'Lead & Lag Design',
+    tag: 'Compensators',
+    latex:
+      '\\textcolor{#34D399}{\\alpha = \\frac{1+\\sin\\phi_m}{1-\\sin\\phi_m}},\\; \\omega_m=\\frac{1}{T\\sqrt{\\alpha}},\\; \\textcolor{#F59E0B}{z_{\\text{lag}}\\approx 0.1\\omega_{gc}}',
+  },
+  {
+    name: 'Sensitivity & Nyquist',
+    tag: 'Robustness',
+    latex:
+      '\\textcolor{#22D3EE}{S} + \\textcolor{#34D399}{T} = 1, \\quad d_{\\min} = \\textcolor{#F59E0B}{\\frac{1}{M_s}}, \\quad \\textcolor{#34D399}{Z = N + P}',
+  },
+];
+
 function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
@@ -350,7 +450,11 @@ export class PaperlessStepSolver {
             ? 'linalg'
             : options.mode === 'pid'
               ? 'pid'
-              : 'derivatives';
+              : options.mode === 'modeling'
+                ? 'modeling'
+                : options.mode === 'freq'
+                  ? 'freq'
+                  : 'derivatives';
     this.problems =
       Array.isArray(options.problems) && options.problems.length
         ? options.problems
@@ -362,7 +466,11 @@ export class PaperlessStepSolver {
               ? LINALG_PROBLEMS
               : this.mode === 'pid'
                 ? PID_PROBLEMS
-                : DERIVATIVE_PROBLEMS;
+                : this.mode === 'modeling'
+                  ? MODELING_PROBLEMS
+                  : this.mode === 'freq'
+                    ? FREQ_PROBLEMS
+                    : DERIVATIVE_PROBLEMS;
     this.tiers =
       Array.isArray(options.tiers) && options.tiers.length
         ? options.tiers
@@ -374,7 +482,11 @@ export class PaperlessStepSolver {
               ? LINALG_SOLVER_TIERS
               : this.mode === 'pid'
                 ? PID_SOLVER_TIERS
-                : SOLVER_TIERS;
+                : this.mode === 'modeling'
+                  ? MODELING_SOLVER_TIERS
+                  : this.mode === 'freq'
+                    ? FREQ_SOLVER_TIERS
+                    : SOLVER_TIERS;
     this.cheatSheetRules =
       this.mode === 'integrals'
         ? INTEGRAL_CHEAT_SHEET_RULES
@@ -384,7 +496,11 @@ export class PaperlessStepSolver {
             ? LINALG_CHEAT_SHEET_RULES
             : this.mode === 'pid'
               ? PID_CHEAT_SHEET_RULES
-              : CHEAT_SHEET_RULES;
+              : this.mode === 'modeling'
+                ? MODELING_CHEAT_SHEET_RULES
+                : this.mode === 'freq'
+                  ? FREQ_CHEAT_SHEET_RULES
+                  : CHEAT_SHEET_RULES;
 
     this.mechatronicsLens = Boolean(
       options.mechatronicsLens ?? options.lens === 'mechatronics'
@@ -403,6 +519,8 @@ export class PaperlessStepSolver {
     this.completedSteps = []; // Array of step objects locked into the ledger
     this.wrongOptionIds = new Set();
     this.activeMisconception = null;
+    this._lastSystemImpact = null;
+    this._expandedLedgerImpacts = new Set();
     this.hintVisible = false;
     this.cheatSheetOpen = false;
     this.mobilePickerOpen = false;
@@ -533,6 +651,18 @@ export class PaperlessStepSolver {
     return this.mode === 'pid';
   }
 
+  _isModelingMode() {
+    return this.mode === 'modeling';
+  }
+
+  _isFreqMode() {
+    return this.mode === 'freq';
+  }
+
+  _isControlPlotMode() {
+    return this.mode === 'pid' || this.mode === 'modeling' || this.mode === 'freq';
+  }
+
   _isLaplaceForward(problem) {
     return this._isDiffEqMode() && problem?.verifyKind === 'laplace-forward';
   }
@@ -542,7 +672,7 @@ export class PaperlessStepSolver {
   }
 
   _getDefaultVerifyCursorX(problem) {
-    if (this._isPidMode()) {
+    if (this._isControlPlotMode()) {
       const def = problem?.verifyPlot?.defaultCursor;
       return Number.isFinite(def) ? def : 0.56;
     }
@@ -587,6 +717,8 @@ export class PaperlessStepSolver {
     this.completedSteps = [];
     this.wrongOptionIds = new Set();
     this.activeMisconception = null;
+    this._lastSystemImpact = null;
+    this._expandedLedgerImpacts = new Set();
     this.hintVisible = false;
     this.isProblemCompleted = false;
     this.isAdvancing = false;
@@ -719,6 +851,13 @@ export class PaperlessStepSolver {
         this._advanceTimer = null;
         this.completedSteps.push(step);
         this.newlyLockedIndex = this.completedSteps.length - 1;
+        this._lastSystemImpact = step.systemImpact
+          ? {
+              stepNum: this.completedSteps.length,
+              badge: step.badge,
+              text: step.systemImpact,
+            }
+          : null;
         this.wrongOptionIds = new Set();
         this.hintVisible = false;
         this.isAdvancing = false;
@@ -834,6 +973,8 @@ export class PaperlessStepSolver {
     const isDiffEq = this._isDiffEqMode();
     const isLinAlg = this._isLinAlgMode();
     const isPid = this._isPidMode();
+    const isModeling = this._isModelingMode();
+    const isFreq = this._isFreqMode();
     const solvedSet = this._getSolvedSet();
     const totalSolved = this.problems.filter((p) => solvedSet.has(p.id)).length;
     const totalProblems = this.problems.length;
@@ -842,51 +983,71 @@ export class PaperlessStepSolver {
     const globalIndex = this.problems.findIndex((p) => p.id === problem.id);
     const problemIsSolved = solvedSet.has(problem.id);
 
-    const cheatTitle = isPid
-      ? 'Control & PID Reference'
-      : isLinAlg
-        ? 'Linear Algebra Reference'
-        : isDiffEq
-          ? 'ODE & Laplace Reference'
-          : isIntegral
-            ? 'Integration Formula Reference'
-            : 'Differentiation Formula Reference';
-    const targetHeaderLabel = isPid
-      ? 'SOLVE CONTROL & PID'
-      : isLinAlg
-        ? 'Solve Linear Algebra'
-        : isDiffEq
-          ? 'Solve the ODE / Laplace'
-          : isIntegral
-            ? 'Evaluate the Integral'
-            : 'Differentiate w.r.t. x';
-    const legendCyan = isPid
-      ? 'Cyan: Plant G(s) / Loop L(s)'
-      : isLinAlg
-        ? 'Cyan: Primary / A / u'
-        : isDiffEq
-          ? 'Cyan: y / P(t) / f(t)'
-          : isIntegral
-            ? 'Cyan: u / Factor A'
-            : 'Cyan: Outer / u';
-    const legendAmber = isPid
-      ? 'Amber: Gain / Spec / Delay'
-      : isLinAlg
-        ? 'Amber: Secondary / λ / b'
-        : isDiffEq
-          ? 'Amber: t / Q(t) / IC'
-          : isIntegral
-            ? 'Amber: dv / Factor B'
-            : 'Amber: Inner / v';
-    const legendEmerald = isPid
-      ? 'Emerald: Closed-Loop / Margin'
-      : isLinAlg
-        ? 'Emerald: Result / Eigen / Fit'
-        : isDiffEq
-          ? 'Emerald: Solution / F(s)'
-          : isIntegral
-            ? 'Emerald: Antideriv'
-            : 'Emerald: Deriv';
+    const cheatTitle = isModeling
+      ? 'Physical Modeling Reference'
+      : isFreq
+        ? 'Root Locus & Bode Reference'
+        : isPid
+          ? 'Control & PID Reference'
+          : isLinAlg
+            ? 'Linear Algebra Reference'
+            : isDiffEq
+              ? 'ODE & Laplace Reference'
+              : isIntegral
+                ? 'Integration Formula Reference'
+                : 'Differentiation Formula Reference';
+    const targetHeaderLabel = isModeling
+      ? 'MODEL & DESIGN s-PLANE'
+      : isFreq
+        ? 'ROOT LOCUS & BODE DESIGN'
+        : isPid
+          ? 'SOLVE CONTROL & PID'
+          : isLinAlg
+            ? 'Solve Linear Algebra'
+            : isDiffEq
+              ? 'Solve the ODE / Laplace'
+              : isIntegral
+                ? 'Evaluate the Integral'
+                : 'Differentiate w.r.t. x';
+    const legendCyan = isModeling
+      ? 'Cyan: Plant Physics / G(s)'
+      : isFreq
+        ? 'Cyan: Open-Loop L(s) / ω'
+        : isPid
+          ? 'Cyan: Plant G(s) / Loop L(s)'
+          : isLinAlg
+            ? 'Cyan: Primary / A / u'
+            : isDiffEq
+              ? 'Cyan: y / P(t) / f(t)'
+              : isIntegral
+                ? 'Cyan: u / Factor A'
+                : 'Cyan: Outer / u';
+    const legendAmber = isModeling
+      ? 'Amber: Damping / Gain / Spec'
+      : isFreq
+        ? 'Amber: Gain K / Target φm / −1'
+        : isPid
+          ? 'Amber: Gain / Spec / Delay'
+          : isLinAlg
+            ? 'Amber: Secondary / λ / b'
+            : isDiffEq
+              ? 'Amber: t / Q(t) / IC'
+              : isIntegral
+                ? 'Amber: dv / Factor B'
+                : 'Amber: Inner / v';
+    const legendEmerald = isModeling
+      ? 'Emerald: Poles / CL T(s)'
+      : isFreq
+        ? 'Emerald: Compensator / Margin'
+        : isPid
+          ? 'Emerald: Closed-Loop / Margin'
+          : isLinAlg
+            ? 'Emerald: Result / Eigen / Fit'
+            : isDiffEq
+              ? 'Emerald: Solution / F(s)'
+              : isIntegral
+                ? 'Emerald: Antideriv'
+                : 'Emerald: Deriv';
 
     const tierPillsHtml = this.tiers.map((tier) => {
       const list =
@@ -959,15 +1120,47 @@ export class PaperlessStepSolver {
       ? this.completedSteps
           .map((st, idx) => {
             const isFresh = idx === this.newlyLockedIndex;
+            const hasImpact = Boolean(st.systemImpact);
+            const isImpactOpen = hasImpact && this._expandedLedgerImpacts.has(idx);
             return `
-              <div class="ledger-row ${isFresh ? 'snap-in' : ''}">
-                <div class="flex items-center gap-2.5 shrink-0">
-                  <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emeraldGlow/20 border border-emeraldGlow/45 text-emerald-300 font-mono text-xs font-semibold">
-                    ${idx + 1}
-                  </span>
-                  <span class="chip-deriv">${escapeHtml(st.lockedLabel || st.badge)}</span>
+              <div class="ledger-row ${isFresh ? 'snap-in' : ''} ${hasImpact ? '!flex-col !items-stretch !gap-1.5' : ''}">
+                <div class="flex flex-wrap items-center justify-between gap-2 w-full">
+                  <div class="flex items-center gap-2.5 shrink-0">
+                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emeraldGlow/20 border border-emeraldGlow/45 text-emerald-300 font-mono text-xs font-semibold">
+                      ${idx + 1}
+                    </span>
+                    <span class="chip-deriv">${escapeHtml(st.lockedLabel || st.badge)}</span>
+                  </div>
+                  <div class="flex items-center gap-2 min-w-0 max-w-full">
+                    <div class="overflow-x-auto max-w-full py-0.5 text-slate-100" data-ledger-latex="${idx}"></div>
+                    ${
+                      hasImpact
+                        ? `<button
+                            type="button"
+                            data-ledger-impact-toggle="${idx}"
+                            aria-expanded="${isImpactOpen}"
+                            title="${escapeHtml(st.systemImpact)}"
+                            class="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-mono text-[10px] font-semibold border transition-colors cursor-pointer ${
+                              isImpactOpen
+                                ? 'bg-emeraldGlow/20 border-emeraldGlow/55 text-emerald-200'
+                                : 'bg-emeraldGlow/[0.08] border-emeraldGlow/25 text-emerald-300/90 hover:border-emeraldGlow/55'
+                            }"
+                          >⚡<span class="hidden sm:inline">Impact</span></button>`
+                        : ''
+                    }
+                  </div>
                 </div>
-                <div class="overflow-x-auto max-w-full py-0.5 text-slate-100" data-ledger-latex="${idx}"></div>
+                ${
+                  hasImpact
+                    ? `<div
+                        data-ledger-impact-body="${idx}"
+                        class="${isImpactOpen ? '' : 'hidden'} rounded-lg px-2.5 py-1.5 bg-emeraldGlow/[0.07] border border-emeraldGlow/25 text-[11px] sm:text-xs text-emerald-100/95 leading-snug"
+                      >
+                        <span class="font-mono font-semibold text-emerald-300 uppercase tracking-wider mr-1">⚡ Impact:</span>
+                        ${renderInlineMathText(st.systemImpact)}
+                      </div>`
+                    : ''
+                }
               </div>
             `;
           })
@@ -1190,6 +1383,30 @@ export class PaperlessStepSolver {
     this.newlyLockedIndex = -1;
   }
 
+  _buildSystemImpactBannerHtml() {
+    const impact = this._lastSystemImpact;
+    if (!impact || !impact.text) return '';
+    return `
+      <div
+        data-system-impact-banner
+        class="rounded-xl px-2.5 py-2 sm:px-3.5 sm:py-2.5 bg-emeraldGlow/[0.11] border border-emeraldGlow/35 text-[11px] sm:text-xs text-emerald-100 flex items-start justify-between gap-2 snap-in"
+      >
+        <div class="leading-snug min-w-0">
+          <span class="font-mono font-semibold text-emerald-300 uppercase tracking-wider mr-1.5">⚡ System Impact${
+            impact.badge ? ` (${escapeHtml(impact.badge)})` : ''
+          }:</span>
+          <span>${renderInlineMathText(impact.text)}</span>
+        </div>
+        <button
+          type="button"
+          data-dismiss-impact
+          aria-label="Dismiss system impact takeaway"
+          class="shrink-0 w-5 h-5 inline-flex items-center justify-center rounded-md text-emerald-300/75 hover:text-emerald-100 hover:bg-emeraldGlow/20 font-mono text-xs transition-colors cursor-pointer"
+        >×</button>
+      </div>
+    `;
+  }
+
   _buildActiveStepHtml(problem) {
     const step = problem.steps[this.currentStepIndex];
     if (!step) return '';
@@ -1230,8 +1447,19 @@ export class PaperlessStepSolver {
       })
       .join('');
 
+    const systemImpactBannerHtml = this._buildSystemImpactBannerHtml();
+    const whyThisStepHtml = step.whyThisStep
+      ? `
+          <div data-why-this-step class="rounded-xl px-2.5 py-1.5 bg-cyanGlow/[0.06] border border-cyanGlow/20 text-[11px] sm:text-xs text-slate-300 leading-snug">
+            <span class="font-mono font-semibold text-cyanGlow uppercase tracking-wider mr-1.5">Why:</span>${renderInlineMathText(step.whyThisStep)}
+          </div>
+        `
+      : '';
+
     return `
       <div class="rounded-2xl p-3 sm:p-5 bg-slate-900/75 border border-cyanGlow/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] flex flex-col gap-2.5 sm:gap-4 view-enter">
+        ${systemImpactBannerHtml}
+
         <!-- Step Progress Bar & Header -->
         <div class="flex flex-col gap-1.5 sm:gap-2">
           <div class="flex flex-wrap items-center justify-between gap-2">
@@ -1260,6 +1488,7 @@ export class PaperlessStepSolver {
 
         <!-- Prompt & Color-Coded Focus Strip -->
         <div class="flex flex-col gap-1.5 sm:gap-2.5">
+          ${whyThisStepHtml}
           <p class="text-xs sm:text-base text-slate-100 font-medium leading-snug sm:leading-relaxed m-0">
             ${renderInlineMathText(step.prompt)}
           </p>
@@ -1478,21 +1707,55 @@ export class PaperlessStepSolver {
       canvasAria = 'Interactive unit ramp tracking plot showing steady-state lag 1/Kv';
     } else if (kind === 'pole-map') {
       const hasZeros = Array.isArray(vp.zeros) && vp.zeros.length > 0;
-      legendHtml =
-        dot('text-emerald-300', hasZeros ? 'LHP Zeros (○)' : 'Stable LHP Poles (×)') +
-        dot('text-amber-300', 'jω Boundary (×)') +
-        (vp.gainSweep || !hasZeros ? dot('text-rose-300', 'Unstable RHP (σ > 0)') : '');
+      if (vp.circleLocus) {
+        legendHtml =
+          dot('text-cyan-300', 'Circular Locus') +
+          dot('text-emerald-300', 'Live Poles (×) & Zero (○)') +
+          dot('text-amber-300', '45° Butterworth Ray', true);
+      } else if (vp.specRegion) {
+        legendHtml =
+          dot('text-emerald-300', 'Feasible Wedge & Poles (×)') +
+          dot('text-cyan-300', 'PD Zero (○)') +
+          dot('text-amber-300', 'Spec Boundary', true);
+      } else {
+        legendHtml =
+          dot('text-emerald-300', hasZeros ? 'LHP Poles (×) & Zeros (○)' : 'Stable LHP Poles (×)') +
+          dot('text-amber-300', 'jω Boundary (×)') +
+          (vp.gainSweep || !hasZeros ? dot('text-rose-300', 'Unstable RHP (σ > 0)') : '');
+      }
       defaultSubtitle =
         'Complex $s$-plane verification showing left half-plane stability, imaginary-axis boundaries, and unstable right half-plane modes.';
       defaultDomain = 'Complex s-Plane · σ + jω';
-      canvasAria = 'Complex s-plane pole-zero and Routh stability verification map';
+      canvasAria = 'Complex s-plane pole-zero and root-locus verification map';
+    } else if (kind === 'nyquist-circle') {
+      legendHtml =
+        dot('text-emerald-300', 'Stable CCW Loop (K > 2)') +
+        dot('text-rose-300', 'Unstable Loop (K < 2)') +
+        dot('text-amber-300', 'Critical Point −1 + j0', true);
+      defaultSubtitle =
+        'Hover or drag horizontally to sweep $K$ and watch the Nyquist circle enclose $-1 + j0$ counter-clockwise ($N = -1$) for $K > 2$.';
+      defaultDomain = 'Nyquist Complex Plane · L(jω)';
+      canvasAria = 'Interactive Nyquist plot sweeping gain K around critical point minus one';
+    } else if (vp.sensitivityMode) {
+      legendHtml =
+        dot('text-cyan-300', 'Sensitivity |S(jω)| dB') +
+        dot('text-emerald-300', 'Comp. Sens. |T(jω)| dB') +
+        dot('text-amber-300', 'Loop |L(jω)| & Ms Peak');
+      defaultSubtitle =
+        'Hover or drag across frequency $\\omega$ to inspect the $S + T = 1$ loop-shaping trade-off across crossover.';
+      defaultDomain = 'Sensitivity |S| & |T| vs Loop |L| · Log ω';
+      canvasAria = 'Interactive Bode sensitivity plot comparing S, T, and loop gain L';
     } else {
       // 'bode-margin'
       const hasDelay = typeof vp.delayedPhaseDegFn === 'function';
+      const hasGm = Number.isFinite(vp.wPc);
+      const hasPeak = Boolean(vp.peakMarker);
       legendHtml =
-        dot('text-cyan-300', hasDelay ? 'Mag |L| & Nom ∠L' : 'Magnitude |L(jω)| dB') +
-        dot('text-emerald-300', hasDelay ? 'PM Reserve' : 'Phase ∠L(jω) & PM') +
+        dot('text-cyan-300', hasDelay ? 'Mag |L| & Nom ∠L' : hasPeak ? 'Magnitude |T(jω)| dB' : 'Magnitude |L(jω)| dB') +
+        dot('text-emerald-300', hasDelay ? 'PM Reserve' : hasPeak ? 'Phase ∠T(jω)' : 'Phase ∠L(jω) & PM') +
         (hasDelay ? dot('text-amber-300', 'Delayed ∠L − ωτ') : '') +
+        (hasGm ? dot('text-amber-300', 'GM at ωpc') : '') +
+        (hasPeak ? dot('text-amber-300', 'Resonant Peak Mr') : '') +
         dot('text-rose-300', '−180° Limit', true);
       defaultSubtitle =
         'Hover or drag across frequency $\\omega$ to inspect the Bode magnitude crossover $\\omega_{gc}$ and phase margin above $-180^\\circ$.';
@@ -1520,23 +1783,30 @@ export class PaperlessStepSolver {
     const isDiffEq = this._isDiffEqMode();
     const isLinAlg = this._isLinAlgMode();
     const isPid = this._isPidMode();
+    const isModeling = this._isModelingMode();
+    const isFreq = this._isFreqMode();
+    const isControlPlot = this._isControlPlotMode();
     const isLaplaceFwd = this._isLaplaceForward(problem);
     const isLaplaceInv = this._isLaplaceInverse(problem);
     const hasDiffEqDeriv = isDiffEq && typeof problem.verifyDerivFn === 'function';
     const linAlgMeta = isLinAlg ? this._getLinAlgVerifyMeta(problem) : null;
-    const pidMeta = isPid ? this._getPidVerifyMeta(problem) : null;
+    const pidMeta = isControlPlot ? this._getPidVerifyMeta(problem) : null;
 
-    const heading = isPid
-      ? 'Closed-Loop Verification'
-      : isLinAlg
-        ? 'Geometric Verification'
-        : isDiffEq
-          ? 'Solution Verified Numerically'
-          : isIntegral
-            ? 'Antiderivative Verified Numerically'
-            : 'Derivative Verified Numerically';
+    const heading = isModeling
+      ? 'Physical Model & s-Plane Verified'
+      : isFreq
+        ? 'Frequency & Stability Verified'
+        : isPid
+          ? 'Closed-Loop Verification'
+          : isLinAlg
+            ? 'Geometric Verification'
+            : isDiffEq
+              ? 'Solution Verified Numerically'
+              : isIntegral
+                ? 'Antiderivative Verified Numerically'
+                : 'Derivative Verified Numerically';
 
-    const subtitle = isPid
+    const subtitle = isControlPlot
       ? pidMeta.subtitleHtml
       : isLinAlg
         ? linAlgMeta.subtitleHtml
@@ -1560,7 +1830,7 @@ export class PaperlessStepSolver {
                 "Hover or drag across the plot to compare your solved $f'(x)$ against the curve's true tangent slope."
               );
 
-    const legendHtml = isPid
+    const legendHtml = isControlPlot
       ? pidMeta.legendHtml
       : isLinAlg
         ? linAlgMeta.legendHtml
@@ -1628,7 +1898,7 @@ export class PaperlessStepSolver {
                 </span>
               `;
 
-    const domainMeta = isPid
+    const domainMeta = isControlPlot
       ? pidMeta.domainMeta
       : isLinAlg
         ? linAlgMeta.domainMeta
@@ -1640,7 +1910,7 @@ export class PaperlessStepSolver {
             ? `∫[${problem.definiteBounds[0]}, ${problem.definiteBounds[1]}] = ${problem.definiteValue} · [${problem.domain[0]}, ${problem.domain[1]}]`
             : `[${problem.domain[0]}, ${problem.domain[1]}]`;
 
-    const canvasAria = isPid
+    const canvasAria = isControlPlot
       ? pidMeta.canvasAria
       : isLinAlg
         ? linAlgMeta.canvasAria
@@ -1652,7 +1922,7 @@ export class PaperlessStepSolver {
             ? 'Interactive dual curve graph comparing integrand f(x) and antiderivative F(x)'
             : "Interactive dual curve graph comparing f(x) and f'(x)";
 
-    const col1Label = isPid
+    const col1Label = isControlPlot
       ? pidMeta.metrics[0].label
       : isLinAlg
         ? linAlgMeta.metrics[0].label
@@ -1661,7 +1931,7 @@ export class PaperlessStepSolver {
             ? 'Time t / s'
             : 'Time t'
           : 'Probe x';
-    const col2Label = isPid
+    const col2Label = isControlPlot
       ? pidMeta.metrics[1].label
       : isLinAlg
         ? linAlgMeta.metrics[1].label
@@ -1672,7 +1942,7 @@ export class PaperlessStepSolver {
           : isIntegral
             ? 'Integrand f(x)'
             : 'f(x) Height';
-    const col3Label = isPid
+    const col3Label = isControlPlot
       ? pidMeta.metrics[2].label
       : isLinAlg
         ? linAlgMeta.metrics[2].label
@@ -1683,7 +1953,7 @@ export class PaperlessStepSolver {
           : isIntegral
             ? 'Antideriv F(x)'
             : "Exact f'(x)";
-    const col4Label = isPid
+    const col4Label = isControlPlot
       ? pidMeta.metrics[3].label
       : isLinAlg
         ? linAlgMeta.metrics[3].label
@@ -1713,8 +1983,12 @@ export class PaperlessStepSolver {
     const col3ValClass =
       isDiffEq && !isLaplaceFwd ? 'text-cyan-200' : 'text-emerald-200';
 
+    const finalSystemImpactHtml = this._buildSystemImpactBannerHtml();
+
     return `
       <div class="rounded-2xl p-3 sm:p-5 bg-gradient-to-b from-emeraldGlow/[0.11] to-slate-950/85 border border-emeraldGlow/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] flex flex-col gap-3 sm:gap-4 snap-in">
+        ${finalSystemImpactHtml}
+
         <!-- Solved Banner -->
         <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
           <div class="flex items-center gap-2 sm:gap-2.5">
@@ -1893,6 +2167,37 @@ export class PaperlessStepSolver {
     this.container.querySelector('[data-next-problem]')?.addEventListener('click', () => {
       this._navigateRelative(1);
     });
+
+    this.container.querySelector('[data-dismiss-impact]')?.addEventListener('click', () => {
+      sound?.playTick?.();
+      this._lastSystemImpact = null;
+      const banner = this.container?.querySelector('[data-system-impact-banner]');
+      if (banner) banner.classList.add('hidden');
+    });
+
+    this.container.querySelectorAll('[data-ledger-impact-toggle]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sound?.playTick?.();
+        const idx = Number(btn.getAttribute('data-ledger-impact-toggle'));
+        if (!Number.isFinite(idx)) return;
+        const isOpen = this._expandedLedgerImpacts.has(idx);
+        if (isOpen) {
+          this._expandedLedgerImpacts.delete(idx);
+        } else {
+          this._expandedLedgerImpacts.add(idx);
+        }
+        const body = this.container?.querySelector(`[data-ledger-impact-body="${idx}"]`);
+        const nextOpen = !isOpen;
+        btn.setAttribute('aria-expanded', String(nextOpen));
+        btn.classList.toggle('bg-emeraldGlow/20', nextOpen);
+        btn.classList.toggle('border-emeraldGlow/55', nextOpen);
+        btn.classList.toggle('text-emerald-200', nextOpen);
+        btn.classList.toggle('bg-emeraldGlow/[0.08]', !nextOpen);
+        btn.classList.toggle('border-emeraldGlow/25', !nextOpen);
+        btn.classList.toggle('text-emerald-300/90', !nextOpen);
+        if (body) body.classList.toggle('hidden', !nextOpen);
+      });
+    });
   }
 
   _updateMechatronicsPill() {
@@ -1965,7 +2270,7 @@ export class PaperlessStepSolver {
     const cssX = e.clientX - rect.left;
     const { padL, plotW, xMin, xMax } = this.verifyPlotGeom;
     const t = Math.max(0, Math.min(1, (cssX - padL) / plotW));
-    if (this._isLinAlgMode() || this._isPidMode()) {
+    if (this._isLinAlgMode() || this._isControlPlotMode()) {
       this.verifyCursorX = t;
       this._drawVerificationCanvas();
       return;
@@ -2069,7 +2374,7 @@ export class PaperlessStepSolver {
     if (!canvas || !canvas.isConnected) return;
 
     const problem = this._getActiveProblem();
-    if (this._isPidMode()) {
+    if (this._isControlPlotMode()) {
       this._drawPidVerificationCanvas(canvas, problem);
       return;
     }
@@ -4544,6 +4849,36 @@ export class PaperlessStepSolver {
       ctx.stroke();
       ctx.restore();
 
+      if (vp.specRegion) {
+        const { minSigma, maxAngleDeg = 45 } = vp.specRegion;
+        const slope = Math.tan((maxAngleDeg * Math.PI) / 180);
+        const reLeft = b.minRe;
+        const reCut = -minSigma;
+        ctx.save();
+        ctx.fillStyle = 'rgba(52, 211, 153, 0.12)';
+        ctx.beginPath();
+        ctx.moveTo(mapX(reCut), mapY(minSigma * slope));
+        ctx.lineTo(mapX(reLeft), mapY(Math.abs(reLeft) * slope));
+        ctx.lineTo(mapX(reLeft), mapY(-Math.abs(reLeft) * slope));
+        ctx.lineTo(mapX(reCut), mapY(-minSigma * slope));
+        ctx.closePath();
+        ctx.fill();
+
+        // Dashed spec boundary (vertical σ = -minSigma + ±angle rays)
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.65)';
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(mapX(reCut), padT);
+        ctx.lineTo(mapX(reCut), padT + plotH);
+        ctx.moveTo(mapX(0), mapY(0));
+        ctx.lineTo(mapX(reLeft), mapY(Math.abs(reLeft) * slope));
+        ctx.moveTo(mapX(0), mapY(0));
+        ctx.lineTo(mapX(reLeft), mapY(-Math.abs(reLeft) * slope));
+        ctx.stroke();
+        ctx.restore();
+      }
+
       if (vp.gainSweep) {
         const { a2, a1, kMin, kMax, ku } = vp.gainSweep;
         // Trace smooth root-locus branches across [kMin, kMax]
@@ -4612,6 +4947,100 @@ export class PaperlessStepSolver {
             ? `K=${kCur.toFixed(1)} > ${ku} · UNSTABLE`
             : `K=${kCur.toFixed(1)} < ${ku} · STABLE`;
         this._drawLinAlgHudTag(ctx, statusStr, padL, padT, plotW);
+      } else if (vp.circleLocus) {
+        const { centerRe = -2, radius = 2, realSeg = [-6.5, -2], kMin = 0.2, kMax = 12 } =
+          vp.circleLocus;
+        const z = -centerRe; // e.g., z = 2 for L(s) = K(s+z)/s^2
+
+        // 45° Butterworth damping rays (ζ = 0.707)
+        ctx.save();
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(xZero, yZero);
+        ctx.lineTo(mapX(b.minRe), mapY(Math.abs(b.minRe)));
+        ctx.moveTo(xZero, yZero);
+        ctx.lineTo(mapX(b.minRe), mapY(-Math.abs(b.minRe)));
+        ctx.stroke();
+        ctx.restore();
+
+        // Real-axis locus segment (-∞, -z)
+        ctx.save();
+        ctx.strokeStyle = 'rgba(34, 211, 238, 0.55)';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(mapX(realSeg[0]), yZero);
+        ctx.lineTo(mapX(realSeg[1]), yZero);
+        ctx.stroke();
+        ctx.restore();
+
+        // Exact circular locus (centerRe, 0) with radius R
+        ctx.save();
+        ctx.strokeStyle = 'rgba(34, 211, 238, 0.65)';
+        ctx.lineWidth = 2.0;
+        ctx.shadowColor = 'rgba(34, 211, 238, 0.4)';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        for (let i = 0; i <= 120; i++) {
+          const ang = (i / 120) * Math.PI * 2;
+          const px = mapX(centerRe + radius * Math.cos(ang));
+          const py = mapY(radius * Math.sin(ang));
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+
+        // Open-loop zero at centerRe and break-in marker at -2z
+        this._drawPidZeroO(ctx, mapX(centerRe), yZero, '#34D399', 6.5);
+        this._drawLinAlgLabel(ctx, `z=${centerRe}`, mapX(centerRe), yZero + 15, '#6EE7B7', 'center');
+
+        // Interactive gain K sweep for s^2 + K*s + K*z = 0
+        let kCur = kMin + uCursor * (kMax - kMin);
+        if (Math.abs(kCur - 2 * z) < 0.25) kCur = 2 * z;
+        if (Math.abs(kCur - 4 * z) < 0.25) kCur = 4 * z;
+
+        const disc = kCur * kCur - 4 * kCur * z;
+        let roots;
+        let hudStr;
+        if (disc < 0) {
+          const re = -0.5 * kCur;
+          const im = 0.5 * Math.sqrt(-disc);
+          const zeta = Math.abs(re) / Math.hypot(re, im);
+          roots = [
+            { re, im },
+            { re, im: -im },
+          ];
+          hudStr = `K=${kCur.toFixed(1)} · s=${re.toFixed(2)}±${im.toFixed(2)}j · ζ=${zeta.toFixed(2)}`;
+        } else {
+          const sq = Math.sqrt(disc);
+          const r1 = 0.5 * (-kCur + sq);
+          const r2 = 0.5 * (-kCur - sq);
+          roots = [
+            { re: r1, im: 0 },
+            { re: r2, im: 0 },
+          ];
+          hudStr = `K=${kCur.toFixed(1)} · s=${r1.toFixed(2)}, ${r2.toFixed(2)} (ζ≥1)`;
+        }
+
+        roots.forEach((r, idx) => {
+          const px = mapX(r.re);
+          const py = mapY(r.im);
+          this._drawPidPoleX(ctx, px, py, '#34D399', 6.5);
+          if (idx === 0 && Math.abs(r.im) > 0.05) {
+            this._drawLinAlgLabel(
+              ctx,
+              `${r.re.toFixed(2)}±${r.im.toFixed(2)}j`,
+              px + 10,
+              py - 8,
+              '#6EE7B7'
+            );
+          }
+        });
+
+        this._drawLinAlgHudTag(ctx, hudStr, padL, padT, plotW);
       } else {
         // Static poles & optional zeros
         const poles = Array.isArray(vp.poles) ? vp.poles : [];
@@ -4639,23 +5068,332 @@ export class PaperlessStepSolver {
         zeros.forEach((z) => {
           const px = mapX(z.re);
           const py = mapY(z.im);
-          this._drawPidZeroO(ctx, px, py, '#34D399', 6.5);
+          this._drawPidZeroO(ctx, px, py, vp.specRegion ? '#22D3EE' : '#34D399', 6.5);
           if (z.label) {
-            this._drawLinAlgLabel(ctx, z.label, px, py + 15, '#6EE7B7', 'center');
+            this._drawLinAlgLabel(
+              ctx,
+              z.label,
+              px,
+              py + 15,
+              vp.specRegion ? '#67E8F9' : '#6EE7B7',
+              'center'
+            );
           }
         });
 
         const rhpCount = poles.filter((p) => p.re > 1e-6).length;
-        const hud =
+        const defaultHud =
           zeros.length > 0
-            ? `Pole s=0 (×) · Zeros s=−1, −4 (○)`
+            ? `Poles (×) · Zeros (○) · All LHP`
             : rhpCount > 0
               ? `${rhpCount} RHP Unstable · ${poles.length - rhpCount} LHP Stable`
               : `All ${poles.length} Poles Stable`;
-        this._drawLinAlgHudTag(ctx, hud, padL, padT, plotW);
+        this._drawLinAlgHudTag(ctx, vp.hudLabel || defaultHud, padL, padT, plotW);
       }
 
       ctx.restore();
+    } else if (vp.kind === 'nyquist-circle') {
+      const b = vp.bounds || { minRe: -3.2, maxRe: 0.8, minIm: -1.8, maxIm: 1.8 };
+      const kMin = vp.kMin || 0.6;
+      const kMax = vp.kMax || 5.5;
+      const kCrit = vp.kCrit || 2.0;
+
+      const padL = 42;
+      const padR = 20;
+      const padT = 18;
+      const padB = 26;
+      const plotW = Math.max(40, width - padL - padR);
+      const plotH = Math.max(40, height - padT - padB);
+      this.verifyPlotGeom = { padL, padR, padT, padB, plotW, plotH, xMin: 0, xMax: 1 };
+
+      // Keep isotropic aspect so the Nyquist circle renders as a true circle
+      const spanRe = b.maxRe - b.minRe;
+      const spanIm = b.maxIm - b.minIm;
+      const scale = Math.min(plotW / spanRe, plotH / spanIm);
+      const cxMid = padL + plotW * 0.5;
+      const cyMid = padT + plotH * 0.5;
+      const reMid = 0.5 * (b.minRe + b.maxRe);
+      const imMid = 0.5 * (b.minIm + b.maxIm);
+      const mapX = (re) => cxMid + (re - reMid) * scale;
+      const mapY = (im) => cyMid - (im - imMid) * scale;
+
+      // Grid
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.055)';
+      ctx.lineWidth = 1;
+      ctx.font = '10px "JetBrains Mono", monospace';
+      for (let re = Math.ceil(b.minRe); re <= Math.floor(b.maxRe); re++) {
+        const px = mapX(re);
+        if (px < padL || px > padL + plotW) continue;
+        ctx.beginPath();
+        ctx.moveTo(px, padT);
+        ctx.lineTo(px, padT + plotH);
+        ctx.stroke();
+        ctx.fillStyle = re === -1 ? '#FCD34D' : 'rgba(148, 163, 184, 0.72)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(String(re), px, padT + plotH + 6);
+      }
+      for (let im = -2; im <= 2; im++) {
+        const py = mapY(im);
+        if (py < padT || py > padT + plotH) continue;
+        ctx.beginPath();
+        ctx.moveTo(padL, py);
+        ctx.lineTo(padL + plotW, py);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.72)';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(im === 0 ? '0' : `${im}j`, padL - 6, py);
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, padT, plotW, plotH);
+      ctx.clip();
+
+      // Axes
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(padL, mapY(0));
+      ctx.lineTo(padL + plotW, mapY(0));
+      ctx.moveTo(mapX(0), padT);
+      ctx.lineTo(mapX(0), padT + plotH);
+      ctx.stroke();
+
+      // Interactive K sweep (snaps gently near K=2)
+      let kCur = kMin + uCursor * (kMax - kMin);
+      if (Math.abs(kCur - kCrit) < 0.12) kCur = kCrit;
+      const isStable = kCur > kCrit + 1e-4;
+      const isCrit = Math.abs(kCur - kCrit) <= 1e-4;
+      const loopColor = isStable ? '#34D399' : isCrit ? '#F59E0B' : '#FB7185';
+      const loopFill = isStable
+        ? 'rgba(52, 211, 153, 0.11)'
+        : isCrit
+          ? 'rgba(245, 158, 11, 0.11)'
+          : 'rgba(251, 113, 133, 0.11)';
+
+      // Nyquist circle for L(jω) = K / (jω - 2): center (-K/4, 0), radius K/4
+      const cRe = -kCur / 4;
+      const rVal = kCur / 4;
+      const cPx = mapX(cRe);
+      const cPy = mapY(0);
+      const rPx = rVal * scale;
+
+      ctx.save();
+      ctx.fillStyle = loopFill;
+      ctx.strokeStyle = loopColor;
+      ctx.lineWidth = 2.4;
+      ctx.shadowColor = loopColor;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(cPx, cPy, rPx, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      // CCW direction chevrons on top & bottom of circle
+      [
+        { x: cPx, y: cPy - rPx, dir: -1 }, // top moves left (CCW)
+        { x: cPx, y: cPy + rPx, dir: 1 }, // bottom moves right (CCW)
+      ].forEach(({ x, y, dir }) => {
+        ctx.save();
+        ctx.fillStyle = loopColor;
+        ctx.beginPath();
+        ctx.moveTo(x + dir * 6, y);
+        ctx.lineTo(x - dir * 4, y - 4.5);
+        ctx.lineTo(x - dir * 4, y + 4.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // Leftmost intercept L(0) = -K/2
+      const leftPx = mapX(-kCur / 2);
+      ctx.save();
+      ctx.fillStyle = loopColor;
+      ctx.beginPath();
+      ctx.arc(leftPx, cPy, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      this._drawLinAlgLabel(ctx, `−K/2=${(-kCur / 2).toFixed(2)}`, leftPx, cPy - 14, loopColor, 'center');
+
+      // Critical point -1 + j0
+      const critPx = mapX(-1);
+      this._drawPidPoleX(ctx, critPx, cPy, '#F59E0B', 6.5);
+      this._drawLinAlgLabel(ctx, '−1 + j0', critPx, cPy + 16, '#FCD34D', 'center');
+
+      const hud = isStable
+        ? `K=${kCur.toFixed(2)} > 2 · N=−1 (CCW) · Z=0 STABLE`
+        : isCrit
+          ? `K=2.00 · Hits −1 · MARGINAL`
+          : `K=${kCur.toFixed(2)} < 2 · N=0 · Z=1 UNSTABLE`;
+      this._drawLinAlgHudTag(ctx, hud, padL, padT, plotW);
+      ctx.restore();
+    } else if (vp.kind === 'bode-margin' && vp.sensitivityMode) {
+      const wMin = vp.wMin || 0.1;
+      const wMax = vp.wMax || 30;
+      const logMin = Math.log10(wMin);
+      const logMax = Math.log10(wMax);
+
+      const padL = 48;
+      const padR = 18;
+      const padT = 14;
+      const padB = 24;
+      const gap = 14;
+      const plotW = Math.max(40, width - padL - padR);
+      const availH = Math.max(60, height - padT - padB - gap);
+      const topH = availH * 0.54;
+      const botH = availH * 0.46;
+      const topY = padT;
+      const botY = padT + topH + gap;
+
+      this.verifyPlotGeom = { padL, padR, padT, padB, plotW, plotH: availH + gap, xMin: 0, xMax: 1 };
+
+      const mapW = (w) => padL + ((Math.log10(w) - logMin) / (logMax - logMin)) * plotW;
+      const stMin = vp.magMin ?? -28;
+      const stMax = vp.magMax ?? 12;
+      const lMin = -32;
+      const lMax = 32;
+      const mapST = (db) => topY + (1 - (db - stMin) / (stMax - stMin)) * topH;
+      const mapL = (db) => botY + (1 - (db - lMin) / (lMax - lMin)) * botH;
+
+      ctx.font = '9.5px "JetBrains Mono", monospace';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(padL, topY, plotW, topH);
+      ctx.strokeRect(padL, botY, plotW, botH);
+
+      [-20, 0, 6].forEach((db) => {
+        const py = mapST(db);
+        if (py < topY || py > topY + topH) return;
+        ctx.strokeStyle = db === 0 ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.05)';
+        ctx.beginPath();
+        ctx.moveTo(padL, py);
+        ctx.lineTo(padL + plotW, py);
+        ctx.stroke();
+        ctx.fillStyle = db === 0 ? '#E2E8F0' : 'rgba(148, 163, 184, 0.72)';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${db}dB`, padL - 6, py);
+      });
+
+      [-20, 0, 20].forEach((db) => {
+        const py = mapL(db);
+        ctx.strokeStyle = db === 0 ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.05)';
+        ctx.beginPath();
+        ctx.moveTo(padL, py);
+        ctx.lineTo(padL + plotW, py);
+        ctx.stroke();
+        ctx.fillStyle = db === 0 ? '#E2E8F0' : 'rgba(148, 163, 184, 0.72)';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${db}dB`, padL - 6, py);
+      });
+
+      [0.1, 0.3, 1, 3, 10, 30].forEach((wt) => {
+        if (wt < wMin - 1e-6 || wt > wMax + 1e-6) return;
+        const px = mapW(wt);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.055)';
+        ctx.beginPath();
+        ctx.moveTo(px, topY);
+        ctx.lineTo(px, topY + topH);
+        ctx.moveTo(px, botY);
+        ctx.lineTo(px, botY + botH);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.78)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(String(wt), px, botY + botH + 5);
+      });
+
+      const samples = 200;
+      const ws = [];
+      for (let i = 0; i <= samples; i++) {
+        ws.push(Math.pow(10, logMin + (i / samples) * (logMax - logMin)));
+      }
+
+      // Top panel: |S(jω)| (Cyan) & |T(jω)| (Emerald)
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, topY, plotW, topH);
+      ctx.clip();
+
+      [
+        { fn: vp.sDbFn, color: '#22D3EE', glow: 'rgba(34, 211, 238, 0.5)' },
+        { fn: vp.tDbFn, color: '#34D399', glow: 'rgba(52, 211, 153, 0.5)' },
+      ].forEach(({ fn, color, glow }) => {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.3;
+        ctx.shadowColor = glow;
+        ctx.shadowBlur = 9;
+        ctx.beginPath();
+        ws.forEach((w, i) => {
+          const px = mapW(w);
+          const py = mapST(fn(w));
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      if (vp.msPeak) {
+        const mPx = mapW(vp.msPeak.w);
+        const mPy = mapST(vp.msPeak.db);
+        ctx.fillStyle = '#F59E0B';
+        ctx.shadowColor = 'rgba(245, 158, 11, 0.9)';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(mPx, mPy, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        this._drawLinAlgLabel(ctx, `Ms=${vp.msPeak.val} (+${vp.msPeak.db.toFixed(1)}dB)`, mPx + 8, mPy - 6, '#FCD34D');
+      }
+      ctx.restore();
+
+      // Bottom panel: |L(jω)| (Amber)
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, botY, plotW, botH);
+      ctx.clip();
+      ctx.strokeStyle = '#F59E0B';
+      ctx.lineWidth = 2.2;
+      ctx.shadowColor = 'rgba(245, 158, 11, 0.5)';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ws.forEach((w, i) => {
+        const px = mapW(w);
+        const py = mapL(vp.magDbFn(w));
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+      const wgcPx = mapW(vp.wGc);
+      ctx.fillStyle = '#34D399';
+      ctx.beginPath();
+      ctx.arc(wgcPx, mapL(0), 4, 0, Math.PI * 2);
+      ctx.fill();
+      this._drawLinAlgLabel(ctx, `|L|=0dB (ω=${vp.wGc})`, wgcPx + 8, mapL(0) - 7, '#6EE7B7');
+      ctx.restore();
+
+      // Interactive frequency cursor
+      const wCur = Math.pow(10, logMin + uCursor * (logMax - logMin));
+      const curPx = mapW(wCur);
+      const sCur = vp.sDbFn(wCur);
+      const tCur = vp.tDbFn(wCur);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.setLineDash([3, 3]);
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(curPx, topY);
+      ctx.lineTo(curPx, botY + botH);
+      ctx.stroke();
+      ctx.restore();
+
+      const hud = `ω=${wCur.toFixed(2)} · |S|=${sCur.toFixed(1)}dB · |T|=${tCur.toFixed(1)}dB`;
+      this._drawLinAlgHudTag(ctx, hud, padL, topY, plotW);
     } else if (vp.kind === 'bode-margin') {
       const wMin = vp.wMin || 0.1;
       const wMax = vp.wMax || 10;
@@ -4679,10 +5417,10 @@ export class PaperlessStepSolver {
 
       const mapW = (w) => padL + ((Math.log10(w) - logMin) / (logMax - logMin)) * plotW;
 
-      const magMin = -32;
-      const magMax = 32;
-      const phMin = hasDelay ? -235 : -205;
-      const phMax = -80;
+      const magMin = Number.isFinite(vp.magMin) ? vp.magMin : -32;
+      const magMax = Number.isFinite(vp.magMax) ? vp.magMax : 32;
+      const phMin = Number.isFinite(vp.phMin) ? vp.phMin : hasDelay ? -235 : -205;
+      const phMax = Number.isFinite(vp.phMax) ? vp.phMax : -80;
       const mapMag = (db) => magTop + (1 - (db - magMin) / (magMax - magMin)) * magH;
       const mapPh = (deg) => phTop + (1 - (deg - phMin) / (phMax - phMin)) * phH;
 
@@ -4697,7 +5435,8 @@ export class PaperlessStepSolver {
       ctx.strokeRect(padL, phTop, plotW, phH);
 
       // Magnitude ticks
-      [-20, 0, 20].forEach((db) => {
+      [-20, 0, 20, 40].forEach((db) => {
+        if (db < magMin || db > magMax) return;
         const py = mapMag(db);
         ctx.strokeStyle = db === 0 ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.05)';
         ctx.beginPath();
@@ -4711,7 +5450,8 @@ export class PaperlessStepSolver {
       });
 
       // Phase ticks
-      [-90, -135, -180].forEach((deg) => {
+      [0, -45, -90, -135, -180].forEach((deg) => {
+        if (deg < phMin || deg > phMax) return;
         const py = mapPh(deg);
         if (py < phTop || py > phTop + phH) return;
         ctx.save();
@@ -4734,10 +5474,14 @@ export class PaperlessStepSolver {
       });
 
       // Frequency grid & labels
-      const freqTicks = hasDelay ? [0.5, 1, 2, 5, 10, 25] : [0.1, 0.3, 1, 3, 10];
+      const freqTicks = [0.01, 0.03, 0.1, 0.3, 0.5, 1, 2, 3, 5, 10, 25, 50].filter(
+        (wt) => wt >= wMin - 1e-6 && wt <= wMax + 1e-6
+      );
+      let lastTickPx = -999;
       freqTicks.forEach((wt) => {
-        if (wt < wMin - 1e-6 || wt > wMax + 1e-6) return;
         const px = mapW(wt);
+        if (px - lastTickPx < 30) return;
+        lastTickPx = px;
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.055)';
         ctx.beginPath();
         ctx.moveTo(px, magTop);
@@ -4760,7 +5504,7 @@ export class PaperlessStepSolver {
       // Vertical ω_gc crossover guide spanning both panels
       const wgcPx = mapW(vp.wGc);
       ctx.save();
-      ctx.strokeStyle = 'rgba(52, 211, 153, 0.48)';
+      ctx.strokeStyle = vp.peakMarker ? 'rgba(245, 158, 11, 0.48)' : 'rgba(52, 211, 153, 0.48)';
       ctx.setLineDash([4, 4]);
       ctx.lineWidth = 1.3;
       ctx.beginPath();
@@ -4768,6 +5512,20 @@ export class PaperlessStepSolver {
       ctx.lineTo(wgcPx, phTop + phH);
       ctx.stroke();
       ctx.restore();
+
+      // Optional vertical ω_pc phase-crossover guide
+      if (Number.isFinite(vp.wPc)) {
+        const wpcPx = mapW(vp.wPc);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.48)';
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.moveTo(wpcPx, magTop);
+        ctx.lineTo(wpcPx, phTop + phH);
+        ctx.stroke();
+        ctx.restore();
+      }
 
       // Top panel: Magnitude curve (clipped)
       ctx.save();
@@ -4787,14 +5545,51 @@ export class PaperlessStepSolver {
       });
       ctx.stroke();
 
-      // Glowing dot at (ω_gc, 0 dB)
-      ctx.fillStyle = '#34D399';
-      ctx.shadowColor = 'rgba(52, 211, 153, 0.9)';
-      ctx.shadowBlur = 10;
-      ctx.beginPath();
-      ctx.arc(wgcPx, mapMag(0), 4.5, 0, Math.PI * 2);
-      ctx.fill();
-      this._drawLinAlgLabel(ctx, `ω_gc=${vp.wGc}`, wgcPx + 8, mapMag(0) - 8, '#6EE7B7');
+      if (vp.peakMarker) {
+        const pPx = mapW(vp.peakMarker.w);
+        const pPy = mapMag(vp.peakMarker.db);
+        ctx.fillStyle = '#F59E0B';
+        ctx.shadowColor = 'rgba(245, 158, 11, 0.9)';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(pPx, pPy, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        this._drawLinAlgLabel(ctx, vp.peakMarker.label, pPx - 8, pPy - 10, '#FCD34D', 'right');
+      } else {
+        // Glowing dot at (ω_gc, 0 dB)
+        ctx.fillStyle = '#34D399';
+        ctx.shadowColor = 'rgba(52, 211, 153, 0.9)';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(wgcPx, mapMag(0), 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        this._drawLinAlgLabel(ctx, `ω_gc=${vp.wGc}`, wgcPx + 8, mapMag(0) - 8, '#6EE7B7');
+      }
+
+      // Optional Gain Margin vertical bracket at ω_pc
+      if (Number.isFinite(vp.wPc)) {
+        const wpcPx = mapW(vp.wPc);
+        const magPcDb = vp.magDbFn(vp.wPc);
+        const y0 = mapMag(0);
+        const yPc = mapMag(magPcDb);
+        ctx.save();
+        ctx.strokeStyle = '#F59E0B';
+        ctx.lineWidth = 2.4;
+        ctx.shadowColor = 'rgba(245, 158, 11, 0.85)';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.moveTo(wpcPx, y0);
+        ctx.lineTo(wpcPx, yPc);
+        ctx.stroke();
+        ctx.restore();
+        this._drawLinAlgLabel(
+          ctx,
+          `GM=+${(vp.gmDb ?? -magPcDb).toFixed(1)}dB`,
+          wpcPx + 8,
+          0.5 * (y0 + yPc),
+          '#FCD34D'
+        );
+      }
       ctx.restore();
 
       // Bottom panel: Phase curve(s) & PM bracket (clipped)
@@ -4839,27 +5634,29 @@ export class PaperlessStepSolver {
       }
 
       // Phase Margin vertical arrow at ω_gc between -180° and nominal ∠L(jω_gc)
-      const phGc = vp.phaseDegFn(vp.wGc);
-      const y180 = mapPh(-180);
-      const yPhGc = mapPh(phGc);
-      ctx.save();
-      ctx.strokeStyle = '#34D399';
-      ctx.lineWidth = 2.5;
-      ctx.shadowColor = 'rgba(52, 211, 153, 0.85)';
-      ctx.shadowBlur = 9;
-      ctx.beginPath();
-      ctx.moveTo(wgcPx, y180);
-      ctx.lineTo(wgcPx, yPhGc);
-      ctx.stroke();
-      ctx.restore();
+      if (!vp.hidePmBracket) {
+        const phGc = vp.phaseDegFn(vp.wGc);
+        const y180 = mapPh(-180);
+        const yPhGc = mapPh(phGc);
+        ctx.save();
+        ctx.strokeStyle = '#34D399';
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = 'rgba(52, 211, 153, 0.85)';
+        ctx.shadowBlur = 9;
+        ctx.beginPath();
+        ctx.moveTo(wgcPx, y180);
+        ctx.lineTo(wgcPx, yPhGc);
+        ctx.stroke();
+        ctx.restore();
 
-      this._drawLinAlgLabel(
-        ctx,
-        hasDelay ? `PM=60° → 0° at τ_max` : `PM = ${vp.pmDeg}°`,
-        wgcPx + 8,
-        0.5 * (y180 + yPhGc),
-        '#6EE7B7'
-      );
+        this._drawLinAlgLabel(
+          ctx,
+          hasDelay ? `PM=60° → 0° at τ_max` : `PM = ${vp.pmDeg}°`,
+          wgcPx + 8,
+          0.5 * (y180 + yPhGc),
+          '#6EE7B7'
+        );
+      }
       ctx.restore();
 
       // Interactive frequency cursor spanning both panels
@@ -4903,7 +5700,8 @@ export class PaperlessStepSolver {
         ctx.restore();
       }
 
-      const hud = `ω=${wCur.toFixed(2)} rad/s · |L|=${curDb.toFixed(1)} dB · ∠=${curPh.toFixed(1)}°`;
+      const hudPrefix = vp.peakMarker ? '|T|' : '|L|';
+      const hud = `ω=${wCur.toFixed(2)} rad/s · ${hudPrefix}=${curDb.toFixed(1)} dB · ∠=${curPh.toFixed(1)}°`;
       this._drawLinAlgHudTag(ctx, hud, padL, magTop, plotW);
     }
 
