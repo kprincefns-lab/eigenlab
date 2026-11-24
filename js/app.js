@@ -73,6 +73,10 @@ import {
   getFrontierCompletedIds,
 } from './lab/frontier-shell.js';
 import { createF12JacobianLab } from './lab/labs/f12-jacobian-lab.js';
+import { createF14ProbabilityLab } from './lab/labs/f14-probability-lab.js';
+import { createF21PowerLab } from './lab/labs/f21-power-lab.js';
+import { createF31TimingLab } from './lab/labs/f31-timing-lab.js';
+import { createF41AliasingLab } from './lab/labs/f41-aliasing-lab.js';
 import { createM11DiffusionLab } from './lab/labs/m11-diffusion-lab.js';
 import { createM41CbfLab } from './lab/labs/m41-cbf-lab.js';
 
@@ -92,6 +96,10 @@ const KINEMATICS_LESSON_ID = 'mech-kinematics';
 
 const FRONTIER_LAB_FACTORIES = {
   'F1.2': createF12JacobianLab,
+  'F1.4': createF14ProbabilityLab,
+  'F2.1': createF21PowerLab,
+  'F3.1': createF31TimingLab,
+  'F4.1': createF41AliasingLab,
   'M1.1': createM11DiffusionLab,
   'M4.1': createM41CbfLab,
 };
