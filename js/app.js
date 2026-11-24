@@ -37,6 +37,15 @@ import {
   StateSpaceGraphLab,
   StateSpaceVisualQuizEngine,
 } from './viz/statespace-graphs.js';
+import {
+  Kinematics3DStudio,
+  KINEMATICS_PRESETS,
+  analyzeKinematicsSystem,
+} from './viz/kinematics-3d.js';
+import {
+  KinematicsGraphLab,
+  KinematicsVisualQuizEngine,
+} from './viz/kinematics-graphs.js';
 import { PaperlessStepSolver } from './solver/step-solver.js';
 import { INTEGRAL_PROBLEMS, INTEGRAL_SOLVER_TIERS } from '../data/lessons/integrals-problems.js';
 import { DIFFEQ_PROBLEMS, DIFFEQ_SOLVER_TIERS } from '../data/lessons/diffeq-problems.js';
@@ -48,6 +57,24 @@ import {
   STATESPACE_PROBLEMS,
   STATESPACE_SOLVER_TIERS,
 } from '../data/lessons/statespace-problems.js';
+import {
+  KINEMATICS_PROBLEMS,
+  KINEMATICS_SOLVER_TIERS,
+} from '../data/lessons/kinematics-problems.js';
+import {
+  DAG_TRACKS,
+  DAG_NODES,
+  getDagNode,
+  getDagSummary,
+} from './data/dag-curriculum.js';
+import { CurriculumSkillGraph } from './viz/curriculum-graph.js';
+import {
+  FrontierLessonShell,
+  getFrontierCompletedIds,
+} from './lab/frontier-shell.js';
+import { createF12JacobianLab } from './lab/labs/f12-jacobian-lab.js';
+import { createM11DiffusionLab } from './lab/labs/m11-diffusion-lab.js';
+import { createM41CbfLab } from './lab/labs/m41-cbf-lab.js';
 
 // ---------------------------------------------------------------------------
 // Constants & Fallback Data
@@ -61,6 +88,13 @@ const MODELING_LESSON_ID = 'mech-modeling';
 const PID_LESSON_ID = 'mech-pid';
 const FREQ_LESSON_ID = 'mech-root-bode';
 const STATESPACE_LESSON_ID = 'mech-state-space';
+const KINEMATICS_LESSON_ID = 'mech-kinematics';
+
+const FRONTIER_LAB_FACTORIES = {
+  'F1.2': createF12JacobianLab,
+  'M1.1': createM11DiffusionLab,
+  'M4.1': createM41CbfLab,
+};
 
 const STAGES = [
   {
@@ -331,6 +365,41 @@ const STATESPACE_STAGES = [
     shortLabel: 'Modern Solver',
     mobileLabel: 'Solver',
     label: '3. State-Space, LQR, MPC & SOTA Solver',
+  },
+  {
+    id: 'word-problems',
+    number: 4,
+    icon: '⚙️',
+    shortLabel: 'Word Problems',
+    mobileLabel: 'Applied',
+    label: '4. Applied Word Problems',
+  },
+];
+
+const KINEMATICS_STAGES = [
+  {
+    id: '3d-lab',
+    number: 1,
+    icon: '🦾',
+    shortLabel: '3D Kinematics',
+    mobileLabel: '3D Arm',
+    label: '1. 3D Robot Kinematics & Jacobian Lab',
+  },
+  {
+    id: 'intuition',
+    number: 2,
+    icon: '📐',
+    shortLabel: 'IK & Ellipsoid',
+    mobileLabel: 'IK/Ellip',
+    label: '2. Workspace, Ellipsoid & IK Quiz',
+  },
+  {
+    id: 'solver',
+    number: 3,
+    icon: '🧮',
+    shortLabel: 'Kinematics Solver',
+    mobileLabel: 'Solver',
+    label: '3. DH, PoE SE(3) & QP-IK Solver',
   },
   {
     id: 'word-problems',
@@ -744,12 +813,26 @@ const FALLBACK_STATESPACE_WORD_PROBLEMS = {
   problems: [],
 };
 
+const FALLBACK_KINEMATICS_WORD_PROBLEMS = {
+  lessonId: 'mech-kinematics',
+  status: 'coming_soon',
+  plannedTopics: [
+    '7-DOF Franka Panda Redundant Nullspace & Collision Avoidance',
+    'UR5e 6-DOF Analytical Pieper IK & Wrist Singularity Detour',
+    'SCARA High-Speed PCB Pick-and-Place Trajectory',
+    'Humanoid Whole-Body QP-IK (Pink/Mink) Dual-Arm Manipulation',
+  ],
+  problems: [],
+};
+
 // ---------------------------------------------------------------------------
 // Application Runtime State
 // ---------------------------------------------------------------------------
 
 const appState = {
-  view: 'hub', // 'hub' | 'lesson'
+  view: 'hub', // 'hub' | 'lesson' | 'frontier-lab'
+  hubViewMode: 'skill-graph', // 'skill-graph' | 'review-vault'
+  activeFrontierLabId: null,
   lessonId: LESSON_ID,
   stage: '3d-lab', // '3d-lab' | 'intuition' | 'solver' | 'word-problems'
   curriculum: FALLBACK_CURRICULUM,
@@ -763,6 +846,7 @@ const appState = {
     'mech-pid': FALLBACK_PID_WORD_PROBLEMS,
     'mech-root-bode': FALLBACK_FREQ_WORD_PROBLEMS,
     'mech-state-space': FALLBACK_STATESPACE_WORD_PROBLEMS,
+    'mech-kinematics': FALLBACK_KINEMATICS_WORD_PROBLEMS,
   },
   lab: {
     presetId: null,
@@ -961,6 +1045,17 @@ const appState = {
     paramA: STATESPACE_PRESETS['lqr-cart'].paramA.default,
     paramB: STATESPACE_PRESETS['lqr-cart'].paramB.default,
   }),
+  kinematicsLab: {
+    presetId: 'planar-2r',
+    paramA: KINEMATICS_PRESETS['planar-2r'].paramA.default,
+    paramB: KINEMATICS_PRESETS['planar-2r'].paramB.default,
+    cameraPreset: '3d',
+  },
+  kinematicsTelemetry: analyzeKinematicsSystem({
+    presetId: 'planar-2r',
+    paramA: KINEMATICS_PRESETS['planar-2r'].paramA.default,
+    paramB: KINEMATICS_PRESETS['planar-2r'].paramB.default,
+  }),
 };
 
 const activeInstances = {
@@ -969,6 +1064,8 @@ const activeInstances = {
   stackedLab: null,
   quizEngine: null,
   stepSolver: null,
+  skillGraph: null,
+  frontierShell: null,
   cleanupFns: [],
 };
 
@@ -1000,6 +1097,10 @@ function isStateSpaceLesson() {
   return appState.lessonId === STATESPACE_LESSON_ID;
 }
 
+function isKinematicsLesson() {
+  return appState.lessonId === KINEMATICS_LESSON_ID;
+}
+
 function getLessonStages() {
   if (isIntegralLesson()) return INTEGRAL_STAGES;
   if (isDiffEqLesson()) return DIFFEQ_STAGES;
@@ -1008,6 +1109,7 @@ function getLessonStages() {
   if (isPidLesson()) return PID_STAGES;
   if (isFreqLesson()) return FREQ_STAGES;
   if (isStateSpaceLesson()) return STATESPACE_STAGES;
+  if (isKinematicsLesson()) return KINEMATICS_STAGES;
   return STAGES;
 }
 
@@ -1019,6 +1121,7 @@ function stageStoreKey(stageId) {
   if (isPidLesson()) return `pid:${stageId}`;
   if (isFreqLesson()) return `freq:${stageId}`;
   if (isStateSpaceLesson()) return `ss:${stageId}`;
+  if (isKinematicsLesson()) return `kin:${stageId}`;
   return stageId;
 }
 
@@ -1230,6 +1333,40 @@ function getActiveStateSpacePreset(presets) {
 }
 
 function formatStateSpaceParam(val, step = 0.1) {
+  if (typeof val !== 'number' || !Number.isFinite(val)) return '0';
+  if (step >= 1) return String(Math.round(val));
+  if (step >= 0.1) return formatNum(val, 1);
+  return formatNum(val, 2);
+}
+
+function normalizeKinematicsPresets() {
+  if (!KINEMATICS_PRESETS) return [];
+  const list = Array.isArray(KINEMATICS_PRESETS)
+    ? KINEMATICS_PRESETS
+    : Object.entries(KINEMATICS_PRESETS).map(([id, v]) => ({ id, ...v }));
+
+  return list.map((p, idx) => ({
+    id: p.id ?? p.key ?? `kin-preset-${idx}`,
+    name: p.name ?? p.label ?? `Arm ${idx + 1}`,
+    shortName: p.shortName ?? p.name ?? `K${idx + 1}`,
+    formulaLatex: p.formulaLatex ?? 'T(\\theta) \\in SE(3)',
+    paramALabel: p.paramALabel ?? 'Parameter A',
+    paramA: p.paramA ?? { min: -90, max: 90, step: 1, default: 30 },
+    paramBLabel: p.paramBLabel ?? 'Parameter B',
+    paramB: p.paramB ?? { min: -90, max: 90, step: 1, default: 45 },
+    raw: p,
+  }));
+}
+
+function getActiveKinematicsPreset(presets) {
+  if (!presets.length) return null;
+  if (!appState.kinematicsLab.presetId) {
+    appState.kinematicsLab.presetId = presets[0].id;
+  }
+  return presets.find((p) => p.id === appState.kinematicsLab.presetId) || presets[0];
+}
+
+function formatKinematicsParam(val, step = 0.1) {
   if (typeof val !== 'number' || !Number.isFinite(val)) return '0';
   if (step >= 1) return String(Math.round(val));
   if (step >= 0.1) return formatNum(val, 1);
@@ -1455,12 +1592,16 @@ function disposeActiveWidgets() {
   safeDispose(activeInstances.stackedLab);
   safeDispose(activeInstances.quizEngine);
   safeDispose(activeInstances.stepSolver);
+  safeDispose(activeInstances.skillGraph);
+  safeDispose(activeInstances.frontierShell);
 
   activeInstances.ambientHero = null;
   activeInstances.studio3D = null;
   activeInstances.stackedLab = null;
   activeInstances.quizEngine = null;
   activeInstances.stepSolver = null;
+  activeInstances.skillGraph = null;
+  activeInstances.frontierShell = null;
 
   while (activeInstances.cleanupFns.length) {
     const fn = activeInstances.cleanupFns.pop();
@@ -1692,6 +1833,150 @@ function renderDomainCardsHTML() {
     .join('');
 }
 
+function getMergedDagCompletedIds() {
+  const completed = new Set(getFrontierCompletedIds());
+  const s = getStoreState();
+  const stages = Array.isArray(s.completedStages) ? s.completedStages : [];
+  const quizzes = Array.isArray(s.solvedQuizzes) ? s.solvedQuizzes : [];
+  const problems = Array.isArray(s.solvedProblems) ? s.solvedProblems : [];
+
+  const hasDerivProgress =
+    stages.some((k) => k === '3d-lab' || k === 'intuition' || k === 'solver' || k === 'word-problems') ||
+    quizzes.some((q) => !String(q).includes('-') || String(q).startsWith('deriv') || String(q).startsWith('q')) ||
+    problems.some((p) => String(p).startsWith('deriv') || String(p).startsWith('p'));
+  if (hasDerivProgress) completed.add('F1.1');
+
+  const hasKinProgress =
+    stages.some((k) => String(k).startsWith('kin:')) ||
+    quizzes.some((q) => String(q).startsWith('kin-'));
+  if (hasKinProgress) completed.add('F1.3');
+
+  const hasFreqProgress =
+    stages.some((k) => String(k).startsWith('freq:')) ||
+    quizzes.some((q) => String(q).startsWith('freq-'));
+  if (hasFreqProgress) completed.add('F4.2');
+
+  const hasStateSpaceProgress =
+    stages.some((k) => String(k).startsWith('ss:')) ||
+    quizzes.some((q) => String(q).startsWith('ss-'));
+  if (hasStateSpaceProgress) {
+    completed.add('F4.3');
+    completed.add('F6.1');
+    completed.add('F6.4');
+  }
+
+  const hasPidProgress =
+    stages.some((k) => String(k).startsWith('pid:')) ||
+    quizzes.some((q) => String(q).startsWith('pid-'));
+  if (hasPidProgress) completed.add('F6.2');
+
+  return completed;
+}
+
+function setRouteHash(nextHash) {
+  if (typeof window === 'undefined') return;
+  const target = nextHash ? (nextHash.startsWith('#') ? nextHash : `#${nextHash}`) : '';
+  const current = window.location.hash || '';
+  if (current === target) return;
+  try {
+    const base = `${window.location.pathname}${window.location.search}`;
+    window.history.pushState(null, '', target ? `${base}${target}` : base);
+  } catch {
+    window.location.hash = target;
+  }
+}
+
+function openHub({ updateHash = true } = {}) {
+  appState.activeFrontierLabId = null;
+  if (updateHash) {
+    setRouteHash(appState.hubViewMode === 'review-vault' ? '#vault' : '');
+  }
+  window.scrollTo?.({ top: 0, behavior: 'auto' });
+  renderHubView();
+}
+
+function renderHubContentSection() {
+  const host = document.getElementById('hub-mode-content');
+  if (!host) return;
+
+  safeDispose(activeInstances.skillGraph);
+  activeInstances.skillGraph = null;
+
+  const isGraph = appState.hubViewMode !== 'review-vault';
+
+  if (isGraph) {
+    const dagSummary = getDagSummary();
+    host.innerHTML = `
+      <div class="space-y-3 sm:space-y-4">
+        <div class="flex flex-wrap items-end justify-between gap-2 sm:gap-3">
+          <div class="min-w-0">
+            <div class="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.16em] text-cyanGlow">Two-Tier Causal Curriculum DAG</div>
+            <h2 class="font-display font-bold text-lg sm:text-2xl text-white mt-0.5">Physical AI Prerequisite-to-Frontier Skill Graph</h2>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-[11px] font-mono text-slate-300">
+            <span class="px-2.5 py-1 rounded-full bg-cyanGlow/10 border border-cyanGlow/30 text-cyan-200">${dagSummary.implementedCount} Live Labs</span>
+            <span class="px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/10 text-slate-300">${dagSummary.tier1Count} Foundations → ${dagSummary.tier2Count} Frontier</span>
+          </div>
+        </div>
+        <div id="hub-skill-graph-host" class="w-full min-w-0"></div>
+      </div>
+    `;
+
+    const graphHost = document.getElementById('hub-skill-graph-host');
+    if (graphHost && typeof CurriculumSkillGraph === 'function') {
+      try {
+        const graph = new CurriculumSkillGraph();
+        graph.mount(graphHost, {
+          completedIds: getMergedDagCompletedIds(),
+          onLaunchNode: (nodeOrId) => handleLaunchDagNode(nodeOrId),
+        });
+        activeInstances.skillGraph = graph;
+      } catch (err) {
+        console.error('[EIGENLAB] CurriculumSkillGraph mount error:', err);
+      }
+    }
+    return;
+  }
+
+  host.innerHTML = `
+    <div class="space-y-3 sm:space-y-4">
+      <div class="flex flex-wrap items-end justify-between gap-2 sm:gap-3">
+        <div>
+          <div class="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.16em] text-slate-400">Review Vault • All 9 3D &amp; Symbolic Studios</div>
+          <h2 class="font-display font-bold text-lg sm:text-2xl text-white mt-0.5">Engineering &amp; Science Tracks</h2>
+        </div>
+        <p class="hidden sm:block text-xs text-slate-400 max-w-md">
+          Deep-dive 3D WebGL studios and multi-part paperless solvers spanning Calculus, Linear Algebra, Classical/Modern Control, and Robot Kinematics.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        ${renderDomainCardsHTML()}
+      </div>
+    </div>
+  `;
+
+  host.querySelectorAll('[data-launch-lesson]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      playSfx('tick');
+      const lessonId = btn.getAttribute('data-launch-lesson') || LESSON_ID;
+      openLesson(lessonId, '3d-lab');
+    });
+  });
+}
+
+function updateHubModeToggleUI() {
+  const isGraph = appState.hubViewMode !== 'review-vault';
+  document.querySelectorAll('[data-hub-mode]').forEach((btn) => {
+    const mode = btn.getAttribute('data-hub-mode');
+    const active = (mode === 'skill-graph') === isGraph;
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    btn.className = active
+      ? 'w-full sm:w-auto px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-display font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 bg-cyanGlow/15 border border-cyanGlow/55 text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,0.2)]'
+      : 'w-full sm:w-auto px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-display font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 bg-transparent border border-transparent text-slate-300 hover:text-white hover:bg-white/[0.04]';
+  });
+}
+
 function renderHubView() {
   disposeActiveWidgets();
   appState.view = 'hub';
@@ -1700,10 +1985,12 @@ function renderHubView() {
   if (!root) return;
 
   const stats = getMasterySnapshot();
-  const lensOn = isMechatronicsLens();
+  const dagSummary = getDagSummary();
+  const completedSet = getMergedDagCompletedIds();
+  const isGraphMode = appState.hubViewMode !== 'review-vault';
 
   root.innerHTML = `
-    <div class="min-h-screen flex flex-col relative view-enter">
+    <div class="min-h-screen flex flex-col relative view-enter overflow-x-hidden">
       <div class="ambient-mesh" aria-hidden="true"></div>
 
       <!-- Sticky Frosted Top Studio Header -->
@@ -1724,99 +2011,64 @@ function renderHubView() {
       </header>
 
       <!-- Main Hub Content -->
-      <main class="relative z-10 flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 lg:py-12 space-y-6 sm:space-y-10">
+      <main class="relative z-10 flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-7 lg:py-9 space-y-5 sm:space-y-8">
         <!-- Hero Grid -->
-        <section class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-stretch">
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-stretch">
           <!-- Left Hero Column -->
-          <div class="lg:col-span-7 flex flex-col justify-between gap-4 sm:gap-6">
+          <div class="lg:col-span-7 flex flex-col justify-between gap-4 sm:gap-5 min-w-0">
             <div class="space-y-3 sm:space-y-4">
               <div class="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyanGlow/10 border border-cyanGlow/25 text-[11px] font-mono uppercase tracking-[0.14em] text-cyanGlow">
                 <span class="w-1.5 h-1.5 rounded-full bg-cyanGlow animate-pulse"></span>
-                Interactive 3D Engineering Studio
+                Physical AI &amp; Spatial Engineering Studio • ${DAG_TRACKS.length} Tracks / ${DAG_NODES.length} Nodes
               </div>
 
-              <h1 class="font-display font-bold text-2xl sm:text-4xl lg:text-[2.85rem] text-white tracking-tight leading-[1.12]">
-                Spatial Engineering Mastery for
+              <h1 class="font-display font-bold text-2xl sm:text-4xl lg:text-[2.65rem] text-white tracking-tight leading-[1.12]">
+                Invariant Foundations to
                 <span class="bg-gradient-to-r from-cyanGlow via-sky-300 to-violetGlow bg-clip-text text-transparent">
-                  Mechatronics, Physics &amp; AI
+                  Physical AI &amp; Robotics
                 </span>
               </h1>
 
-              <p class="text-xs sm:text-base text-slate-300/90 max-w-2xl leading-relaxed">
-                Manipulate live 3D WebGL curves, collapse secant chords into exact tangent vectors, and solve paperless symbolic derivations—with a global <span class="text-amberGlow font-medium">Mechatronics Lens</span> bridging calculus directly to actuators, velocity profiles, and feedback control.
+              <p class="text-xs sm:text-sm lg:text-base text-slate-300/90 max-w-2xl leading-relaxed">
+                Explore interactive 60 FPS labs with live Break-the-System fault injectors—connecting Jacobians, SVD, and Control Theory directly to <span class="text-cyanGlow font-medium">Diffusion Policies</span> and <span class="text-emeraldGlow font-medium">CBF-QP Safety Shields</span>.
               </p>
 
-              <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5 pt-0.5 sm:pt-1">
+              <!-- Compact 1-Tap Flagship Quick-Launch Bar (Zero Overflow on 390px) -->
+              <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 pt-0.5">
+                <button
+                  id="hub-hero-launch-f12"
+                  type="button"
+                  class="btn-glow-cyan w-full sm:w-auto !rounded-2xl !px-3 sm:!px-4 !py-2.5 !text-xs sm:!text-sm !justify-between sm:!justify-center"
+                >
+                  <span class="truncate">F1.2 · Jacobians</span>
+                  <span aria-hidden="true" class="shrink-0">→</span>
+                </button>
+
+                <button
+                  id="hub-hero-launch-m11"
+                  type="button"
+                  class="btn-glass w-full sm:w-auto !rounded-2xl !px-3 sm:!px-4 !py-2.5 !text-xs sm:!text-sm !border-violetGlow/50 !bg-violetGlow/[0.08] !text-violet-200 hover:!border-violetGlow/85 hover:!bg-violetGlow/15 !justify-between sm:!justify-center"
+                >
+                  <span class="truncate">M1.1 · Diffusion vs MSE</span>
+                  <span aria-hidden="true" class="shrink-0 text-violetGlow">→</span>
+                </button>
+
+                <button
+                  id="hub-hero-launch-m41"
+                  type="button"
+                  class="btn-glass w-full sm:w-auto !rounded-2xl !px-3 sm:!px-4 !py-2.5 !text-xs sm:!text-sm !border-emeraldGlow/50 !bg-emeraldGlow/[0.08] !text-emerald-200 hover:!border-emeraldGlow/85 hover:!bg-emeraldGlow/15 !justify-between sm:!justify-center"
+                >
+                  <span class="truncate">M4.1 · CBF-QP Shield</span>
+                  <span aria-hidden="true" class="shrink-0 text-emeraldGlow">→</span>
+                </button>
+
                 <button
                   id="hub-hero-launch"
                   type="button"
-                  class="btn-glow-cyan w-full sm:w-auto !rounded-2xl !px-3.5 sm:!px-4 !py-2.5 !text-xs sm:!text-sm"
+                  class="btn-glass w-full sm:w-auto !rounded-2xl !px-3 sm:!px-4 !py-2.5 !text-xs sm:!text-sm !border-amberGlow/45 !text-amber-200 hover:!border-amberGlow/80 hover:!bg-amberGlow/10 !justify-between sm:!justify-center"
                 >
-                  <span>01 · Derivatives</span>
-                  <span aria-hidden="true" class="text-sm sm:text-base">→</span>
-                </button>
-
-                <button
-                  id="hub-hero-launch-integrals"
-                  type="button"
-                  class="btn-glass w-full sm:w-auto !rounded-2xl !px-3.5 sm:!px-4 !py-2.5 !text-xs sm:!text-sm !border-violetGlow/40 !text-violet-200 hover:!border-violetGlow/70 hover:!bg-violetGlow/10"
-                >
-                  <span>02 · Integrals</span>
-                  <span aria-hidden="true" class="text-sm sm:text-base text-violetGlow">→</span>
-                </button>
-
-                <button
-                  id="hub-hero-launch-diffeq"
-                  type="button"
-                  class="btn-glass w-full sm:w-auto !rounded-2xl !px-3.5 sm:!px-4 !py-2.5 !text-xs sm:!text-sm !border-amberGlow/40 !text-amber-200 hover:!border-amberGlow/70 hover:!bg-amberGlow/10"
-                >
-                  <span>03 · ODE &amp; Laplace</span>
-                  <span aria-hidden="true" class="text-sm sm:text-base text-amberGlow">→</span>
-                </button>
-
-                <button
-                  id="hub-hero-launch-linalg"
-                  type="button"
-                  class="btn-glass w-full sm:w-auto !rounded-2xl !px-3.5 sm:!px-4 !py-2.5 !text-xs sm:!text-sm !border-emeraldGlow/45 !text-emerald-200 hover:!border-emeraldGlow/75 hover:!bg-emeraldGlow/10"
-                >
-                  <span>04 · Linear Algebra</span>
-                  <span aria-hidden="true" class="text-sm sm:text-base text-emeraldGlow">→</span>
-                </button>
-
-                <button
-                  id="hub-hero-launch-modeling"
-                  type="button"
-                  class="col-span-2 sm:col-span-1 btn-glass w-full sm:w-auto !rounded-2xl !px-3.5 sm:!px-4 !py-2.5 !text-xs sm:!text-sm !border-amberGlow/55 !bg-amberGlow/[0.08] !text-amber-200 hover:!border-amberGlow/85 hover:!bg-amberGlow/15"
-                >
-                  <span>🔩 Controls 01 · Modeling &amp; s-Plane</span>
-                  <span aria-hidden="true" class="text-sm sm:text-base text-amberGlow">→</span>
-                </button>
-
-                <button
-                  id="hub-hero-launch-pid"
-                  type="button"
-                  class="btn-glass w-full sm:w-auto !rounded-2xl !px-3.5 sm:!px-4 !py-2.5 !text-xs sm:!text-sm !border-amberGlow/45 !text-amber-200 hover:!border-amberGlow/75 hover:!bg-amberGlow/10"
-                >
-                  <span>🎛️ Controls 02 · PID</span>
-                  <span aria-hidden="true" class="text-sm sm:text-base text-amberGlow">→</span>
-                </button>
-
-                <button
-                  id="hub-hero-launch-freq"
-                  type="button"
-                  class="btn-glass w-full sm:w-auto !rounded-2xl !px-3.5 sm:!px-4 !py-2.5 !text-xs sm:!text-sm !border-violetGlow/45 !text-violet-200 hover:!border-violetGlow/75 hover:!bg-violetGlow/10"
-                >
-                  <span>🏔️ Controls 03 · Bode</span>
-                  <span aria-hidden="true" class="text-sm sm:text-base text-violetGlow">→</span>
-                </button>
-
-                <button
-                  id="hub-hero-launch-statespace"
-                  type="button"
-                  class="col-span-2 sm:col-span-1 btn-glass w-full sm:w-auto !rounded-2xl !px-3.5 sm:!px-4 !py-2.5 !text-xs sm:!text-sm !border-emeraldGlow/55 !bg-emeraldGlow/[0.08] !text-emerald-200 hover:!border-emeraldGlow/85 hover:!bg-emeraldGlow/15"
-                >
-                  <span>🧊 Controls 04 · State-Space &amp; MPC</span>
-                  <span aria-hidden="true" class="text-sm sm:text-base text-emeraldGlow">→</span>
+                  <span class="truncate">F1.1 · Derivatives 3D</span>
+                  <span aria-hidden="true" class="shrink-0 text-amberGlow">→</span>
                 </button>
               </div>
             </div>
@@ -1829,10 +2081,10 @@ function renderHubView() {
                 <div class="flex items-center justify-between gap-2 mb-2 sm:mb-3">
                   <div class="min-w-0">
                     <h2 class="font-display font-semibold text-xs sm:text-sm text-white truncate">Studio Mastery Telemetry</h2>
-                    <p class="hidden sm:block text-xs text-slate-400">Progress saved locally across Engineering Math &amp; Mechatronics studios</p>
+                    <p class="hidden sm:block text-xs text-slate-400">Progress saved locally across Physical AI Labs &amp; 9 Review Vault Studios</p>
                   </div>
                   <span class="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-mono bg-emeraldGlow/10 text-emeraldGlow border border-emeraldGlow/25 shrink-0">
-                    ${stats.completedStages.length}/${stats.totalStages} Stages
+                    ${completedSet.size}/${dagSummary.implementedCount} Live DAG
                   </span>
                 </div>
 
@@ -1861,8 +2113,8 @@ function renderHubView() {
           </div>
 
           <!-- Right Hero Column: Interactive 3D Ambient Preview Card -->
-          <div class="lg:col-span-5 flex flex-col">
-            <div class="canvas-stage relative flex-1 min-h-[190px] sm:min-h-[340px] lg:min-h-[420px] flex flex-col">
+          <div class="lg:col-span-5 flex flex-col min-w-0">
+            <div class="canvas-stage relative flex-1 min-h-[180px] sm:min-h-[300px] lg:min-h-[380px] flex flex-col">
               <!-- Live Three.js Ambient Container -->
               <div id="hub-ambient-3d" class="absolute inset-0 w-full h-full"></div>
 
@@ -1882,14 +2134,14 @@ function renderHubView() {
                   <div>
                     <div class="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-amberGlow/90">Interactive Preview</div>
                     <div class="font-display font-semibold text-sm sm:text-base text-white">Secant → Tangent Convergence</div>
-                    <div class="hidden sm:block text-xs text-slate-400 mt-0.5">Orbit the curve, scrub Δx → 0, and inspect 3D derivative ribbons.</div>
+                    <div class="hidden sm:block text-xs text-slate-400 mt-0.5">Orbit the curve, scrub Δx → 0, and bridge directly to Physical AI score fields.</div>
                   </div>
                   <button
                     id="hub-preview-launch"
                     type="button"
                     class="pointer-events-auto btn-glass !py-1.5 sm:!py-2 !px-3 sm:!px-3.5 !text-xs !font-mono shrink-0"
                   >
-                    Open Lab ↗
+                    Open F1.1 ↗
                   </button>
                 </div>
               </div>
@@ -1897,22 +2149,45 @@ function renderHubView() {
           </div>
         </section>
 
-        <!-- 4-Domain Dynamic Navigation Grid -->
-        <section class="space-y-3 sm:space-y-4">
-          <div class="flex flex-wrap items-end justify-between gap-2 sm:gap-3">
-            <div>
-              <div class="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.16em] text-slate-400">Discipline Roadmap</div>
-              <h2 class="font-display font-bold text-xl sm:text-2xl text-white mt-0.5">Engineering &amp; Science Tracks</h2>
-            </div>
-            <p class="hidden sm:block text-xs text-slate-400 max-w-md">
-              A unified multi-discipline STEM studio—launch Lesson 01 Derivatives now while future tracks plug seamlessly into the same 3D &amp; symbolic core.
-            </p>
+        <!-- Segmented Hub Mode Switcher: Two-Tier Skill Graph vs. Review Vault -->
+        <section aria-label="Curriculum view mode" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div class="grid grid-cols-1 sm:inline-grid sm:grid-cols-2 gap-1.5 p-1.5 rounded-2xl bg-[#10131A]/95 border border-white/10 w-full sm:w-auto shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+            <button
+              type="button"
+              data-hub-mode="skill-graph"
+              aria-pressed="${isGraphMode ? 'true' : 'false'}"
+              class="${
+                isGraphMode
+                  ? 'w-full sm:w-auto px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-display font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 bg-cyanGlow/15 border border-cyanGlow/55 text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,0.2)]'
+                  : 'w-full sm:w-auto px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-display font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 bg-transparent border border-transparent text-slate-300 hover:text-white hover:bg-white/[0.04]'
+              }"
+            >
+              <span aria-hidden="true">🧭</span>
+              <span>Physical AI Skill Graph (Tier 1 → Tier 2)</span>
+            </button>
+            <button
+              type="button"
+              data-hub-mode="review-vault"
+              aria-pressed="${!isGraphMode ? 'true' : 'false'}"
+              class="${
+                !isGraphMode
+                  ? 'w-full sm:w-auto px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-display font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 bg-cyanGlow/15 border border-cyanGlow/55 text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,0.2)]'
+                  : 'w-full sm:w-auto px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-display font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 bg-transparent border border-transparent text-slate-300 hover:text-white hover:bg-white/[0.04]'
+              }"
+            >
+              <span aria-hidden="true">📚</span>
+              <span>Review Vault (All 9 Studios)</span>
+            </button>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-            ${renderDomainCardsHTML()}
+          <div class="hidden lg:flex items-center gap-2 text-[11px] font-mono text-slate-400">
+            <span class="w-1.5 h-1.5 rounded-full bg-emeraldGlow"></span>
+            <span>${dagSummary.flagshipCount} Flagship Frontier Labs + 9 Interactive 3D Studios</span>
           </div>
         </section>
+
+        <!-- Active Hub Mode Host (Skill Graph OR Review Vault) -->
+        <section id="hub-mode-content" class="w-full min-w-0"></section>
       </main>
     </div>
   `;
@@ -1927,58 +2202,46 @@ function renderHubView() {
     }
   }
 
-  // Wire Hub Actions
+  // Mount Skill Graph or Review Vault content
+  renderHubContentSection();
+
+  // Wire Segmented Mode Switcher
+  root.querySelectorAll('[data-hub-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const nextMode = btn.getAttribute('data-hub-mode') === 'review-vault' ? 'review-vault' : 'skill-graph';
+      if (nextMode === appState.hubViewMode) return;
+      playSfx('tick');
+      appState.hubViewMode = nextMode;
+      setRouteHash(nextMode === 'review-vault' ? '#vault' : '');
+      updateHubModeToggleUI();
+      renderHubContentSection();
+    });
+  });
+
+  // Wire Hero Quick-Launch Flagship Pills
+  document.getElementById('hub-hero-launch-f12')?.addEventListener('click', () => {
+    playSfx('snap');
+    handleLaunchDagNode('F1.2');
+  });
+
+  document.getElementById('hub-hero-launch-m11')?.addEventListener('click', () => {
+    playSfx('snap');
+    handleLaunchDagNode('M1.1');
+  });
+
+  document.getElementById('hub-hero-launch-m41')?.addEventListener('click', () => {
+    playSfx('snap');
+    handleLaunchDagNode('M4.1');
+  });
+
   document.getElementById('hub-hero-launch')?.addEventListener('click', () => {
     playSfx('tick');
-    openLesson(LESSON_ID, '3d-lab');
-  });
-
-  document.getElementById('hub-hero-launch-integrals')?.addEventListener('click', () => {
-    playSfx('tick');
-    openLesson(INTEGRAL_LESSON_ID, '3d-lab');
-  });
-
-  document.getElementById('hub-hero-launch-diffeq')?.addEventListener('click', () => {
-    playSfx('tick');
-    openLesson(DIFFEQ_LESSON_ID, '3d-lab');
-  });
-
-  document.getElementById('hub-hero-launch-linalg')?.addEventListener('click', () => {
-    playSfx('tick');
-    openLesson(LINALG_LESSON_ID, '3d-lab');
-  });
-
-  document.getElementById('hub-hero-launch-modeling')?.addEventListener('click', () => {
-    playSfx('tick');
-    openLesson(MODELING_LESSON_ID, '3d-lab');
-  });
-
-  document.getElementById('hub-hero-launch-pid')?.addEventListener('click', () => {
-    playSfx('tick');
-    openLesson(PID_LESSON_ID, '3d-lab');
-  });
-
-  document.getElementById('hub-hero-launch-freq')?.addEventListener('click', () => {
-    playSfx('tick');
-    openLesson(FREQ_LESSON_ID, '3d-lab');
-  });
-
-  document.getElementById('hub-hero-launch-statespace')?.addEventListener('click', () => {
-    playSfx('tick');
-    openLesson(STATESPACE_LESSON_ID, '3d-lab');
+    handleLaunchDagNode('F1.1');
   });
 
   document.getElementById('hub-preview-launch')?.addEventListener('click', () => {
     playSfx('tick');
-    openLesson(LESSON_ID, '3d-lab');
-  });
-
-  root.querySelectorAll('[data-launch-lesson]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      playSfx('tick');
-      const lessonId = btn.getAttribute('data-launch-lesson') || LESSON_ID;
-      openLesson(lessonId, '3d-lab');
-    });
+    handleLaunchDagNode('F1.1');
   });
 
   document.getElementById('hub-lens-toggle')?.addEventListener('click', () => {
@@ -2001,11 +2264,250 @@ function bindHubAudioToggle() {
 }
 
 // ---------------------------------------------------------------------------
+// DAG Node Router & VIEW 3 — Physical AI Frontier Lab (`frontier-lab`)
+// ---------------------------------------------------------------------------
+
+function handleLaunchDagNode(nodeOrId) {
+  const node = typeof nodeOrId === 'string' ? getDagNode(nodeOrId) : nodeOrId;
+  if (!node) return;
+
+  if (node.status !== 'implemented') {
+    appState.hubViewMode = 'skill-graph';
+    if (appState.view !== 'hub' || !activeInstances.skillGraph) {
+      openHub();
+    }
+    activeInstances.skillGraph?.selectNode?.(node.id);
+    return;
+  }
+
+  const target = node.launchTarget;
+  if (target?.kind === 'frontier-lab') {
+    openFrontierLab(target.labId || node.id);
+    return;
+  }
+
+  if (target?.kind === 'studio') {
+    if (target.lessonId === STATESPACE_LESSON_ID && target.preset) {
+      const presetDef = STATESPACE_PRESETS?.[target.preset];
+      if (presetDef) {
+        appState.statespaceLab.presetId = target.preset;
+        appState.statespaceLab.paramA = presetDef.paramA.default;
+        appState.statespaceLab.paramB = presetDef.paramB.default;
+        appState.statespaceTelemetry = analyzeStateSpaceSystem({
+          presetId: target.preset,
+          paramA: presetDef.paramA.default,
+          paramB: presetDef.paramB.default,
+        });
+      }
+    }
+    openLesson(target.lessonId, target.stage || '3d-lab');
+  }
+}
+
+function openFrontierLab(labId, { updateHash = true } = {}) {
+  const normalizedId = String(labId || '').toUpperCase();
+  const factory = FRONTIER_LAB_FACTORIES[normalizedId];
+  if (typeof factory !== 'function') {
+    const node = getDagNode(normalizedId);
+    if (node) {
+      handleLaunchDagNode(node);
+    } else {
+      openHub({ updateHash });
+    }
+    return;
+  }
+
+  appState.view = 'frontier-lab';
+  appState.activeFrontierLabId = normalizedId;
+  disposeActiveWidgets();
+
+  if (updateHash) {
+    setRouteHash(`#frontier/${normalizedId}`);
+  }
+  window.scrollTo?.({ top: 0, behavior: 'auto' });
+
+  renderFrontierLabView();
+}
+
+function bindFrontierAudioToggle() {
+  document.getElementById('frontier-audio-toggle')?.addEventListener('click', () => {
+    const nextMuted = store.toggleMute();
+    if (!nextMuted) playSfx('tick');
+    const slot = document.getElementById('frontier-audio-slot');
+    if (slot) slot.innerHTML = renderAudioButton('frontier-audio-toggle');
+    bindFrontierAudioToggle();
+  });
+}
+
+function renderFrontierLabView() {
+  disposeActiveWidgets();
+  const root = document.getElementById('app');
+  if (!root) return;
+
+  const labId = appState.activeFrontierLabId;
+  const factory = FRONTIER_LAB_FACTORIES[labId];
+  if (typeof factory !== 'function') {
+    openHub();
+    return;
+  }
+
+  const node = getDagNode(labId);
+  const labDescriptor = factory();
+  const displayTitle = node?.title || labDescriptor?.title || `Frontier Lab ${labId}`;
+  const isTier2 = (node?.tier || labDescriptor?.tier) === 2;
+  const secondary = node?.secondaryStudio || null;
+
+  root.innerHTML = `
+    <div class="min-h-screen flex flex-col relative view-enter bg-[#0B0D12] overflow-x-hidden">
+      <div class="ambient-mesh" aria-hidden="true"></div>
+
+      <!-- Stealth-Slate Frontier Lab Top Header -->
+      <header class="sticky top-0 z-40 border-b border-white/10 bg-[#0B0D12]/90 backdrop-blur-xl">
+        <div class="max-w-[1480px] mx-auto px-2.5 sm:px-6 h-13 sm:h-15 py-2 flex items-center justify-between gap-2 sm:gap-4">
+          <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+            <button
+              id="btn-frontier-back-graph"
+              type="button"
+              class="btn-glass !py-1.5 !px-2.5 sm:!px-3 !text-xs shrink-0"
+            >
+              <span aria-hidden="true">←</span>
+              <span>Skill Graph</span>
+            </button>
+
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="px-2 py-0.5 rounded-md font-mono text-[11px] font-bold tracking-wider shrink-0 border ${
+                isTier2
+                  ? 'bg-violetGlow/15 border-violetGlow/45 text-violet-200'
+                  : 'bg-cyanGlow/15 border-cyanGlow/45 text-cyan-200'
+              }">
+                ${escapeHtml(labId)}
+              </span>
+              <h1 class="font-display font-bold text-xs sm:text-base text-white truncate">
+                ${escapeHtml(displayTitle)}
+              </h1>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            ${
+              secondary
+                ? `
+                  <button
+                    id="btn-frontier-secondary-studio"
+                    type="button"
+                    class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amberGlow/10 border border-amberGlow/40 text-amber-200 hover:bg-amberGlow/20 hover:border-amberGlow/70 text-xs font-medium transition-all cursor-pointer"
+                  >
+                    <span>3D Studio</span>
+                    <span aria-hidden="true">→</span>
+                  </button>
+                `
+                : ''
+            }
+            <div id="frontier-audio-slot">${renderAudioButton('frontier-audio-toggle')}</div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Full-Width Frontier Lesson Shell Host -->
+      <main class="relative z-10 flex-1 w-full max-w-[1480px] mx-auto px-2.5 sm:px-6 py-3 sm:py-5">
+        <div id="frontier-lab-host" class="w-full min-w-0"></div>
+      </main>
+    </div>
+  `;
+
+  document.getElementById('btn-frontier-back-graph')?.addEventListener('click', () => {
+    playSfx('tick');
+    appState.hubViewMode = 'skill-graph';
+    openHub();
+  });
+
+  if (secondary) {
+    document.getElementById('btn-frontier-secondary-studio')?.addEventListener('click', () => {
+      playSfx('tick');
+      openLesson(secondary.lessonId, secondary.stage || '3d-lab');
+    });
+  }
+
+  bindFrontierAudioToggle();
+
+  const host = document.getElementById('frontier-lab-host');
+  if (host && typeof FrontierLessonShell === 'function') {
+    try {
+      const shell = new FrontierLessonShell();
+      shell.mount(host, labDescriptor, {
+        hideTopBar: true,
+        onBackToGraph: () => {
+          appState.hubViewMode = 'skill-graph';
+          openHub();
+        },
+        onNavigateNode: (targetId) => handleLaunchDagNode(targetId),
+        onOpenStudio: secondary
+          ? (lessonId, stage) =>
+              openLesson(
+                lessonId || secondary.lessonId,
+                stage || secondary.stage || '3d-lab'
+              )
+          : undefined,
+      });
+      activeInstances.frontierShell = shell;
+    } catch (err) {
+      console.error('[EIGENLAB] FrontierLessonShell mount error:', err);
+      host.innerHTML = `
+        <div class="glass-panel p-6 text-center text-slate-300 text-sm">
+          Failed to mount Frontier Lab ${escapeHtml(labId)}: ${escapeHtml(err?.message || err)}
+        </div>
+      `;
+    }
+  }
+}
+
+function applyRouteFromHash() {
+  const rawHash = (typeof window !== 'undefined' ? window.location.hash : '') || '';
+  const cleaned = rawHash.replace(/^#\/?/, '').trim();
+
+  if (!cleaned || cleaned === 'hub' || cleaned === 'skill-graph') {
+    appState.hubViewMode = 'skill-graph';
+    openHub({ updateHash: false });
+    return;
+  }
+
+  if (cleaned === 'vault' || cleaned === 'review-vault') {
+    appState.hubViewMode = 'review-vault';
+    openHub({ updateHash: false });
+    return;
+  }
+
+  const frontierMatch = cleaned.match(/^frontier\/([A-Za-z0-9._-]+)$/i);
+  if (frontierMatch) {
+    const labId = frontierMatch[1].toUpperCase();
+    if (FRONTIER_LAB_FACTORIES[labId]) {
+      openFrontierLab(labId, { updateHash: false });
+      return;
+    }
+    const dagNode = getDagNode(labId);
+    if (dagNode) {
+      handleLaunchDagNode(dagNode);
+      return;
+    }
+  }
+
+  const lessonMatch = cleaned.match(/^lesson\/([a-z0-9-]+)(?:\/([a-z0-9-]+))?$/i);
+  if (lessonMatch) {
+    openLesson(lessonMatch[1], lessonMatch[2] || '3d-lab', { updateHash: false });
+    return;
+  }
+
+  appState.hubViewMode = 'skill-graph';
+  openHub({ updateHash: false });
+}
+
+// ---------------------------------------------------------------------------
 // VIEW 2 — Interactive Lesson Studio (`calc-*`, `math-*`, `mech-*`)
 // ---------------------------------------------------------------------------
 
-function openLesson(lessonId = LESSON_ID, stageId = '3d-lab') {
+function openLesson(lessonId = LESSON_ID, stageId = '3d-lab', { updateHash = true } = {}) {
   appState.view = 'lesson';
+  appState.activeFrontierLabId = null;
   if (lessonId === INTEGRAL_LESSON_ID) appState.lessonId = INTEGRAL_LESSON_ID;
   else if (lessonId === DIFFEQ_LESSON_ID) appState.lessonId = DIFFEQ_LESSON_ID;
   else if (lessonId === LINALG_LESSON_ID) appState.lessonId = LINALG_LESSON_ID;
@@ -2013,8 +2515,13 @@ function openLesson(lessonId = LESSON_ID, stageId = '3d-lab') {
   else if (lessonId === PID_LESSON_ID) appState.lessonId = PID_LESSON_ID;
   else if (lessonId === FREQ_LESSON_ID) appState.lessonId = FREQ_LESSON_ID;
   else if (lessonId === STATESPACE_LESSON_ID) appState.lessonId = STATESPACE_LESSON_ID;
+  else if (lessonId === KINEMATICS_LESSON_ID) appState.lessonId = KINEMATICS_LESSON_ID;
   else appState.lessonId = LESSON_ID;
   appState.stage = stageId;
+  if (updateHash) {
+    setRouteHash(`#lesson/${appState.lessonId}/${appState.stage}`);
+  }
+  window.scrollTo?.({ top: 0, behavior: 'auto' });
   renderLessonShell();
   mountActiveStage();
 }
@@ -2054,6 +2561,11 @@ function getLessonSubtitleText(on) {
     return on
       ? 'Hardware Rig Lens: Cart-Pole Torque Limits, CBF Safety & InEKF/UKF Sensor Fusion'
       : 'State-Space Lens: LQR Riccati Bowls, MPC/CBF-QP, Kalman Covariance & Factor Graphs';
+  }
+  if (isKinematicsLesson()) {
+    return on
+      ? 'Servo Torque Rig Lens: τ = JᵀF Duality, Actuator Saturation & QP-IK Joint Limits'
+      : 'Kinematics Lens: DH/MDH Frames, PoE SE(3) Screws, Jacobians & Manipulability';
   }
   return on
     ? 'Mechatronics Lens: Displacement x(t) → Velocity v(t) & Actuator Dynamics'
@@ -2137,49 +2649,56 @@ function renderLessonShell() {
   const isPid = isPidLesson();
   const isFreq = isFreqLesson();
   const isSS = isStateSpaceLesson();
-  const lessonBadge = isSS
-    ? 'Controls 04'
-    : isFreq
-      ? 'Controls 03'
-      : isPid
-        ? 'Controls 02'
-        : isMod
-          ? 'Controls 01'
+  const isKin = isKinematicsLesson();
+  const lessonBadge = isKin
+    ? 'Robotics 01'
+    : isSS
+      ? 'Controls 04'
+      : isFreq
+        ? 'Controls 03'
+        : isPid
+          ? 'Controls 02'
+          : isMod
+            ? 'Controls 01'
+            : isLA
+              ? 'Lesson 04'
+              : isDE
+                ? 'Lesson 03'
+                : isInt
+                  ? 'Lesson 02'
+                  : 'F1.1 • Lesson 01';
+  const lessonBadgeColor = isKin
+    ? 'text-cyanGlow'
+    : isSS
+      ? 'text-emeraldGlow'
+      : isFreq
+        ? 'text-violetGlow'
+        : isPid || isMod
+          ? 'text-amberGlow'
           : isLA
-            ? 'Lesson 04'
+            ? 'text-emeraldGlow'
             : isDE
-              ? 'Lesson 03'
+              ? 'text-amberGlow'
               : isInt
-                ? 'Lesson 02'
-                : 'Lesson 01';
-  const lessonBadgeColor = isSS
-    ? 'text-emeraldGlow'
-    : isFreq
-      ? 'text-violetGlow'
-      : isPid || isMod
-        ? 'text-amberGlow'
-        : isLA
-          ? 'text-emeraldGlow'
-          : isDE
-            ? 'text-amberGlow'
-            : isInt
-              ? 'text-violetGlow'
-              : 'text-cyanGlow';
-  const lessonTitle = isSS
-    ? 'State-Space & Estimation'
-    : isFreq
-      ? 'Root Locus & Bode'
-      : isPid
-        ? 'PID Control Studio'
-        : isMod
-          ? 'System Modeling Studio'
-          : isLA
-            ? 'Linear Algebra Studio'
-            : isDE
-              ? 'ODE & Laplace Studio'
-              : isInt
-                ? 'Integrals Studio'
-                : 'Derivatives Studio';
+                ? 'text-violetGlow'
+                : 'text-cyanGlow';
+  const lessonTitle = isKin
+    ? 'Robot Kinematics & IK Studio'
+    : isSS
+      ? 'State-Space & Estimation'
+      : isFreq
+        ? 'Root Locus & Bode'
+        : isPid
+          ? 'PID Control Studio'
+          : isMod
+            ? 'System Modeling Studio'
+            : isLA
+              ? 'Linear Algebra Studio'
+              : isDE
+                ? 'ODE & Laplace Studio'
+                : isInt
+                  ? 'Integrals Studio'
+                  : 'Derivatives Studio';
 
   root.innerHTML = `
     <div class="min-h-screen flex flex-col relative view-enter">
@@ -2196,7 +2715,7 @@ function renderLessonShell() {
               class="btn-glass !py-1 md:!py-1.5 !px-2.5 md:!px-3 !text-xs shrink-0"
             >
               <span aria-hidden="true">←</span>
-              <span class="hidden sm:inline">All Disciplines</span>
+              <span class="hidden sm:inline">Skill Graph</span>
               <span class="sm:hidden">Hub</span>
             </button>
 
@@ -2291,7 +2810,7 @@ function renderLessonShell() {
   // Wire Top Bar & Pill Nav
   document.getElementById('btn-back-hub')?.addEventListener('click', () => {
     playSfx('tick');
-    renderHubView();
+    openHub();
   });
 
   bindLessonLensToggle();
@@ -2367,6 +2886,9 @@ function propagateLensToActiveStage() {
     } else if (isStateSpaceLesson()) {
       updateStateSpaceStage1LensUI();
       updateStateSpaceStage1TelemetryUI();
+    } else if (isKinematicsLesson()) {
+      updateKinematicsStage1LensUI();
+      updateKinematicsStage1TelemetryUI();
     } else {
       updateStage1LensUI();
       updateStage1TelemetryUI();
@@ -2405,6 +2927,10 @@ function propagateLensToActiveStage() {
         titleEl.textContent = on
           ? 'Actuator Phase Portrait, Torque Limits & Real-Time Sensor Fusion'
           : 'Synchronized Phase Portrait, State Tracking & Effort / Kalman Gain';
+      } else if (isKinematicsLesson()) {
+        titleEl.textContent = on
+          ? 'Servo Torque Demands τ = JᵀF, Actuator Saturation & Workspace Safety'
+          : 'Synchronized Workspace Arm, Manipulability Ellipsoid & IK Convergence';
       } else {
         titleEl.textContent = on
           ? 'Synchronized Position x(t) & Velocity v(t)'
@@ -2428,6 +2954,7 @@ function propagateLensToActiveStage() {
 function switchStage(stageId) {
   disposeActiveWidgets();
   appState.stage = stageId;
+  setRouteHash(`#lesson/${appState.lessonId}/${appState.stage}`);
 
   document.querySelectorAll('[data-stage-pill]').forEach((btn) => {
     const id = btn.getAttribute('data-stage-pill');
@@ -2580,6 +3107,26 @@ function mountActiveStage() {
         break;
       default:
         mountStateSpaceStage1Lab3D(container);
+    }
+    return;
+  }
+
+  if (isKinematicsLesson()) {
+    switch (appState.stage) {
+      case '3d-lab':
+        mountKinematicsStage1Lab3D(container);
+        break;
+      case 'intuition':
+        mountKinematicsStage2Intuition(container);
+        break;
+      case 'solver':
+        mountKinematicsStage3Solver(container);
+        break;
+      case 'word-problems':
+        mountStage4WordProblems(container);
+        break;
+      default:
+        mountKinematicsStage1Lab3D(container);
     }
     return;
   }
@@ -2982,8 +3529,62 @@ function mountStage1Lab3D(container) {
           </div>
         </aside>
       </div>
+
+      <!-- F1.1 Frontier Bridge Strip — Physical AI Upgrade -->
+      <div
+        id="f11-frontier-bridge"
+        class="rounded-2xl bg-[#141820]/95 border border-cyanGlow/25 px-3.5 sm:px-5 py-3 sm:py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] flex flex-col lg:flex-row lg:items-center justify-between gap-3"
+      >
+        <div class="space-y-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-cyanGlow/15 border border-cyanGlow/40 font-mono text-[10px] font-bold uppercase tracking-wider text-cyan-200">
+              <span class="w-1.5 h-1.5 rounded-full bg-cyanGlow"></span>
+              F1.1 • FRONTIER BRIDGE
+            </span>
+            <span class="font-display font-semibold text-xs sm:text-sm text-white">
+              Why This Matters for Physical AI
+            </span>
+          </div>
+          <p class="text-[11px] sm:text-xs text-slate-300/90 leading-relaxed max-w-3xl">
+            Instantaneous derivatives scale directly into <strong class="text-white">3D Loss Landscapes</strong> (backprop), <strong class="text-violet-200">Diffusion Score Fields</strong> <span class="font-mono text-cyan-200">∇ₓ log p(x)</span> (<span class="font-mono text-violet-300">M1.1</span> / <span class="font-mono text-violet-300">M1.2</span>), and smooth SDF contact gradients in <strong class="text-emerald-200">Differentiable Physics</strong> (<span class="font-mono text-emerald-300">M3.1</span>).
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            data-bridge-jump="F1.2"
+            class="px-3 py-1.5 rounded-xl bg-cyanGlow/15 border border-cyanGlow/45 text-cyan-100 hover:bg-cyanGlow/25 hover:border-cyanGlow/80 font-mono text-[11px] font-semibold transition-all cursor-pointer"
+          >
+            F1.2 Jacobians Lab →
+          </button>
+          <button
+            type="button"
+            data-bridge-jump="M1.1"
+            class="px-3 py-1.5 rounded-xl bg-violetGlow/15 border border-violetGlow/45 text-violet-100 hover:bg-violetGlow/25 hover:border-violetGlow/80 font-mono text-[11px] font-semibold transition-all cursor-pointer"
+          >
+            M1.1 Diffusion vs. Regression →
+          </button>
+          <button
+            type="button"
+            data-bridge-jump="M4.1"
+            class="px-3 py-1.5 rounded-xl bg-emeraldGlow/15 border border-emeraldGlow/45 text-emerald-100 hover:bg-emeraldGlow/25 hover:border-emeraldGlow/80 font-mono text-[11px] font-semibold transition-all cursor-pointer"
+          >
+            M4.1 CBF-QP Shield →
+          </button>
+        </div>
+      </div>
     </section>
   `;
+
+  container.querySelectorAll('[data-bridge-jump]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-bridge-jump');
+      if (!targetId) return;
+      playSfx('snap');
+      handleLaunchDagNode(targetId);
+    });
+  });
 
   const sliderX0 = document.getElementById('slider-x0');
   const sliderDx = document.getElementById('slider-dx');
@@ -10759,6 +11360,7 @@ function subscribeToStoreUpdates() {
     } else if (appState.view === 'hub') {
       const streakEl = document.getElementById('hub-header-streak');
       if (streakEl) streakEl.textContent = String(stats.streak);
+      activeInstances.skillGraph?.refreshProgress?.(getMergedDagCompletedIds());
     }
   });
 }
@@ -10841,11 +11443,14 @@ async function boot() {
 
   subscribeToStoreUpdates();
 
+  window.addEventListener('hashchange', applyRouteFromHash);
+  window.addEventListener('popstate', applyRouteFromHash);
+
   window.addEventListener('beforeunload', () => {
     disposeActiveWidgets();
   });
 
-  renderHubView();
+  applyRouteFromHash();
 }
 
 if (document.readyState === 'loading') {
