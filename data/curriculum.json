@@ -56,11 +56,17 @@
         },
         {
           "id": "math-lin-alg",
-          "status": "planned",
+          "status": "live",
           "title": "Linear Algebra, Eigenvalues & Transforms",
-          "tag": "Lesson 04 • Coming Next",
-          "description": "Warp 3D vector spaces interactively to see eigenvectors, singular value decomposition, and orthogonal projections in motion.",
-          "estimatedMinutes": 30
+          "tag": "Lesson 04 • 3D Transforms, Eigen & SVD",
+          "description": "Warp 3D vector spaces interactively to watch eigenvectors lock onto their spans, drag 2D basis vectors to explore determinants and SVD ellipses, and solve matrix, eigen, Gram-Schmidt, and least-squares problems step by step.",
+          "estimatedMinutes": 35,
+          "stages": [
+            "3d-lab",
+            "intuition",
+            "solver",
+            "word-problems"
+          ]
         }
       ]
     },

@@ -1,0 +1,11 @@
+{
+  "lessonId": "math-lin-alg",
+  "status": "coming_soon",
+  "plannedTopics": [
+    "2-Link Robot Arm Jacobian & Singularity Analysis",
+    "Rigid-Body Inertia Tensor & Principal Rotation Axes",
+    "Kalman Filter Covariance Ellipse & Eigen-Propagation",
+    "PCA & Low-Rank SVD Compression in Neural Networks"
+  ],
+  "problems": []
+}

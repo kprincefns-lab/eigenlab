@@ -1,8 +1,8 @@
 /**
- * EIGENLAB — Paperless Multi-Step Symbolic Calculus Solver (Derivatives, Integrals & Diff Eq / Laplace)
+ * EIGENLAB — Paperless Multi-Step Symbolic Solver (Derivatives, Integrals, Diff Eq / Laplace & Linear Algebra)
  * Zero scratch paper required: every completed micro-step locks into a persistent
  * Working Step Ledger directly above tactile KaTeX choice tiles, culminating in
- * a high-DPI interactive dual-curve numerical verification plot.
+ * a high-DPI interactive numerical or geometric verification plot.
  */
 
 import { DERIVATIVE_PROBLEMS, SOLVER_TIERS } from '../../data/lessons/derivatives-problems.js';
@@ -14,6 +14,10 @@ import {
   DIFFEQ_PROBLEMS,
   DIFFEQ_SOLVER_TIERS,
 } from '../../data/lessons/diffeq-problems.js';
+import {
+  LINALG_PROBLEMS,
+  LINALG_SOLVER_TIERS,
+} from '../../data/lessons/linalg-problems.js';
 import { store, sound, renderKatex, renderInlineMathText } from '../store.js';
 
 const CHEAT_SHEET_RULES = [
@@ -151,6 +155,51 @@ const DIFFEQ_CHEAT_SHEET_RULES = [
   },
 ];
 
+const LINALG_CHEAT_SHEET_RULES = [
+  {
+    name: 'Dot & Projection',
+    tag: 'Inner Product',
+    latex:
+      '\\textcolor{#22D3EE}{\\mathbf{u}}\\cdot\\textcolor{#F59E0B}{\\mathbf{v}} = \\|\\mathbf{u}\\|\\|\\mathbf{v}\\|\\cos\\theta, \\;\; \\operatorname{proj}_{\\mathbf{b}}\\mathbf{a} = \\textcolor{#34D399}{\\frac{\\mathbf{a}\\cdot\\mathbf{b}}{\\mathbf{b}\\cdot\\mathbf{b}}\\,\\mathbf{b}}',
+  },
+  {
+    name: '2×2 Det & Inverse',
+    tag: 'ad − bc ≠ 0',
+    latex:
+      'A^{-1} = \\frac{1}{\\textcolor{#34D399}{ad-bc}}\\begin{bmatrix} \\textcolor{#22D3EE}{d} & \\textcolor{#F59E0B}{-b} \\\\ \\textcolor{#F59E0B}{-c} & \\textcolor{#22D3EE}{a} \\end{bmatrix}',
+  },
+  {
+    name: 'Characteristic Eq',
+    tag: 'Eigenpairs',
+    latex:
+      '\\det(\\textcolor{#22D3EE}{A} - \\textcolor{#F59E0B}{\\lambda} I) = \\textcolor{#34D399}{0}, \\quad (\\textcolor{#22D3EE}{A} - \\textcolor{#F59E0B}{\\lambda} I)\\mathbf{v} = \\mathbf{0}',
+  },
+  {
+    name: 'Trace & Det Shortcuts',
+    tag: '2×2 Invariants',
+    latex:
+      '\\textcolor{#22D3EE}{\\operatorname{tr}(A)} = \\textcolor{#34D399}{\\lambda_1 + \\lambda_2}, \\quad \\textcolor{#F59E0B}{\\det(A)} = \\textcolor{#34D399}{\\lambda_1\\lambda_2}',
+  },
+  {
+    name: 'Diagonalization',
+    tag: 'Matrix Powers',
+    latex:
+      'A = \\textcolor{#22D3EE}{P}\\,\\textcolor{#F59E0B}{D}\\,\\textcolor{#22D3EE}{P^{-1}} \\implies A^k = \\textcolor{#34D399}{P\\,D^k\\,P^{-1}}',
+  },
+  {
+    name: 'Least Squares',
+    tag: 'Normal Eq',
+    latex:
+      '\\textcolor{#22D3EE}{A^T A}\\,\\textcolor{#34D399}{\\hat{\\mathbf{x}}} = \\textcolor{#F59E0B}{A^T\\mathbf{b}} \\quad (\\mathbf{e} \\perp \\operatorname{Col} A)',
+  },
+  {
+    name: 'SVD & SPD Spectral',
+    tag: 'σᵢ & QΛQᵀ',
+    latex:
+      '\\textcolor{#34D399}{\\sigma_i} = \\sqrt{\\lambda_i(\\textcolor{#22D3EE}{A^T A})}, \\;\; \\kappa = \\tfrac{\\sigma_1}{\\sigma_n}, \\;\; A = \\textcolor{#34D399}{Q\\Lambda Q^T}',
+  },
+];
+
 function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
@@ -217,7 +266,9 @@ export class PaperlessStepSolver {
         ? 'integrals'
         : options.mode === 'diffeq'
           ? 'diffeq'
-          : 'derivatives';
+          : options.mode === 'linalg'
+            ? 'linalg'
+            : 'derivatives';
     this.problems =
       Array.isArray(options.problems) && options.problems.length
         ? options.problems
@@ -225,7 +276,9 @@ export class PaperlessStepSolver {
           ? INTEGRAL_PROBLEMS
           : this.mode === 'diffeq'
             ? DIFFEQ_PROBLEMS
-            : DERIVATIVE_PROBLEMS;
+            : this.mode === 'linalg'
+              ? LINALG_PROBLEMS
+              : DERIVATIVE_PROBLEMS;
     this.tiers =
       Array.isArray(options.tiers) && options.tiers.length
         ? options.tiers
@@ -233,13 +286,17 @@ export class PaperlessStepSolver {
           ? INTEGRAL_SOLVER_TIERS
           : this.mode === 'diffeq'
             ? DIFFEQ_SOLVER_TIERS
-            : SOLVER_TIERS;
+            : this.mode === 'linalg'
+              ? LINALG_SOLVER_TIERS
+              : SOLVER_TIERS;
     this.cheatSheetRules =
       this.mode === 'integrals'
         ? INTEGRAL_CHEAT_SHEET_RULES
         : this.mode === 'diffeq'
           ? DIFFEQ_CHEAT_SHEET_RULES
-          : CHEAT_SHEET_RULES;
+          : this.mode === 'linalg'
+            ? LINALG_CHEAT_SHEET_RULES
+            : CHEAT_SHEET_RULES;
 
     this.mechatronicsLens = Boolean(
       options.mechatronicsLens ?? options.lens === 'mechatronics'
@@ -380,6 +437,10 @@ export class PaperlessStepSolver {
     return this.mode === 'diffeq';
   }
 
+  _isLinAlgMode() {
+    return this.mode === 'linalg';
+  }
+
   _isLaplaceForward(problem) {
     return this._isDiffEqMode() && problem?.verifyKind === 'laplace-forward';
   }
@@ -389,6 +450,9 @@ export class PaperlessStepSolver {
   }
 
   _getDefaultVerifyCursorX(problem) {
+    if (this._isLinAlgMode() || !Array.isArray(problem?.domain)) {
+      return 1;
+    }
     const [xMin, xMax] = problem.domain;
     const margin = (xMax - xMin) * 0.015;
     if (this._isIntegralMode() && Array.isArray(problem.definiteBounds)) {
@@ -672,6 +736,7 @@ export class PaperlessStepSolver {
 
     const isIntegral = this._isIntegralMode();
     const isDiffEq = this._isDiffEqMode();
+    const isLinAlg = this._isLinAlgMode();
     const solvedSet = this._getSolvedSet();
     const totalSolved = this.problems.filter((p) => solvedSet.has(p.id)).length;
     const totalProblems = this.problems.length;
@@ -680,31 +745,41 @@ export class PaperlessStepSolver {
     const globalIndex = this.problems.findIndex((p) => p.id === problem.id);
     const problemIsSolved = solvedSet.has(problem.id);
 
-    const cheatTitle = isDiffEq
-      ? 'ODE & Laplace Reference'
-      : isIntegral
-        ? 'Integration Formula Reference'
-        : 'Differentiation Formula Reference';
-    const targetHeaderLabel = isDiffEq
-      ? 'Solve the ODE / Laplace'
-      : isIntegral
-        ? 'Evaluate the Integral'
-        : 'Differentiate w.r.t. x';
-    const legendCyan = isDiffEq
-      ? 'Cyan: y / P(t) / f(t)'
-      : isIntegral
-        ? 'Cyan: u / Factor A'
-        : 'Cyan: Outer / u';
-    const legendAmber = isDiffEq
-      ? 'Amber: t / Q(t) / IC'
-      : isIntegral
-        ? 'Amber: dv / Factor B'
-        : 'Amber: Inner / v';
-    const legendEmerald = isDiffEq
-      ? 'Emerald: Solution / F(s)'
-      : isIntegral
-        ? 'Emerald: Antideriv'
-        : 'Emerald: Deriv';
+    const cheatTitle = isLinAlg
+      ? 'Linear Algebra Reference'
+      : isDiffEq
+        ? 'ODE & Laplace Reference'
+        : isIntegral
+          ? 'Integration Formula Reference'
+          : 'Differentiation Formula Reference';
+    const targetHeaderLabel = isLinAlg
+      ? 'Solve Linear Algebra'
+      : isDiffEq
+        ? 'Solve the ODE / Laplace'
+        : isIntegral
+          ? 'Evaluate the Integral'
+          : 'Differentiate w.r.t. x';
+    const legendCyan = isLinAlg
+      ? 'Cyan: Primary / A / u'
+      : isDiffEq
+        ? 'Cyan: y / P(t) / f(t)'
+        : isIntegral
+          ? 'Cyan: u / Factor A'
+          : 'Cyan: Outer / u';
+    const legendAmber = isLinAlg
+      ? 'Amber: Secondary / λ / b'
+      : isDiffEq
+        ? 'Amber: t / Q(t) / IC'
+        : isIntegral
+          ? 'Amber: dv / Factor B'
+          : 'Amber: Inner / v';
+    const legendEmerald = isLinAlg
+      ? 'Emerald: Result / Eigen / Fit'
+      : isDiffEq
+        ? 'Emerald: Solution / F(s)'
+        : isIntegral
+          ? 'Emerald: Antideriv'
+          : 'Emerald: Deriv';
 
     const tierPillsHtml = this.tiers.map((tier) => {
       const list =
@@ -1119,141 +1194,309 @@ export class PaperlessStepSolver {
     `;
   }
 
+  _getLinAlgVerifyMeta(problem) {
+    const vp = problem?.verifyPlot || {};
+    const kind = vp.kind || 'vectors';
+    const dot = (cls, label, dashed = false) =>
+      dashed
+        ? `<span class="inline-flex items-center gap-1 ${cls}"><span class="w-3 h-0 border-t-2 border-dashed border-current inline-block"></span>${label}</span>`
+        : `<span class="inline-flex items-center gap-1 ${cls}"><span class="w-2.5 h-0.5 rounded bg-current inline-block"></span>${label}</span>`;
+
+    const presets = {
+      vectors: {
+        subtitle:
+          'Geometric proof in $\\mathbb{R}^2$ verifying the dot product, lengths, and exact angle $\\theta$ between $\\mathbf{u}$ and $\\mathbf{v}$.',
+        legendHtml:
+          dot('text-cyan-300', 'u vector') +
+          dot('text-amber-300', 'v vector') +
+          dot('text-emerald-300', 'angle θ'),
+        domainMeta: '2D Vector Plane · Equal Aspect',
+        canvasAria: 'Geometric verification plot of vectors u and v with angle arc',
+      },
+      projection: {
+        subtitle:
+          'Geometric proof showing $\\operatorname{proj}_{\\mathbf{b}}\\mathbf{a}$ lying along $\\mathbf{b}$ with residual $\\mathbf{e} \\perp \\mathbf{b}$.',
+        legendHtml:
+          dot('text-cyan-300', 'a vector') +
+          dot('text-slate-300', 'b line', true) +
+          dot('text-emerald-300', 'proj_b(a)') +
+          dot('text-amber-300', 'e residual (⊥)', true),
+        domainMeta: 'Orthogonal Projection · 90° Check',
+        canvasAria: 'Geometric plot of orthogonal vector projection and perpendicular residual',
+      },
+      'vectors-3d': {
+        subtitle:
+          'Isometric 3D view confirming torque $\\boldsymbol{\\tau} = \\mathbf{r} \\times \\mathbf{F}$ rises perpendicular to the $(\\mathbf{r}, \\mathbf{F})$ plane. Drag horizontally to orbit.',
+        legendHtml:
+          dot('text-cyan-300', 'r lever arm') +
+          dot('text-amber-300', 'F force') +
+          dot('text-emerald-300', 'τ = r × F (⊥)'),
+        domainMeta: '3D Isometric · Drag to Orbit',
+        canvasAria: '3D isometric plot of lever arm r, force F, and cross-product torque tau',
+      },
+      matrix: {
+        subtitle:
+          'Hover or drag horizontally to morph $I \\to A$: watch the unit square deform into a parallelogram of area $|\\det(A)|$.',
+        legendHtml:
+          dot('text-slate-400', 'unit square', true) +
+          dot('text-cyan-300', 'A e₁') +
+          dot('text-amber-300', 'A e₂') +
+          dot('text-emerald-300', 'image (det)'),
+        domainMeta: 'Linear Map ℝ² → ℝ² · Drag t ∈ [0,1]',
+        canvasAria: 'Interactive linear transformation plot mapping unit square to parallelogram',
+      },
+      'linear-system': {
+        subtitle:
+          'Row picture in $\\mathbb{R}^2$: both linear constraints intersect cleanly at the unique solution $\\mathbf{x}$.',
+        legendHtml:
+          dot('text-cyan-300', 'Row 1 eq') +
+          dot('text-amber-300', 'Row 2 eq') +
+          dot('text-emerald-300', 'Solution x'),
+        domainMeta: 'Row Picture ℝ² · Unique Intersection',
+        canvasAria: 'Geometric plot of two linear equations intersecting at exact solution x',
+      },
+      det3x3: {
+        subtitle:
+          'Isometric 3D parallelepiped spanned by the 3 columns of $A$ with volume $|\\det(A)| = 13 \\neq 0$. Drag horizontally to orbit.',
+        legendHtml:
+          dot('text-cyan-300', 'col 1') +
+          dot('text-amber-300', 'col 2') +
+          dot('text-violet-300', 'col 3') +
+          dot('text-emerald-300', 'volume |det|'),
+        domainMeta: '3D Column Volume · Drag to Orbit',
+        canvasAria: '3D isometric parallelepiped verifying nonzero determinant volume',
+      },
+      eigen: {
+        subtitle:
+          'Hover or drag horizontally to morph $I \\to A$: eigenvectors stay locked on their invariant spans while scaling purely by $\\lambda$.',
+        legendHtml:
+          dot('text-slate-400', 'unit square', true) +
+          dot('text-emerald-300', 'A(square)') +
+          dot('text-cyan-300', 'v₁ → λ₁v₁') +
+          dot('text-amber-300', 'v₂ → λ₂v₂'),
+        domainMeta: 'Eigen-Directions ℝ² · Drag t ∈ [0,1]',
+        canvasAria: 'Interactive eigenvalue plot showing invariant eigenvector spans under A',
+      },
+      'complex-rotation': {
+        subtitle:
+          'Hover or drag horizontally to animate the spiral action: $A$ rotates every vector by $\\phi$ and scales radius by $|\\lambda|$ with no real eigen-lines.',
+        legendHtml:
+          dot('text-slate-400', 'unit circle', true) +
+          dot('text-emerald-300', 'scaled |λ|') +
+          dot('text-cyan-300', 'e₁') +
+          dot('text-amber-300', 'spiral φ', true),
+        domainMeta: 'Scaled Rotation ℝ² · Drag t ∈ [0,1]',
+        canvasAria: 'Interactive scaled rotation plot illustrating complex eigenvalues',
+      },
+      'gram-schmidt': {
+        subtitle:
+          'Geometric proof: raw inputs $\\mathbf{a}_1, \\mathbf{a}_2$ orthogonalize and normalize onto the unit circle with $\\mathbf{q}_1 \\perp \\mathbf{q}_2$.',
+        legendHtml:
+          dot('text-slate-400', 'a₁, a₂ raw', true) +
+          dot('text-cyan-300', 'q₁ unit') +
+          dot('text-emerald-300', 'q₂ unit (⊥)'),
+        domainMeta: 'Orthonormal Basis · QᵀQ = I',
+        canvasAria: 'Geometric plot of Gram-Schmidt orthonormal vectors on the unit circle',
+      },
+      'least-squares': {
+        subtitle:
+          'Best-fit regression line $\\hat{y}(t) = c + mt$ minimizing $\\|\\mathbf{e}\\|^2$ with orthogonal vertical residuals ($A^T\\mathbf{e} = \\mathbf{0}$).',
+        legendHtml:
+          dot('text-cyan-300', 'data points') +
+          dot('text-emerald-300', 'best-fit ŷ(t)') +
+          dot('text-amber-300', 'residuals eᵢ', true),
+        domainMeta: 'Least-Squares Fit · Min ‖e‖²',
+        canvasAria: 'Least-squares regression plot with data points, fitted line, and residuals',
+      },
+      svd: {
+        subtitle: vp.isSpd
+          ? 'Hover or drag horizontally to morph $I \\to A$: symmetric $A = Q\\Lambda Q^T$ maps the unit circle to an ellipse aligned with orthonormal eigenvectors $\\mathbf{q}_1, \\mathbf{q}_2$.'
+          : 'Hover or drag horizontally to morph $I \\to A$: the unit circle maps to the SVD ellipse with orthogonal semi-axes $\\sigma_1, \\sigma_2$.',
+        legendHtml:
+          dot('text-slate-400', 'unit circle', true) +
+          dot('text-emerald-300', vp.isSpd ? 'SPD ellipse' : 'SVD ellipse') +
+          dot('text-cyan-300', vp.isSpd ? 'λ₁ q₁' : 'σ₁ u₁') +
+          dot('text-amber-300', vp.isSpd ? 'λ₂ q₂' : 'σ₂ u₂'),
+        domainMeta: vp.isSpd
+          ? 'SPD Spectral Ellipse · Drag t ∈ [0,1]'
+          : 'SVD Principal Ellipse · Drag t ∈ [0,1]',
+        canvasAria: 'Interactive unit-circle to SVD ellipse geometric verification plot',
+      },
+    };
+
+    const meta = presets[kind] || presets.vectors;
+    const metrics = Array.isArray(vp.metrics) ? vp.metrics : [];
+    return {
+      ...meta,
+      subtitleHtml: renderInlineMathText(meta.subtitle),
+      metrics: [
+        metrics[0] || { label: 'Metric 1', value: '—' },
+        metrics[1] || { label: 'Metric 2', value: '—' },
+        metrics[2] || { label: 'Metric 3', value: '—' },
+        metrics[3] || { label: 'Verification', value: '0.0000 ✓' },
+      ],
+    };
+  }
+
   _buildVerificationCardHtml(problem) {
     const isIntegral = this._isIntegralMode();
     const isDiffEq = this._isDiffEqMode();
+    const isLinAlg = this._isLinAlgMode();
     const isLaplaceFwd = this._isLaplaceForward(problem);
     const isLaplaceInv = this._isLaplaceInverse(problem);
     const hasDiffEqDeriv = isDiffEq && typeof problem.verifyDerivFn === 'function';
+    const linAlgMeta = isLinAlg ? this._getLinAlgVerifyMeta(problem) : null;
 
-    const heading = isDiffEq
-      ? 'Solution Verified Numerically'
-      : isIntegral
-        ? 'Antiderivative Verified Numerically'
-        : 'Derivative Verified Numerically';
+    const heading = isLinAlg
+      ? 'Geometric Verification'
+      : isDiffEq
+        ? 'Solution Verified Numerically'
+        : isIntegral
+          ? 'Antiderivative Verified Numerically'
+          : 'Derivative Verified Numerically';
 
-    const subtitle = isDiffEq
-      ? isLaplaceFwd
-        ? renderInlineMathText(
-            'Hover or drag across the plot to compare the time signal $f(t)$ against its Laplace transform $F(s) = \\int_0^\\infty e^{-st}f(t)\\,dt$.'
-          )
-        : isLaplaceInv
+    const subtitle = isLinAlg
+      ? linAlgMeta.subtitleHtml
+      : isDiffEq
+        ? isLaplaceFwd
           ? renderInlineMathText(
-              "Hover or drag across the plot to inspect the inverted signal $y(t)$, its slope $y'(t)$, and the numerical Laplace check."
+              'Hover or drag across the plot to compare the time signal $f(t)$ against its Laplace transform $F(s) = \\int_0^\\infty e^{-st}f(t)\\,dt$.'
+            )
+          : isLaplaceInv
+            ? renderInlineMathText(
+                "Hover or drag across the plot to inspect the inverted signal $y(t)$, its slope $y'(t)$, and the numerical Laplace check."
+              )
+            : renderInlineMathText(
+                "Hover or drag across the plot to verify your solution $y(t)$, its slope $y'(t)$, and confirm the ODE residual vanishes everywhere."
+              )
+        : isIntegral
+          ? renderInlineMathText(
+              'Hover or drag across the plot to verify $\\frac{d}{dx}F(x) = f(x)$ and watch the shaded area under $f(x)$.'
             )
           : renderInlineMathText(
-              "Hover or drag across the plot to verify your solution $y(t)$, its slope $y'(t)$, and confirm the ODE residual vanishes everywhere."
-            )
-      : isIntegral
-        ? renderInlineMathText(
-            'Hover or drag across the plot to verify $\\frac{d}{dx}F(x) = f(x)$ and watch the shaded area under $f(x)$.'
-          )
-        : renderInlineMathText(
-            "Hover or drag across the plot to compare your solved $f'(x)$ against the curve's true tangent slope."
-          );
+              "Hover or drag across the plot to compare your solved $f'(x)$ against the curve's true tangent slope."
+            );
 
-    const legendHtml = isDiffEq
-      ? isLaplaceFwd
-        ? `
-            <span class="inline-flex items-center gap-1 text-cyan-300">
-              <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
-              f(t) signal
-            </span>
-            <span class="inline-flex items-center gap-1 text-emerald-300">
-              <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
-              F(s) transform
-            </span>
-          `
-        : `
-            <span class="inline-flex items-center gap-1 text-emerald-300">
-              <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
-              y(t) solution
-            </span>
-            ${
-              hasDiffEqDeriv
-                ? `<span class="inline-flex items-center gap-1 text-cyan-300">
-                    <span class="w-3 h-0 border-t-2 border-dashed border-cyanGlow inline-block"></span>
-                    y'(t) rate
-                  </span>`
-                : ''
-            }
-            <span class="inline-flex items-center gap-1 text-amber-300">
-              <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
-              tangent
-            </span>
-          `
-      : isIntegral
-        ? `
-            <span class="inline-flex items-center gap-1 text-cyan-300">
-              <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
-              f(x)
-            </span>
-            <span class="inline-flex items-center gap-1 text-emerald-300">
-              <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
-              F(x)
-            </span>
-            <span class="inline-flex items-center gap-1 text-emerald-200/90">
-              <span class="w-2.5 h-2 rounded-sm bg-emeraldGlow/35 border border-emeraldGlow/60 inline-block"></span>
-              area
-            </span>
-            <span class="inline-flex items-center gap-1 text-amber-300">
-              <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
-              F'(x) tangent
-            </span>
-          `
-        : `
-            <span class="inline-flex items-center gap-1 text-cyan-300">
-              <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
-              f(x)
-            </span>
-            <span class="inline-flex items-center gap-1 text-emerald-300">
-              <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
-              f'(x)
-            </span>
-            <span class="inline-flex items-center gap-1 text-amber-300">
-              <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
-              tangent
-            </span>
-          `;
+    const legendHtml = isLinAlg
+      ? linAlgMeta.legendHtml
+      : isDiffEq
+        ? isLaplaceFwd
+          ? `
+              <span class="inline-flex items-center gap-1 text-cyan-300">
+                <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
+                f(t) signal
+              </span>
+              <span class="inline-flex items-center gap-1 text-emerald-300">
+                <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
+                F(s) transform
+              </span>
+            `
+          : `
+              <span class="inline-flex items-center gap-1 text-emerald-300">
+                <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
+                y(t) solution
+              </span>
+              ${
+                hasDiffEqDeriv
+                  ? `<span class="inline-flex items-center gap-1 text-cyan-300">
+                      <span class="w-3 h-0 border-t-2 border-dashed border-cyanGlow inline-block"></span>
+                      y'(t) rate
+                    </span>`
+                  : ''
+              }
+              <span class="inline-flex items-center gap-1 text-amber-300">
+                <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
+                tangent
+              </span>
+            `
+        : isIntegral
+          ? `
+              <span class="inline-flex items-center gap-1 text-cyan-300">
+                <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
+                f(x)
+              </span>
+              <span class="inline-flex items-center gap-1 text-emerald-300">
+                <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
+                F(x)
+              </span>
+              <span class="inline-flex items-center gap-1 text-emerald-200/90">
+                <span class="w-2.5 h-2 rounded-sm bg-emeraldGlow/35 border border-emeraldGlow/60 inline-block"></span>
+                area
+              </span>
+              <span class="inline-flex items-center gap-1 text-amber-300">
+                <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
+                F'(x) tangent
+              </span>
+            `
+          : `
+              <span class="inline-flex items-center gap-1 text-cyan-300">
+                <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
+                f(x)
+              </span>
+              <span class="inline-flex items-center gap-1 text-emerald-300">
+                <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
+                f'(x)
+              </span>
+              <span class="inline-flex items-center gap-1 text-amber-300">
+                <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
+                tangent
+              </span>
+            `;
 
-    const domainMeta = isDiffEq
-      ? isLaplaceFwd && Array.isArray(problem.sDomain)
-        ? `t ∈ [${problem.domain[0]}, ${problem.domain[1]}] · s ∈ [${problem.sDomain[0]}, ${problem.sDomain[1]}]`
-        : `t ∈ [${problem.domain[0]}, ${problem.domain[1]}]`
-      : isIntegral && Array.isArray(problem.definiteBounds)
-        ? `∫[${problem.definiteBounds[0]}, ${problem.definiteBounds[1]}] = ${problem.definiteValue} · [${problem.domain[0]}, ${problem.domain[1]}]`
-        : `[${problem.domain[0]}, ${problem.domain[1]}]`;
+    const domainMeta = isLinAlg
+      ? linAlgMeta.domainMeta
+      : isDiffEq
+        ? isLaplaceFwd && Array.isArray(problem.sDomain)
+          ? `t ∈ [${problem.domain[0]}, ${problem.domain[1]}] · s ∈ [${problem.sDomain[0]}, ${problem.sDomain[1]}]`
+          : `t ∈ [${problem.domain[0]}, ${problem.domain[1]}]`
+        : isIntegral && Array.isArray(problem.definiteBounds)
+          ? `∫[${problem.definiteBounds[0]}, ${problem.definiteBounds[1]}] = ${problem.definiteValue} · [${problem.domain[0]}, ${problem.domain[1]}]`
+          : `[${problem.domain[0]}, ${problem.domain[1]}]`;
 
-    const canvasAria = isDiffEq
-      ? isLaplaceFwd
-        ? 'Interactive dual curve graph comparing time-domain signal f(t) and Laplace transform F(s)'
-        : "Interactive dual curve graph verifying ODE solution y(t) and rate y'(t)"
-      : isIntegral
-        ? 'Interactive dual curve graph comparing integrand f(x) and antiderivative F(x)'
-        : "Interactive dual curve graph comparing f(x) and f'(x)";
+    const canvasAria = isLinAlg
+      ? linAlgMeta.canvasAria
+      : isDiffEq
+        ? isLaplaceFwd
+          ? 'Interactive dual curve graph comparing time-domain signal f(t) and Laplace transform F(s)'
+          : "Interactive dual curve graph verifying ODE solution y(t) and rate y'(t)"
+        : isIntegral
+          ? 'Interactive dual curve graph comparing integrand f(x) and antiderivative F(x)'
+          : "Interactive dual curve graph comparing f(x) and f'(x)";
 
-    const col1Label = isDiffEq ? (isLaplaceFwd ? 'Time t / s' : 'Time t') : 'Probe x';
-    const col2Label = isDiffEq
-      ? isLaplaceFwd
-        ? 'Signal f(t)'
-        : 'Solution y(t)'
-      : isIntegral
-        ? 'Integrand f(x)'
-        : 'f(x) Height';
-    const col3Label = isDiffEq
-      ? isLaplaceFwd
-        ? 'Transform F(s)'
-        : "Slope y'(t)"
-      : isIntegral
-        ? 'Antideriv F(x)'
-        : "Exact f'(x)";
-    const col4Label = isDiffEq
-      ? isLaplaceFwd || isLaplaceInv
-        ? 'Laplace Residual'
-        : 'ODE Residual'
-      : isIntegral
-        ? "Slope F'(x)"
-        : 'True Slope';
+    const col1Label = isLinAlg
+      ? linAlgMeta.metrics[0].label
+      : isDiffEq
+        ? isLaplaceFwd
+          ? 'Time t / s'
+          : 'Time t'
+        : 'Probe x';
+    const col2Label = isLinAlg
+      ? linAlgMeta.metrics[1].label
+      : isDiffEq
+        ? isLaplaceFwd
+          ? 'Signal f(t)'
+          : 'Solution y(t)'
+        : isIntegral
+          ? 'Integrand f(x)'
+          : 'f(x) Height';
+    const col3Label = isLinAlg
+      ? linAlgMeta.metrics[2].label
+      : isDiffEq
+        ? isLaplaceFwd
+          ? 'Transform F(s)'
+          : "Slope y'(t)"
+        : isIntegral
+          ? 'Antideriv F(x)'
+          : "Exact f'(x)";
+    const col4Label = isLinAlg
+      ? linAlgMeta.metrics[3].label
+      : isDiffEq
+        ? isLaplaceFwd || isLaplaceInv
+          ? 'Laplace Residual'
+          : 'ODE Residual'
+        : isIntegral
+          ? "Slope F'(x)"
+          : 'True Slope';
 
     const col2BoxClass =
       isDiffEq && !isLaplaceFwd
@@ -1525,6 +1768,11 @@ export class PaperlessStepSolver {
     const cssX = e.clientX - rect.left;
     const { padL, plotW, xMin, xMax } = this.verifyPlotGeom;
     const t = Math.max(0, Math.min(1, (cssX - padL) / plotW));
+    if (this._isLinAlgMode()) {
+      this.verifyCursorX = t;
+      this._drawVerificationCanvas();
+      return;
+    }
     const margin = (xMax - xMin) * 0.015;
     this.verifyCursorX = Math.max(
       xMin + margin,
@@ -1624,6 +1872,10 @@ export class PaperlessStepSolver {
     if (!canvas || !canvas.isConnected) return;
 
     const problem = this._getActiveProblem();
+    if (this._isLinAlgMode()) {
+      this._drawLinAlgVerificationCanvas(canvas, problem);
+      return;
+    }
     if (this._isDiffEqMode()) {
       this._drawDiffEqVerificationCanvas(canvas, problem);
       return;
@@ -2405,5 +2657,1169 @@ export class PaperlessStepSolver {
     } else {
       if (numEl) numEl.textContent = '—';
     }
+  }
+
+  /* ========================================================================
+     Linear Algebra High-DPI Geometric Verification Canvas
+     ======================================================================== */
+
+  _drawLinAlgArrow(ctx, x1, y1, x2, y2, color, opts = {}) {
+    const {
+      lineWidth = 2.4,
+      dashed = false,
+      glow = true,
+      headLen = 9,
+      alpha = 1,
+    } = opts;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-3) return;
+
+    const ang = Math.atan2(dy, dx);
+    const hl = Math.min(headLen, len * 0.45);
+    const shaftEndX = x2 - Math.cos(ang) * (hl * 0.65);
+    const shaftEndY = y2 - Math.sin(ang) * (hl * 0.65);
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'round';
+    if (dashed) ctx.setLineDash([5, 4]);
+    if (glow) {
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 10;
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(shaftEndX, shaftEndY);
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(
+      x2 - hl * Math.cos(ang - Math.PI / 6),
+      y2 - hl * Math.sin(ang - Math.PI / 6)
+    );
+    ctx.lineTo(
+      x2 - hl * Math.cos(ang + Math.PI / 6),
+      y2 - hl * Math.sin(ang + Math.PI / 6)
+    );
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  _drawLinAlgRightAngle(ctx, mapX, mapY, corner, dir1, dir2, sizePx = 10, color = '#F59E0B') {
+    const p0x = mapX(corner[0]);
+    const p0y = mapY(corner[1]);
+    const p1x = mapX(corner[0] + dir1[0]);
+    const p1y = mapY(corner[1] + dir1[1]);
+    const p2x = mapX(corner[0] + dir2[0]);
+    const p2y = mapY(corner[1] + dir2[1]);
+
+    const len1 = Math.hypot(p1x - p0x, p1y - p0y) || 1;
+    const len2 = Math.hypot(p2x - p0x, p2y - p0y) || 1;
+    const u1x = ((p1x - p0x) / len1) * sizePx;
+    const u1y = ((p1y - p0y) / len1) * sizePx;
+    const u2x = ((p2x - p0x) / len2) * sizePx;
+    const u2y = ((p2y - p0y) / len2) * sizePx;
+
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(p0x + u1x, p0y + u1y);
+    ctx.lineTo(p0x + u1x + u2x, p0y + u1y + u2y);
+    ctx.lineTo(p0x + u2x, p0y + u2y);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  _makeLinAlgEqualPlane(ctx, width, height, bounds) {
+    const padL = 34;
+    const padR = 20;
+    const padT = 18;
+    const padB = 26;
+    const plotW = Math.max(40, width - padL - padR);
+    const plotH = Math.max(40, height - padT - padB);
+
+    const spanX = Math.max(1e-3, bounds.maxX - bounds.minX);
+    const spanY = Math.max(1e-3, bounds.maxY - bounds.minY);
+    const scale = Math.min(plotW / spanX, plotH / spanY);
+
+    const midX = (bounds.minX + bounds.maxX) / 2;
+    const midY = (bounds.minY + bounds.maxY) / 2;
+    const cx = padL + plotW / 2;
+    const cy = padT + plotH / 2;
+
+    const mapX = (x) => cx + (x - midX) * scale;
+    const mapY = (y) => cy - (y - midY) * scale;
+
+    const viewMinX = midX - plotW / (2 * scale);
+    const viewMaxX = midX + plotW / (2 * scale);
+    const viewMinY = midY - plotH / (2 * scale);
+    const viewMaxY = midY + plotH / (2 * scale);
+
+    // Choose crisp grid spacing
+    const rawStep = Math.max(viewMaxX - viewMinX, viewMaxY - viewMinY) / 6;
+    const stepCandidates = [0.25, 0.5, 1, 2, 5, 10];
+    const step =
+      stepCandidates.find((s) => s >= rawStep) || Math.ceil(rawStep);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(padL, padT, plotW, plotH);
+    ctx.clip();
+
+    // Subtle coordinate grid
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.055)';
+    ctx.lineWidth = 1;
+    const gxStart = Math.ceil(viewMinX / step) * step;
+    for (let gx = gxStart; gx <= viewMaxX + 1e-6; gx += step) {
+      const px = mapX(gx);
+      ctx.beginPath();
+      ctx.moveTo(px, padT);
+      ctx.lineTo(px, padT + plotH);
+      ctx.stroke();
+    }
+    const gyStart = Math.ceil(viewMinY / step) * step;
+    for (let gy = gyStart; gy <= viewMaxY + 1e-6; gy += step) {
+      const py = mapY(gy);
+      ctx.beginPath();
+      ctx.moveTo(padL, py);
+      ctx.lineTo(padL + plotW, py);
+      ctx.stroke();
+    }
+
+    // Emphasized axes
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+    ctx.lineWidth = 1.25;
+    if (viewMinX <= 0 && viewMaxX >= 0) {
+      const x0 = mapX(0);
+      ctx.beginPath();
+      ctx.moveTo(x0, padT);
+      ctx.lineTo(x0, padT + plotH);
+      ctx.stroke();
+    }
+    if (viewMinY <= 0 && viewMaxY >= 0) {
+      const y0 = mapY(0);
+      ctx.beginPath();
+      ctx.moveTo(padL, y0);
+      ctx.lineTo(padL + plotW, y0);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Axis ticks outside/along border
+    ctx.save();
+    ctx.font = '10px "JetBrains Mono", monospace';
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.72)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (let gx = gxStart; gx <= viewMaxX + 1e-6; gx += step) {
+      const px = mapX(gx);
+      if (px >= padL + 8 && px <= padL + plotW - 8) {
+        ctx.fillText(formatAxisTick(gx), px, padT + plotH + 6);
+      }
+    }
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let gy = gyStart; gy <= viewMaxY + 1e-6; gy += step) {
+      const py = mapY(gy);
+      if (py >= padT + 6 && py <= padT + plotH - 6) {
+        ctx.fillText(formatAxisTick(gy), padL - 6, py);
+      }
+    }
+    ctx.restore();
+
+    this.verifyPlotGeom = { padL, padR, padT, padB, plotW, plotH, xMin: 0, xMax: 1 };
+    return { padL, padT, plotW, plotH, mapX, mapY, viewMinX, viewMaxX, viewMinY, viewMaxY, scale };
+  }
+
+  _drawLinAlgLabel(ctx, text, x, y, color = '#E2E8F0', align = 'left') {
+    ctx.save();
+    ctx.font = '600 11px "JetBrains Mono", monospace';
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(8, 11, 17, 0.95)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  }
+
+  _drawLinAlgHudTag(ctx, text, padL, padT, plotW) {
+    ctx.save();
+    ctx.font = '10px "JetBrains Mono", monospace';
+    const tw = ctx.measureText(text).width;
+    const bx = padL + plotW - tw - 16;
+    const by = padT + 5;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+    ctx.strokeStyle = 'rgba(52, 211, 153, 0.32)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (typeof ctx.roundRect === 'function') {
+      ctx.roundRect(bx, by, tw + 12, 18, 5);
+    } else {
+      ctx.rect(bx, by, tw + 12, 18);
+    }
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#A7F3D0';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, bx + 6, by + 9);
+    ctx.restore();
+  }
+
+  _drawLinAlgVerificationCanvas(canvas, problem) {
+    const vp = problem?.verifyPlot;
+    if (!vp) return;
+
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width < 10 || rect.height < 10) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const width = rect.width;
+    const height = rect.height;
+
+    if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+
+    // Studio background fill
+    ctx.fillStyle = '#080B11';
+    ctx.fillRect(0, 0, width, height);
+
+    const t = Math.max(0, Math.min(1, this.verifyCursorX ?? 1));
+    const apply2 = (M, v) => [M[0][0] * v[0] + M[0][1] * v[1], M[1][0] * v[0] + M[1][1] * v[1]];
+    const lerpMat2 = (A, s) => [
+      [1 + s * (A[0][0] - 1), s * A[0][1]],
+      [s * A[1][0], 1 + s * (A[1][1] - 1)],
+    ];
+
+    if (vp.kind === 'vectors') {
+      const { u, v, uLabel = 'u', vLabel = 'v', angleDeg = 30 } = vp;
+      const maxX = Math.max(0.5, u[0], v[0]) + 0.65;
+      const minX = Math.min(-0.4, u[0], v[0]) - 0.35;
+      const maxY = Math.max(0.5, u[1], v[1]) + 0.65;
+      const minY = Math.min(-0.4, u[1], v[1]) - 0.35;
+      const plane = this._makeLinAlgEqualPlane(ctx, width, height, { minX, maxX, minY, maxY });
+      const { mapX, mapY, padL, padT, plotW, plotH } = plane;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, padT, plotW, plotH);
+      ctx.clip();
+
+      const ox = mapX(0);
+      const oy = mapY(0);
+      const angU = Math.atan2(-(u[1]), u[0]);
+      const angV = Math.atan2(-(v[1]), v[0]);
+      const aStart = Math.min(angU, angV);
+      const aEnd = Math.max(angU, angV);
+      const arcR = 44;
+
+      // Shaded angle sector
+      ctx.save();
+      ctx.fillStyle = 'rgba(52, 211, 153, 0.16)';
+      ctx.beginPath();
+      ctx.moveTo(ox, oy);
+      ctx.arc(ox, oy, arcR, aStart, aEnd);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#34D399';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(ox, oy, arcR, aStart, aEnd);
+      ctx.stroke();
+      ctx.restore();
+
+      const midAng = (aStart + aEnd) / 2;
+      this._drawLinAlgLabel(
+        ctx,
+        `θ = ${angleDeg}°`,
+        ox + Math.cos(midAng) * (arcR + 24),
+        oy + Math.sin(midAng) * (arcR + 24),
+        '#6EE7B7',
+        'center'
+      );
+
+      this._drawLinAlgArrow(ctx, ox, oy, mapX(u[0]), mapY(u[1]), '#22D3EE', { lineWidth: 2.8 });
+      this._drawLinAlgArrow(ctx, ox, oy, mapX(v[0]), mapY(v[1]), '#F59E0B', { lineWidth: 2.8 });
+
+      this._drawLinAlgLabel(ctx, `${uLabel} = [1, √3]ᵀ`, mapX(u[0]) + 8, mapY(u[1]) - 6, '#67E8F9');
+      this._drawLinAlgLabel(ctx, `${vLabel} = [√3, 1]ᵀ`, mapX(v[0]) + 8, mapY(v[1]) + 4, '#FCD34D');
+
+      ctx.restore();
+    } else if (vp.kind === 'projection') {
+      const { a, b, p } = vp;
+      const xs = [0, a[0], b[0], p[0]];
+      const ys = [0, a[1], b[1], p[1]];
+      const plane = this._makeLinAlgEqualPlane(ctx, width, height, {
+        minX: Math.min(...xs) - 0.8,
+        maxX: Math.max(...xs) + 1.0,
+        minY: Math.min(...ys) - 0.8,
+        maxY: Math.max(...ys) + 0.9,
+      });
+      const { mapX, mapY, padL, padT, plotW, plotH } = plane;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, padT, plotW, plotH);
+      ctx.clip();
+
+      const ox = mapX(0);
+      const oy = mapY(0);
+
+      // Infinite span line along b
+      ctx.save();
+      ctx.strokeStyle = 'rgba(203, 213, 225, 0.25)';
+      ctx.setLineDash([5, 5]);
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(mapX(-3 * b[0]), mapY(-3 * b[1]));
+      ctx.lineTo(mapX(4 * b[0]), mapY(4 * b[1]));
+      ctx.stroke();
+      ctx.restore();
+
+      // Right-angle marker at foot p between -b and residual e
+      this._drawLinAlgRightAngle(
+        ctx,
+        mapX,
+        mapY,
+        p,
+        [-b[0], -b[1]],
+        [a[0] - p[0], a[1] - p[1]],
+        10,
+        '#F59E0B'
+      );
+
+      // Residual e (from p to a)
+      this._drawLinAlgArrow(ctx, mapX(p[0]), mapY(p[1]), mapX(a[0]), mapY(a[1]), '#F59E0B', {
+        lineWidth: 2.2,
+        dashed: true,
+      });
+
+      // Projection p (emerald) and base vector b (slate)
+      this._drawLinAlgArrow(ctx, ox, oy, mapX(p[0]), mapY(p[1]), '#34D399', { lineWidth: 3.0 });
+      this._drawLinAlgArrow(ctx, ox, oy, mapX(b[0]), mapY(b[1]), '#CBD5E1', {
+        lineWidth: 2.2,
+        glow: false,
+      });
+
+      // Original vector a (cyan)
+      this._drawLinAlgArrow(ctx, ox, oy, mapX(a[0]), mapY(a[1]), '#22D3EE', { lineWidth: 2.8 });
+
+      this._drawLinAlgLabel(ctx, 'a [3,4]', mapX(a[0]) - 6, mapY(a[1]) - 10, '#67E8F9', 'right');
+      this._drawLinAlgLabel(ctx, 'b [2,1]', mapX(b[0]) + 4, mapY(b[1]) + 14, '#CBD5E1');
+      this._drawLinAlgLabel(ctx, 'proj [4,2]', mapX(p[0]) + 8, mapY(p[1]) + 10, '#6EE7B7');
+      this._drawLinAlgLabel(
+        ctx,
+        'e [-1,2] ⊥',
+        mapX((p[0] + a[0]) / 2) + 8,
+        mapY((p[1] + a[1]) / 2) - 4,
+        '#FCD34D'
+      );
+
+      ctx.restore();
+    } else if (vp.kind === 'vectors-3d' || vp.kind === 'det3x3') {
+      const padL = 20;
+      const padR = 20;
+      const padT = 18;
+      const padB = 18;
+      const plotW = Math.max(40, width - padL - padR);
+      const plotH = Math.max(40, height - padT - padB);
+      this.verifyPlotGeom = { padL, padR, padT, padB, plotW, plotH, xMin: 0, xMax: 1 };
+
+      // Isometric 3D projector with horizontal orbit controlled by cursor t
+      const az = -0.58 + (t - 1) * 1.45;
+      const el = 0.42;
+      const cosA = Math.cos(az);
+      const sinA = Math.sin(az);
+      const cosE = Math.cos(el);
+      const sinE = Math.sin(el);
+
+      const projRaw = (v) => {
+        const rx = v[0] * cosA - v[1] * sinA;
+        const ry = v[0] * sinA + v[1] * cosA;
+        return [rx, v[2] * cosE - ry * sinE];
+      };
+
+      const samplePts = [[0, 0, 0]];
+      if (vp.kind === 'vectors-3d') {
+        const { r, F, tau } = vp;
+        const tauVis = tau.map((c) => c * 0.45); // Gentle visual scale so τ fits cleanly alongside r & F
+        samplePts.push(r, F, [r[0] + F[0], r[1] + F[1], r[2] + F[2]], tauVis, [3, 0, 0], [0, 3, 0], [0, 0, 4]);
+      } else {
+        const A = vp.A;
+        const c1 = [A[0][0], A[1][0], A[2][0]];
+        const c2 = [A[0][1], A[1][1], A[2][1]];
+        const c3 = [A[0][2], A[1][2], A[2][2]];
+        for (const a1 of [0, 1]) {
+          for (const a2 of [0, 1]) {
+            for (const a3 of [0, 1]) {
+              samplePts.push([
+                a1 * c1[0] + a2 * c2[0] + a3 * c3[0],
+                a1 * c1[1] + a2 * c2[1] + a3 * c3[1],
+                a1 * c1[2] + a2 * c2[2] + a3 * c3[2],
+              ]);
+            }
+          }
+        }
+      }
+
+      const projected = samplePts.map(projRaw);
+      const pxs = projected.map((p) => p[0]);
+      const pys = projected.map((p) => p[1]);
+      const minPx = Math.min(...pxs) - 0.6;
+      const maxPx = Math.max(...pxs) + 0.6;
+      const minPy = Math.min(...pys) - 0.6;
+      const maxPy = Math.max(...pys) + 0.6;
+      const scale = Math.min(plotW / (maxPx - minPx), plotH / (maxPy - minPy));
+      const midX = (minPx + maxPx) / 2;
+      const midY = (minPy + maxPy) / 2;
+      const toScreen = (v) => {
+        const [rx, ry] = projRaw(v);
+        return [
+          padL + plotW / 2 + (rx - midX) * scale,
+          padT + plotH / 2 - (ry - midY) * scale,
+        ];
+      };
+
+      const o = toScreen([0, 0, 0]);
+      const axisLen = vp.kind === 'vectors-3d' ? 3.2 : 2.8;
+      [
+        { v: [axisLen, 0, 0], lbl: 'x' },
+        { v: [0, axisLen, 0], lbl: 'y' },
+        { v: [0, 0, axisLen], lbl: 'z' },
+      ].forEach(({ v, lbl }) => {
+        const pt = toScreen(v);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.moveTo(o[0], o[1]);
+        ctx.lineTo(pt[0], pt[1]);
+        ctx.stroke();
+        ctx.restore();
+        this._drawLinAlgLabel(ctx, lbl, pt[0] + 6, pt[1], 'rgba(148,163,184,0.8)', 'left');
+      });
+
+      if (vp.kind === 'vectors-3d') {
+        const { r, F, tau } = vp;
+        const tauVis = tau.map((c) => c * 0.45);
+        const pr = toScreen(r);
+        const pF = toScreen(F);
+        const prF = toScreen([r[0] + F[0], r[1] + F[1], r[2] + F[2]]);
+        const pT = toScreen(tauVis);
+
+        // Shaded (r, F) plane parallelogram
+        ctx.save();
+        ctx.fillStyle = 'rgba(34, 211, 238, 0.11)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(o[0], o[1]);
+        ctx.lineTo(pr[0], pr[1]);
+        ctx.lineTo(prF[0], prF[1]);
+        ctx.lineTo(pF[0], pF[1]);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        this._drawLinAlgArrow(ctx, o[0], o[1], pr[0], pr[1], '#22D3EE', { lineWidth: 2.6 });
+        this._drawLinAlgArrow(ctx, o[0], o[1], pF[0], pF[1], '#F59E0B', { lineWidth: 2.6 });
+        this._drawLinAlgArrow(ctx, o[0], o[1], pT[0], pT[1], '#34D399', { lineWidth: 3.0 });
+
+        this._drawLinAlgLabel(ctx, 'r [2,1,0]', pr[0] + 6, pr[1] + 8, '#67E8F9');
+        this._drawLinAlgLabel(ctx, 'F [0,3,4]', pF[0] + 6, pF[1] - 6, '#FCD34D');
+        this._drawLinAlgLabel(ctx, 'τ = r×F [4,-8,6]', pT[0] + 6, pT[1] - 6, '#6EE7B7');
+        this._drawLinAlgHudTag(ctx, 'τ ⊥ r, τ ⊥ F · ‖τ‖ = 2√29', padL, padT, plotW);
+      } else {
+        // det3x3 parallelepiped
+        const A = vp.A;
+        const c1 = [A[0][0], A[1][0], A[2][0]];
+        const c2 = [A[0][1], A[1][1], A[2][1]];
+        const c3 = [A[0][2], A[1][2], A[2][2]];
+        const add3 = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+
+        const p000 = toScreen([0, 0, 0]);
+        const p100 = toScreen(c1);
+        const p010 = toScreen(c2);
+        const p001 = toScreen(c3);
+        const p110 = toScreen(add3(c1, c2));
+        const p101 = toScreen(add3(c1, c3));
+        const p011 = toScreen(add3(c2, c3));
+        const p111 = toScreen(add3(add3(c1, c2), c3));
+
+        // Subtle unit cube wireframe
+        const uPts = [
+          [0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0],
+          [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1],
+        ].map(toScreen);
+        const cubeEdges = [
+          [0, 1], [0, 2], [1, 3], [2, 3],
+          [4, 5], [4, 6], [5, 7], [6, 7],
+          [0, 4], [1, 5], [2, 6], [3, 7],
+        ];
+        ctx.save();
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+        ctx.setLineDash([3, 3]);
+        ctx.lineWidth = 1;
+        cubeEdges.forEach(([i, j]) => {
+          ctx.beginPath();
+          ctx.moveTo(uPts[i][0], uPts[i][1]);
+          ctx.lineTo(uPts[j][0], uPts[j][1]);
+          ctx.stroke();
+        });
+        ctx.restore();
+
+        // Shaded parallelepiped faces
+        const faces = [
+          [p000, p100, p110, p010],
+          [p000, p100, p101, p001],
+          [p000, p010, p011, p001],
+          [p001, p101, p111, p011],
+          [p100, p110, p111, p101],
+          [p010, p110, p111, p011],
+        ];
+        ctx.save();
+        ctx.fillStyle = 'rgba(52, 211, 153, 0.11)';
+        ctx.strokeStyle = 'rgba(52, 211, 153, 0.48)';
+        ctx.lineWidth = 1.25;
+        faces.forEach((f) => {
+          ctx.beginPath();
+          ctx.moveTo(f[0][0], f[0][1]);
+          f.slice(1).forEach((pt) => ctx.lineTo(pt[0], pt[1]));
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        });
+        ctx.restore();
+
+        this._drawLinAlgArrow(ctx, p000[0], p000[1], p100[0], p100[1], '#22D3EE', { lineWidth: 2.6 });
+        this._drawLinAlgArrow(ctx, p000[0], p000[1], p010[0], p010[1], '#F59E0B', { lineWidth: 2.6 });
+        this._drawLinAlgArrow(ctx, p000[0], p000[1], p001[0], p001[1], '#A78BFA', { lineWidth: 2.6 });
+
+        this._drawLinAlgLabel(ctx, 'c₁ [2,0,1]', p100[0] + 5, p100[1] + 6, '#67E8F9');
+        this._drawLinAlgLabel(ctx, 'c₂ [1,3,0]', p010[0] + 5, p010[1] + 6, '#FCD34D');
+        this._drawLinAlgLabel(ctx, 'c₃ [0,1,2]', p001[0] + 5, p001[1] - 6, '#C4B5FD');
+        this._drawLinAlgHudTag(ctx, `Vol = |det(A)| = ${vp.det}`, padL, padT, plotW);
+      }
+    } else if (vp.kind === 'matrix') {
+      const A = vp.A;
+      const M = lerpMat2(A, t);
+      const corners = [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+        [0, 1],
+      ];
+      const fullImg = corners.map((c) => apply2(A, c));
+      const allPts = [...corners, ...fullImg];
+      const plane = this._makeLinAlgEqualPlane(ctx, width, height, {
+        minX: Math.min(...allPts.map((p) => p[0])) - 0.8,
+        maxX: Math.max(...allPts.map((p) => p[0])) + 0.9,
+        minY: Math.min(...allPts.map((p) => p[1])) - 0.8,
+        maxY: Math.max(...allPts.map((p) => p[1])) + 0.9,
+      });
+      const { mapX, mapY, padL, padT, plotW, plotH } = plane;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, padT, plotW, plotH);
+      ctx.clip();
+
+      // Original unit square
+      ctx.save();
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.06)';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      corners.forEach((c, i) => {
+        if (i === 0) ctx.moveTo(mapX(c[0]), mapY(c[1]));
+        else ctx.lineTo(mapX(c[0]), mapY(c[1]));
+      });
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      // Transformed parallelogram M(t)[0,1]^2
+      const img = corners.map((c) => apply2(M, c));
+      ctx.save();
+      ctx.fillStyle = 'rgba(52, 211, 153, 0.19)';
+      ctx.strokeStyle = '#34D399';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = 'rgba(52, 211, 153, 0.45)';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      img.forEach((c, i) => {
+        if (i === 0) ctx.moveTo(mapX(c[0]), mapY(c[1]));
+        else ctx.lineTo(mapX(c[0]), mapY(c[1]));
+      });
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      const ox = mapX(0);
+      const oy = mapY(0);
+      const e1 = apply2(M, [1, 0]);
+      const e2 = apply2(M, [0, 1]);
+      this._drawLinAlgArrow(ctx, ox, oy, mapX(e1[0]), mapY(e1[1]), '#22D3EE', { lineWidth: 2.8 });
+      this._drawLinAlgArrow(ctx, ox, oy, mapX(e2[0]), mapY(e2[1]), '#F59E0B', { lineWidth: 2.8 });
+
+      this._drawLinAlgLabel(ctx, 'A e₁', mapX(e1[0]) + 8, mapY(e1[1]) + 4, '#67E8F9');
+      this._drawLinAlgLabel(ctx, 'A e₂', mapX(e2[0]) - 6, mapY(e2[1]) - 10, '#FCD34D', 'right');
+
+      const curDet = M[0][0] * M[1][1] - M[0][1] * M[1][0];
+      this._drawLinAlgHudTag(
+        ctx,
+        `t=${t.toFixed(2)} · Area = |det| = ${Math.abs(curDet).toFixed(2)}`,
+        padL,
+        padT,
+        plotW
+      );
+      ctx.restore();
+    } else if (vp.kind === 'linear-system') {
+      const { A, b, x } = vp;
+      const plane = this._makeLinAlgEqualPlane(ctx, width, height, {
+        minX: x[0] - 2.6,
+        maxX: x[0] + 3.4,
+        minY: x[1] - 2.2,
+        maxY: x[1] + 2.2,
+      });
+      const { mapX, mapY, padL, padT, plotW, plotH, viewMinX, viewMaxX } = plane;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, padT, plotW, plotH);
+      ctx.clip();
+
+      const drawLineEq = (row, rhs, color) => {
+        const [a1, a2] = row;
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.4;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 9;
+        ctx.beginPath();
+        if (Math.abs(a2) > 1e-6) {
+          const y1 = (rhs - a1 * viewMinX) / a2;
+          const y2 = (rhs - a1 * viewMaxX) / a2;
+          ctx.moveTo(mapX(viewMinX), mapY(y1));
+          ctx.lineTo(mapX(viewMaxX), mapY(y2));
+        } else {
+          const xv = rhs / a1;
+          ctx.moveTo(mapX(xv), padT);
+          ctx.lineTo(mapX(xv), padT + plotH);
+        }
+        ctx.stroke();
+        ctx.restore();
+      };
+
+      drawLineEq(A[0], b[0], '#22D3EE');
+      drawLineEq(A[1], b[1], '#F59E0B');
+
+      const sx = mapX(x[0]);
+      const sy = mapY(x[1]);
+
+      // Dashed guides to axes
+      ctx.save();
+      ctx.strokeStyle = 'rgba(52, 211, 153, 0.42)';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx, mapY(0));
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(mapX(0), sy);
+      ctx.stroke();
+      ctx.restore();
+
+      // Glowing intersection point
+      ctx.save();
+      ctx.fillStyle = '#34D399';
+      ctx.shadowColor = 'rgba(52, 211, 153, 0.95)';
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+      ctx.restore();
+
+      this._drawLinAlgLabel(ctx, `x = (${x[0]}, ${x[1]})`, sx + 10, sy - 10, '#6EE7B7');
+      this._drawLinAlgLabel(ctx, 'x₁ + 2x₂ = 5', mapX(x[0] + 1.8), mapY((b[0] - A[0][0] * (x[0] + 1.8)) / A[0][1]) - 10, '#67E8F9');
+      this._drawLinAlgLabel(ctx, '3x₁ + 4x₂ = 11', mapX(x[0] + 1.4), mapY((b[1] - A[1][0] * (x[0] + 1.4)) / A[1][1]) + 14, '#FCD34D');
+
+      ctx.restore();
+    } else if (vp.kind === 'eigen') {
+      const { A, eigenpairs = [] } = vp;
+      const M = lerpMat2(A, t);
+      const corners = [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+        [0, 1],
+      ];
+      const fullImg = corners.map((c) => apply2(A, c));
+      const unitEigs = eigenpairs.map((ep) => {
+        const mag = Math.hypot(ep.v[0], ep.v[1]) || 1;
+        return { ...ep, u: [ep.v[0] / mag, ep.v[1] / mag] };
+      });
+      const allPts = [...corners, ...fullImg];
+      unitEigs.forEach((ep) => {
+        allPts.push(ep.u, [ep.lambda * ep.u[0], ep.lambda * ep.u[1]]);
+      });
+
+      const plane = this._makeLinAlgEqualPlane(ctx, width, height, {
+        minX: Math.min(...allPts.map((p) => p[0])) - 0.8,
+        maxX: Math.max(...allPts.map((p) => p[0])) + 0.9,
+        minY: Math.min(...allPts.map((p) => p[1])) - 0.8,
+        maxY: Math.max(...allPts.map((p) => p[1])) + 0.9,
+      });
+      const { mapX, mapY, padL, padT, plotW, plotH } = plane;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, padT, plotW, plotH);
+      ctx.clip();
+
+      // Dashed invariant eigen-lines through origin
+      unitEigs.forEach((ep) => {
+        ctx.save();
+        ctx.strokeStyle = ep.color;
+        ctx.globalAlpha = 0.3;
+        ctx.setLineDash([5, 5]);
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.moveTo(mapX(-12 * ep.u[0]), mapY(-12 * ep.u[1]));
+        ctx.lineTo(mapX(12 * ep.u[0]), mapY(12 * ep.u[1]));
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // Unit square
+      ctx.save();
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.42)';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      corners.forEach((c, i) => {
+        if (i === 0) ctx.moveTo(mapX(c[0]), mapY(c[1]));
+        else ctx.lineTo(mapX(c[0]), mapY(c[1]));
+      });
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+
+      // Transformed parallelogram
+      const img = corners.map((c) => apply2(M, c));
+      ctx.save();
+      ctx.fillStyle = 'rgba(52, 211, 153, 0.14)';
+      ctx.strokeStyle = 'rgba(52, 211, 153, 0.75)';
+      ctx.lineWidth = 1.7;
+      ctx.beginPath();
+      img.forEach((c, i) => {
+        if (i === 0) ctx.moveTo(mapX(c[0]), mapY(c[1]));
+        else ctx.lineTo(mapX(c[0]), mapY(c[1]));
+      });
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      const ox = mapX(0);
+      const oy = mapY(0);
+
+      // Eigenvectors u -> M(t)u locked onto invariant lines
+      unitEigs.forEach((ep, idx) => {
+        const mapped = apply2(M, ep.u);
+        // Ghost original unit eigenvector
+        this._drawLinAlgArrow(ctx, ox, oy, mapX(ep.u[0]), mapY(ep.u[1]), ep.color, {
+          lineWidth: 1.8,
+          alpha: 0.45,
+          glow: false,
+          headLen: 7,
+        });
+        // Glowing stretched eigenvector
+        this._drawLinAlgArrow(ctx, ox, oy, mapX(mapped[0]), mapY(mapped[1]), ep.color, {
+          lineWidth: 2.9,
+        });
+        this._drawLinAlgLabel(
+          ctx,
+          ep.label || `λ${idx + 1}=${ep.lambda}`,
+          mapX(mapped[0]) + (mapped[0] >= 0 ? 8 : -8),
+          mapY(mapped[1]) + (mapped[1] >= 0 ? -8 : 10),
+          ep.color,
+          mapped[0] >= 0 ? 'left' : 'right'
+        );
+      });
+
+      this._drawLinAlgHudTag(ctx, `Morph t=${t.toFixed(2)} (I → A)`, padL, padT, plotW);
+      ctx.restore();
+    } else if (vp.kind === 'complex-rotation') {
+      const { modulus = Math.sqrt(5), angleDeg = 63.43 } = vp;
+      const phiMax = (angleDeg * Math.PI) / 180;
+      const curR = Math.pow(modulus, t);
+      const curPhi = t * phiMax;
+      const rPad = modulus + 0.65;
+
+      const plane = this._makeLinAlgEqualPlane(ctx, width, height, {
+        minX: -rPad,
+        maxX: rPad,
+        minY: -rPad,
+        maxY: rPad,
+      });
+      const { mapX, mapY, padL, padT, plotW, plotH, scale } = plane;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, padT, plotW, plotH);
+      ctx.clip();
+
+      const ox = mapX(0);
+      const oy = mapY(0);
+
+      // Unit circle
+      ctx.save();
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.42)';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(ox, oy, scale, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // Scaled circle of radius |λ|^t
+      ctx.save();
+      ctx.fillStyle = 'rgba(52, 211, 153, 0.1)';
+      ctx.strokeStyle = '#34D399';
+      ctx.lineWidth = 2.1;
+      ctx.shadowColor = 'rgba(52, 211, 153, 0.5)';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(ox, oy, curR * scale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      // Spiral arc from e1 to A^t e1
+      ctx.save();
+      ctx.strokeStyle = '#F59E0B';
+      ctx.setLineDash([4, 3]);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const spiralSteps = 48;
+      for (let i = 0; i <= spiralSteps; i++) {
+        const s = (i / spiralSteps) * t;
+        const sr = Math.pow(modulus, s);
+        const sa = s * phiMax;
+        const sx = mapX(sr * Math.cos(sa));
+        const sy = mapY(sr * Math.sin(sa));
+        if (i === 0) ctx.moveTo(sx, sy);
+        else ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      const tipX = curR * Math.cos(curPhi);
+      const tipY = curR * Math.sin(curPhi);
+      this._drawLinAlgArrow(ctx, ox, oy, mapX(1), mapY(0), '#22D3EE', { lineWidth: 2.5 });
+      this._drawLinAlgArrow(ctx, ox, oy, mapX(tipX), mapY(tipY), '#34D399', { lineWidth: 2.8 });
+
+      this._drawLinAlgLabel(ctx, 'e₁', mapX(1) + 6, mapY(0) + 12, '#67E8F9');
+      this._drawLinAlgLabel(ctx, 'A e₁ = [1, 2]ᵀ', mapX(tipX) + 8, mapY(tipY) - 6, '#6EE7B7');
+      this._drawLinAlgHudTag(
+        ctx,
+        `r=${curR.toFixed(2)} · φ=${((curPhi * 180) / Math.PI).toFixed(1)}°`,
+        padL,
+        padT,
+        plotW
+      );
+      ctx.restore();
+    } else if (vp.kind === 'gram-schmidt') {
+      const { a1, a2, q1, q2 } = vp;
+      const allPts = [[0, 0], a1, a2, q1, q2, [-1.1, -1.1], [1.1, 1.1]];
+      const plane = this._makeLinAlgEqualPlane(ctx, width, height, {
+        minX: Math.min(...allPts.map((p) => p[0])) - 0.5,
+        maxX: Math.max(...allPts.map((p) => p[0])) + 0.6,
+        minY: Math.min(...allPts.map((p) => p[1])) - 0.5,
+        maxY: Math.max(...allPts.map((p) => p[1])) + 0.6,
+      });
+      const { mapX, mapY, padL, padT, plotW, plotH, scale } = plane;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, padT, plotW, plotH);
+      ctx.clip();
+
+      const ox = mapX(0);
+      const oy = mapY(0);
+
+      // Unit circle showing both q1 and q2 have unit length
+      ctx.save();
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.arc(ox, oy, scale, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // Raw input vectors a1, a2 (dashed muted)
+      this._drawLinAlgArrow(ctx, ox, oy, mapX(a1[0]), mapY(a1[1]), '#94A3B8', {
+        lineWidth: 1.8,
+        dashed: true,
+        glow: false,
+      });
+      this._drawLinAlgArrow(ctx, ox, oy, mapX(a2[0]), mapY(a2[1]), '#F59E0B', {
+        lineWidth: 1.8,
+        dashed: true,
+        glow: false,
+        alpha: 0.65,
+      });
+
+      // Right-angle square between q1 and q2
+      this._drawLinAlgRightAngle(ctx, mapX, mapY, [0, 0], q1, q2, 9, '#34D399');
+
+      // Orthonormal vectors q1 (cyan) and q2 (emerald)
+      this._drawLinAlgArrow(ctx, ox, oy, mapX(q1[0]), mapY(q1[1]), '#22D3EE', { lineWidth: 2.9 });
+      this._drawLinAlgArrow(ctx, ox, oy, mapX(q2[0]), mapY(q2[1]), '#34D399', { lineWidth: 2.9 });
+
+      this._drawLinAlgLabel(ctx, 'a₁ [3,4]', mapX(a1[0]) + 6, mapY(a1[1]), '#94A3B8');
+      this._drawLinAlgLabel(ctx, 'a₂ [1,0]', mapX(a2[0]) + 8, mapY(a2[1]) - 8, '#FCD34D');
+      this._drawLinAlgLabel(ctx, 'q₁', mapX(q1[0]) - 8, mapY(q1[1]) - 6, '#67E8F9', 'right');
+      this._drawLinAlgLabel(ctx, 'q₂ (⊥)', mapX(q2[0]) + 8, mapY(q2[1]) + 6, '#6EE7B7');
+      this._drawLinAlgHudTag(ctx, '‖q₁‖ = ‖q₂‖ = 1 · q₁·q₂ = 0', padL, padT, plotW);
+
+      ctx.restore();
+    } else if (vp.kind === 'least-squares') {
+      const { points = [], intercept = 0, slope = 1 } = vp;
+      const padL = 44;
+      const padR = 24;
+      const padT = 20;
+      const padB = 28;
+      const plotW = Math.max(40, width - padL - padR);
+      const plotH = Math.max(40, height - padT - padB);
+      this.verifyPlotGeom = { padL, padR, padT, padB, plotW, plotH, xMin: 0, xMax: 1 };
+
+      const xMin = -1.6;
+      const xMax = 1.6;
+      const yMin = -0.3;
+      const yMax = 4.8;
+      const mapX = (x) => padL + ((x - xMin) / (xMax - xMin)) * plotW;
+      const mapY = (y) => padT + (1 - (y - yMin) / (yMax - yMin)) * plotH;
+
+      // Grid
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.055)';
+      ctx.lineWidth = 1;
+      ctx.font = '10px "JetBrains Mono", monospace';
+      for (let yTick = 0; yTick <= 4; yTick += 1) {
+        const py = mapY(yTick);
+        ctx.beginPath();
+        ctx.moveTo(padL, py);
+        ctx.lineTo(padL + plotW, py);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.78)';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(yTick), padL - 7, py);
+      }
+      for (const xTick of [-1, 0, 1]) {
+        const px = mapX(xTick);
+        ctx.beginPath();
+        ctx.moveTo(px, padT);
+        ctx.lineTo(px, padT + plotH);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.78)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`t=${xTick}`, px, padT + plotH + 7);
+      }
+
+      // Emphasized axes
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.beginPath();
+      ctx.moveTo(mapX(0), padT);
+      ctx.lineTo(mapX(0), padT + plotH);
+      ctx.moveTo(padL, mapY(0));
+      ctx.lineTo(padL + plotW, mapY(0));
+      ctx.stroke();
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, padT, plotW, plotH);
+      ctx.clip();
+
+      // Best-fit regression line y = c + m*t
+      ctx.save();
+      ctx.strokeStyle = '#34D399';
+      ctx.lineWidth = 2.6;
+      ctx.shadowColor = 'rgba(52, 211, 153, 0.65)';
+      ctx.shadowBlur = 11;
+      ctx.beginPath();
+      ctx.moveTo(mapX(xMin), mapY(intercept + slope * xMin));
+      ctx.lineTo(mapX(xMax), mapY(intercept + slope * xMax));
+      ctx.stroke();
+      ctx.restore();
+
+      // Vertical residual segments & data points
+      points.forEach(([ptX, ptY]) => {
+        const yHat = intercept + slope * ptX;
+        const err = ptY - yHat;
+        const px = mapX(ptX);
+        const pyData = mapY(ptY);
+        const pyFit = mapY(yHat);
+
+        ctx.save();
+        ctx.strokeStyle = '#F59E0B';
+        ctx.setLineDash([4, 3]);
+        ctx.lineWidth = 2.1;
+        ctx.beginPath();
+        ctx.moveTo(px, pyFit);
+        ctx.lineTo(px, pyData);
+        ctx.stroke();
+        ctx.restore();
+
+        // Small marker on fitted line
+        ctx.save();
+        ctx.fillStyle = '#34D399';
+        ctx.beginPath();
+        ctx.arc(px, pyFit, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Glowing cyan data point
+        ctx.save();
+        ctx.fillStyle = '#22D3EE';
+        ctx.shadowColor = 'rgba(34, 211, 238, 0.95)';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(px, pyData, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+        ctx.restore();
+
+        const signStr = err >= 0 ? `+${err.toFixed(1)}` : err.toFixed(1);
+        this._drawLinAlgLabel(ctx, `e=${signStr}`, px + 10, (pyFit + pyData) / 2, '#FCD34D');
+      });
+
+      this._drawLinAlgHudTag(ctx, `ŷ(t) = ${intercept} + ${slope}t · Aᵀe = 0`, padL, padT, plotW);
+      ctx.restore();
+    } else if (vp.kind === 'svd') {
+      const { A, sigma1 = 4, sigma2 = 2, u1 = [1, 0], u2 = [0, 1], isSpd = false } = vp;
+      const M = lerpMat2(A, t);
+      const rPad = Math.max(sigma1, 2) + 0.9;
+      const plane = this._makeLinAlgEqualPlane(ctx, width, height, {
+        minX: -rPad,
+        maxX: rPad,
+        minY: -rPad,
+        maxY: rPad,
+      });
+      const { mapX, mapY, padL, padT, plotW, plotH, scale } = plane;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, padT, plotW, plotH);
+      ctx.clip();
+
+      const ox = mapX(0);
+      const oy = mapY(0);
+
+      // Original unit circle
+      ctx.save();
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.42)';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(ox, oy, scale, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // Transformed ellipse M(t) S^1
+      ctx.save();
+      ctx.fillStyle = 'rgba(52, 211, 153, 0.14)';
+      ctx.strokeStyle = '#34D399';
+      ctx.lineWidth = 2.3;
+      ctx.shadowColor = 'rgba(52, 211, 153, 0.55)';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      const segs = 120;
+      for (let i = 0; i <= segs; i++) {
+        const th = (i / segs) * Math.PI * 2;
+        const pt = apply2(M, [Math.cos(th), Math.sin(th)]);
+        const px = mapX(pt[0]);
+        const py = mapY(pt[1]);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      // Principal axes (for symmetric A, M(t) u_i = (1 + t*(sigma_i - 1)) u_i)
+      const s1 = 1 + t * (sigma1 - 1);
+      const s2 = 1 + t * (sigma2 - 1);
+      const p1 = [s1 * u1[0], s1 * u1[1]];
+      const p2 = [s2 * u2[0], s2 * u2[1]];
+
+      this._drawLinAlgRightAngle(ctx, mapX, mapY, [0, 0], p1, p2, 9, '#34D399');
+      this._drawLinAlgArrow(ctx, ox, oy, mapX(p1[0]), mapY(p1[1]), '#22D3EE', { lineWidth: 2.8 });
+      this._drawLinAlgArrow(ctx, ox, oy, mapX(p2[0]), mapY(p2[1]), '#F59E0B', { lineWidth: 2.8 });
+
+      const lbl1 = isSpd ? `λ₁=${sigma1}` : `σ₁=${sigma1}`;
+      const lbl2 = isSpd ? `λ₂=${sigma2}` : `σ₂=${sigma2}`;
+      this._drawLinAlgLabel(ctx, lbl1, mapX(p1[0]) + 8, mapY(p1[1]) - 6, '#67E8F9');
+      this._drawLinAlgLabel(ctx, lbl2, mapX(p2[0]) - 8, mapY(p2[1]) - 8, '#FCD34D', 'right');
+      this._drawLinAlgHudTag(
+        ctx,
+        `t=${t.toFixed(2)} · κ=${(s1 / Math.max(1e-6, s2)).toFixed(2)}`,
+        padL,
+        padT,
+        plotW
+      );
+      ctx.restore();
+    }
+
+    ctx.restore();
+    this._updateLinAlgVerificationReadout(problem);
+  }
+
+  _updateLinAlgVerificationReadout(problem) {
+    if (!this.container) return;
+    const metrics = this._getLinAlgVerifyMeta(problem).metrics;
+    const xEl = this.container.querySelector('[data-verify-x]');
+    const fxEl = this.container.querySelector('[data-verify-fx]');
+    const exactEl = this.container.querySelector('[data-verify-exact]');
+    const numEl = this.container.querySelector('[data-verify-numeric]');
+    const matchEl = this.container.querySelector('[data-verify-match]');
+
+    if (xEl) xEl.textContent = metrics[0].value;
+    if (fxEl) fxEl.textContent = metrics[1].value;
+    if (exactEl) exactEl.textContent = metrics[2].value;
+    if (numEl) numEl.textContent = metrics[3].value;
+    if (matchEl) matchEl.textContent = 'EXACT ✓';
   }
 }
