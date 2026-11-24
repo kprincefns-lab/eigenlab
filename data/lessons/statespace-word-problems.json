@@ -1,0 +1,11 @@
+{
+  "lessonId": "mech-state-space",
+  "status": "coming_soon",
+  "plannedTopics": [
+    "Quadruped Whole-Body MPC + InEKF Foot-Contact Estimation",
+    "Autonomous Drone CBF-QP Safety Filter + VIO Factor Graph",
+    "Satellite Reaction-Wheel LQR + Star-Tracker Observer",
+    "Autonomous Car Nonlinear MHE + UKF Sensor Fusion"
+  ],
+  "problems": []
+}

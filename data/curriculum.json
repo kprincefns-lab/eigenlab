@@ -122,19 +122,25 @@
           ]
         },
         {
+          "id": "mech-state-space",
+          "status": "live",
+          "title": "Modern State-Space, MPC & SOTA Estimation",
+          "tag": "Controls 04 • State Matrices, LQR/MPC, CBF-QP, KF/UKF & Factor Graphs",
+          "description": "Extract (A, B, C, D) state-space matrices and PBH stabilizability, synthesize LQR/iLQR, constrained MPC, and CBF-QP safety filters, and build Luenberger observers, Joseph-form Kalman Filters, UKF sigma points, Invariant EKFs on Lie groups, and Factor-Graph/MHE smoothers.",
+          "estimatedMinutes": 45,
+          "stages": [
+            "3d-lab",
+            "intuition",
+            "solver",
+            "word-problems"
+          ]
+        },
+        {
           "id": "mech-kinematics",
           "status": "planned",
           "title": "Forward & Inverse Robot Kinematics",
           "tag": "Robotics • Coming Next",
           "description": "Manipulate multi-axis joint spaces, Denavit-Hartenberg transforms, and Jacobian velocity mappings on a 3D robotic arm.",
-          "estimatedMinutes": 35
-        },
-        {
-          "id": "mech-state-space",
-          "status": "planned",
-          "title": "State-Space Modeling & Signals",
-          "tag": "Dynamics • Coming Next",
-          "description": "Formulate coupled electromechanical systems in matrix state space and analyze poles, controllability, and frequency response.",
           "estimatedMinutes": 35
         }
       ]

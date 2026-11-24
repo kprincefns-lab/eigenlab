@@ -28,6 +28,15 @@ import { Modeling3DStudio, MODELING_PRESETS } from './viz/modeling-3d.js';
 import { ModelingSPlaneLab, ModelingVisualQuizEngine } from './viz/modeling-graphs.js';
 import { Freq3DStudio, FREQ_PRESETS } from './viz/freq-3d.js';
 import { RootBodeLab, FreqVisualQuizEngine } from './viz/freq-graphs.js';
+import {
+  StateSpace3DStudio,
+  STATESPACE_PRESETS,
+  analyzeStateSpaceSystem,
+} from './viz/statespace-3d.js';
+import {
+  StateSpaceGraphLab,
+  StateSpaceVisualQuizEngine,
+} from './viz/statespace-graphs.js';
 import { PaperlessStepSolver } from './solver/step-solver.js';
 import { INTEGRAL_PROBLEMS, INTEGRAL_SOLVER_TIERS } from '../data/lessons/integrals-problems.js';
 import { DIFFEQ_PROBLEMS, DIFFEQ_SOLVER_TIERS } from '../data/lessons/diffeq-problems.js';
@@ -35,6 +44,10 @@ import { LINALG_PROBLEMS, LINALG_SOLVER_TIERS } from '../data/lessons/linalg-pro
 import { PID_PROBLEMS, PID_SOLVER_TIERS } from '../data/lessons/pid-problems.js';
 import { MODELING_PROBLEMS, MODELING_SOLVER_TIERS } from '../data/lessons/modeling-problems.js';
 import { FREQ_PROBLEMS, FREQ_SOLVER_TIERS } from '../data/lessons/freq-problems.js';
+import {
+  STATESPACE_PROBLEMS,
+  STATESPACE_SOLVER_TIERS,
+} from '../data/lessons/statespace-problems.js';
 
 // ---------------------------------------------------------------------------
 // Constants & Fallback Data
@@ -47,6 +60,7 @@ const LINALG_LESSON_ID = 'math-lin-alg';
 const MODELING_LESSON_ID = 'mech-modeling';
 const PID_LESSON_ID = 'mech-pid';
 const FREQ_LESSON_ID = 'mech-root-bode';
+const STATESPACE_LESSON_ID = 'mech-state-space';
 
 const STAGES = [
   {
@@ -293,6 +307,41 @@ const FREQ_STAGES = [
   },
 ];
 
+const STATESPACE_STAGES = [
+  {
+    id: '3d-lab',
+    number: 1,
+    icon: '🧊',
+    shortLabel: '3D State-Space',
+    mobileLabel: '3D Lab',
+    label: '1. 3D State-Space & Estimation Studio',
+  },
+  {
+    id: 'intuition',
+    number: 2,
+    icon: '📈',
+    shortLabel: 'Phase & KF Lab',
+    mobileLabel: 'Phase/KF',
+    label: '2. Phase Plane, MPC & KF Lab + Quiz',
+  },
+  {
+    id: 'solver',
+    number: 3,
+    icon: '🧮',
+    shortLabel: 'Modern Solver',
+    mobileLabel: 'Solver',
+    label: '3. State-Space, LQR, MPC & SOTA Solver',
+  },
+  {
+    id: 'word-problems',
+    number: 4,
+    icon: '⚙️',
+    shortLabel: 'Word Problems',
+    mobileLabel: 'Applied',
+    label: '4. Applied Word Problems',
+  },
+];
+
 const PLANNED_TOPIC_METADATA = {
   'Servo Velocity & Acceleration Profiling': {
     domain: 'Mechatronics',
@@ -490,6 +539,34 @@ const PLANNED_TOPIC_METADATA = {
     summary:
       'Shape open-loop gain L(jω) to reject solar-torque disturbances at low frequencies while rolling off star-tracker noise.',
   },
+  'Quadruped Whole-Body MPC + InEKF Foot-Contact Estimation': {
+    domain: 'Legged Robotics',
+    accent: 'cyan',
+    equation: '\\min_{u_{0:N-1}} \\sum \\|x_k\\|_Q^2 + \\|u_k\\|_R^2, \\quad X_k \\in SE_2(3)',
+    summary:
+      'Solve convex ground-reaction-force MPC under friction-cone constraints while fusing IMU and leg kinematics via an Invariant EKF.',
+  },
+  'Autonomous Drone CBF-QP Safety Filter + VIO Factor Graph': {
+    domain: 'Aerial Autonomy',
+    accent: 'emerald',
+    equation: '\\dot{h}(x,u) + \\alpha h(x) \\ge 0, \\quad \\min_{x_{0:N}} \\sum \\rho(\\|r_i\\|_{\\Sigma_i^{-1}})',
+    summary:
+      'Enforce provable obstacle-avoidance forward invariance with a real-time CBF-QP filter backed by Huber-robust visual-inertial factor graphs.',
+  },
+  'Satellite Reaction-Wheel LQR + Star-Tracker Observer': {
+    domain: 'Aerospace Control',
+    accent: 'violet',
+    equation: 'A^T P + PA - PBR^{-1}B^T P + Q = 0, \\quad \\dot{\\hat{x}} = A\\hat{x} + Bu + L(y - C\\hat{x})',
+    summary:
+      'Balance pointing precision against reaction-wheel torque via CARE LQR while reconstructing angular rates from sparse star-tracker fixes.',
+  },
+  'Autonomous Car Nonlinear MHE + UKF Sensor Fusion': {
+    domain: 'Autonomous Vehicles',
+    accent: 'amber',
+    equation: '\\mathcal{X}_i = \\hat{x} \\pm \\sqrt{(n+\\lambda)P}, \\quad \\min_{x_{t-N:t}} J_{\\text{MHE}}',
+    summary:
+      'Reject LiDAR/GPS outlier spikes with moving-horizon estimation and propagate nonlinear bicycle-model uncertainty via sigma points.',
+  },
 };
 
 const FALLBACK_CURRICULUM = {
@@ -655,6 +732,18 @@ const FALLBACK_FREQ_WORD_PROBLEMS = {
   problems: [],
 };
 
+const FALLBACK_STATESPACE_WORD_PROBLEMS = {
+  lessonId: 'mech-state-space',
+  status: 'coming_soon',
+  plannedTopics: [
+    'Quadruped Whole-Body MPC + InEKF Foot-Contact Estimation',
+    'Autonomous Drone CBF-QP Safety Filter + VIO Factor Graph',
+    'Satellite Reaction-Wheel LQR + Star-Tracker Observer',
+    'Autonomous Car Nonlinear MHE + UKF Sensor Fusion',
+  ],
+  problems: [],
+};
+
 // ---------------------------------------------------------------------------
 // Application Runtime State
 // ---------------------------------------------------------------------------
@@ -673,6 +762,7 @@ const appState = {
     'mech-modeling': FALLBACK_MODELING_WORD_PROBLEMS,
     'mech-pid': FALLBACK_PID_WORD_PROBLEMS,
     'mech-root-bode': FALLBACK_FREQ_WORD_PROBLEMS,
+    'mech-state-space': FALLBACK_STATESPACE_WORD_PROBLEMS,
   },
   lab: {
     presetId: null,
@@ -860,6 +950,17 @@ const appState = {
     olLatex: '',
     clPolesLatex: '',
   },
+  statespaceLab: {
+    presetId: 'lqr-cart',
+    paramA: STATESPACE_PRESETS['lqr-cart'].paramA.default,
+    paramB: STATESPACE_PRESETS['lqr-cart'].paramB.default,
+    cameraPreset: '3d',
+  },
+  statespaceTelemetry: analyzeStateSpaceSystem({
+    presetId: 'lqr-cart',
+    paramA: STATESPACE_PRESETS['lqr-cart'].paramA.default,
+    paramB: STATESPACE_PRESETS['lqr-cart'].paramB.default,
+  }),
 };
 
 const activeInstances = {
@@ -895,6 +996,10 @@ function isFreqLesson() {
   return appState.lessonId === FREQ_LESSON_ID;
 }
 
+function isStateSpaceLesson() {
+  return appState.lessonId === STATESPACE_LESSON_ID;
+}
+
 function getLessonStages() {
   if (isIntegralLesson()) return INTEGRAL_STAGES;
   if (isDiffEqLesson()) return DIFFEQ_STAGES;
@@ -902,6 +1007,7 @@ function getLessonStages() {
   if (isModelingLesson()) return MODELING_STAGES;
   if (isPidLesson()) return PID_STAGES;
   if (isFreqLesson()) return FREQ_STAGES;
+  if (isStateSpaceLesson()) return STATESPACE_STAGES;
   return STAGES;
 }
 
@@ -912,6 +1018,7 @@ function stageStoreKey(stageId) {
   if (isModelingLesson()) return `mod:${stageId}`;
   if (isPidLesson()) return `pid:${stageId}`;
   if (isFreqLesson()) return `freq:${stageId}`;
+  if (isStateSpaceLesson()) return `ss:${stageId}`;
   return stageId;
 }
 
@@ -1095,6 +1202,40 @@ function getActiveFreqPreset(presets) {
   return presets.find((p) => p.id === appState.freqLab.presetId) || presets[0];
 }
 
+function normalizeStateSpacePresets() {
+  if (!STATESPACE_PRESETS) return [];
+  const list = Array.isArray(STATESPACE_PRESETS)
+    ? STATESPACE_PRESETS
+    : Object.entries(STATESPACE_PRESETS).map(([id, v]) => ({ id, ...v }));
+
+  return list.map((p, idx) => ({
+    id: p.id ?? p.key ?? `ss-preset-${idx}`,
+    name: p.name ?? p.label ?? `Mode ${idx + 1}`,
+    shortName: p.shortName ?? p.name ?? `M${idx + 1}`,
+    formulaLatex: p.formulaLatex ?? '\\dot{x} = Ax + Bu',
+    paramALabel: p.paramALabel ?? 'Parameter A',
+    paramA: p.paramA ?? { min: 0, max: 10, step: 0.1, default: 1 },
+    paramBLabel: p.paramBLabel ?? 'Parameter B',
+    paramB: p.paramB ?? { min: 0, max: 10, step: 0.1, default: 1 },
+    raw: p,
+  }));
+}
+
+function getActiveStateSpacePreset(presets) {
+  if (!presets.length) return null;
+  if (!appState.statespaceLab.presetId) {
+    appState.statespaceLab.presetId = presets[0].id;
+  }
+  return presets.find((p) => p.id === appState.statespaceLab.presetId) || presets[0];
+}
+
+function formatStateSpaceParam(val, step = 0.1) {
+  if (typeof val !== 'number' || !Number.isFinite(val)) return '0';
+  if (step >= 1) return String(Math.round(val));
+  if (step >= 0.1) return formatNum(val, 1);
+  return formatNum(val, 2);
+}
+
 function getActiveDiffEqPreset(presets) {
   if (!presets.length) return null;
   if (!appState.diffeqLab.presetId) {
@@ -1173,10 +1314,10 @@ function getMasterySnapshot() {
   return {
     percent,
     solvedProblems,
-    totalProblems: 94,
+    totalProblems: 106,
     solvedVisual,
-    totalVisual: 44,
-    totalStages: 28,
+    totalVisual: 50,
+    totalStages: 32,
     streak,
     accuracyPct: stats.accuracyPct ?? 100,
     completedStages,
@@ -1668,6 +1809,15 @@ function renderHubView() {
                   <span>🏔️ Controls 03 · Bode</span>
                   <span aria-hidden="true" class="text-sm sm:text-base text-violetGlow">→</span>
                 </button>
+
+                <button
+                  id="hub-hero-launch-statespace"
+                  type="button"
+                  class="col-span-2 sm:col-span-1 btn-glass w-full sm:w-auto !rounded-2xl !px-3.5 sm:!px-4 !py-2.5 !text-xs sm:!text-sm !border-emeraldGlow/55 !bg-emeraldGlow/[0.08] !text-emerald-200 hover:!border-emeraldGlow/85 hover:!bg-emeraldGlow/15"
+                >
+                  <span>🧊 Controls 04 · State-Space &amp; MPC</span>
+                  <span aria-hidden="true" class="text-sm sm:text-base text-emeraldGlow">→</span>
+                </button>
               </div>
             </div>
 
@@ -1813,6 +1963,11 @@ function renderHubView() {
     openLesson(FREQ_LESSON_ID, '3d-lab');
   });
 
+  document.getElementById('hub-hero-launch-statespace')?.addEventListener('click', () => {
+    playSfx('tick');
+    openLesson(STATESPACE_LESSON_ID, '3d-lab');
+  });
+
   document.getElementById('hub-preview-launch')?.addEventListener('click', () => {
     playSfx('tick');
     openLesson(LESSON_ID, '3d-lab');
@@ -1857,6 +2012,7 @@ function openLesson(lessonId = LESSON_ID, stageId = '3d-lab') {
   else if (lessonId === MODELING_LESSON_ID) appState.lessonId = MODELING_LESSON_ID;
   else if (lessonId === PID_LESSON_ID) appState.lessonId = PID_LESSON_ID;
   else if (lessonId === FREQ_LESSON_ID) appState.lessonId = FREQ_LESSON_ID;
+  else if (lessonId === STATESPACE_LESSON_ID) appState.lessonId = STATESPACE_LESSON_ID;
   else appState.lessonId = LESSON_ID;
   appState.stage = stageId;
   renderLessonShell();
@@ -1893,6 +2049,11 @@ function getLessonSubtitleText(on) {
     return on
       ? 'Loop-Shaping Lens: Servo Resonance Mr, Bandwidth, Lead-Lag Compensators & Sensitivity'
       : 'Frequency Lens: 3D |G(s)| Surface, Root Locus Branches, Bode Margins & Nyquist';
+  }
+  if (isStateSpaceLesson()) {
+    return on
+      ? 'Hardware Rig Lens: Cart-Pole Torque Limits, CBF Safety & InEKF/UKF Sensor Fusion'
+      : 'State-Space Lens: LQR Riccati Bowls, MPC/CBF-QP, Kalman Covariance & Factor Graphs';
   }
   return on
     ? 'Mechatronics Lens: Displacement x(t) → Velocity v(t) & Actuator Dynamics'
@@ -1975,43 +2136,50 @@ function renderLessonShell() {
   const isMod = isModelingLesson();
   const isPid = isPidLesson();
   const isFreq = isFreqLesson();
-  const lessonBadge = isFreq
-    ? 'Controls 03'
-    : isPid
-      ? 'Controls 02'
-      : isMod
-        ? 'Controls 01'
+  const isSS = isStateSpaceLesson();
+  const lessonBadge = isSS
+    ? 'Controls 04'
+    : isFreq
+      ? 'Controls 03'
+      : isPid
+        ? 'Controls 02'
+        : isMod
+          ? 'Controls 01'
+          : isLA
+            ? 'Lesson 04'
+            : isDE
+              ? 'Lesson 03'
+              : isInt
+                ? 'Lesson 02'
+                : 'Lesson 01';
+  const lessonBadgeColor = isSS
+    ? 'text-emeraldGlow'
+    : isFreq
+      ? 'text-violetGlow'
+      : isPid || isMod
+        ? 'text-amberGlow'
         : isLA
-          ? 'Lesson 04'
+          ? 'text-emeraldGlow'
           : isDE
-            ? 'Lesson 03'
+            ? 'text-amberGlow'
             : isInt
-              ? 'Lesson 02'
-              : 'Lesson 01';
-  const lessonBadgeColor = isFreq
-    ? 'text-violetGlow'
-    : isPid || isMod
-      ? 'text-amberGlow'
-      : isLA
-        ? 'text-emeraldGlow'
-        : isDE
-          ? 'text-amberGlow'
-          : isInt
-            ? 'text-violetGlow'
-            : 'text-cyanGlow';
-  const lessonTitle = isFreq
-    ? 'Root Locus & Bode'
-    : isPid
-      ? 'PID Control Studio'
-      : isMod
-        ? 'System Modeling Studio'
-        : isLA
-          ? 'Linear Algebra Studio'
-          : isDE
-            ? 'ODE & Laplace Studio'
-            : isInt
-              ? 'Integrals Studio'
-              : 'Derivatives Studio';
+              ? 'text-violetGlow'
+              : 'text-cyanGlow';
+  const lessonTitle = isSS
+    ? 'State-Space & Estimation'
+    : isFreq
+      ? 'Root Locus & Bode'
+      : isPid
+        ? 'PID Control Studio'
+        : isMod
+          ? 'System Modeling Studio'
+          : isLA
+            ? 'Linear Algebra Studio'
+            : isDE
+              ? 'ODE & Laplace Studio'
+              : isInt
+                ? 'Integrals Studio'
+                : 'Derivatives Studio';
 
   root.innerHTML = `
     <div class="min-h-screen flex flex-col relative view-enter">
@@ -2196,6 +2364,9 @@ function propagateLensToActiveStage() {
     } else if (isFreqLesson()) {
       updateFreqStage1LensUI();
       updateFreqStage1TelemetryUI();
+    } else if (isStateSpaceLesson()) {
+      updateStateSpaceStage1LensUI();
+      updateStateSpaceStage1TelemetryUI();
     } else {
       updateStage1LensUI();
       updateStage1TelemetryUI();
@@ -2230,6 +2401,10 @@ function propagateLensToActiveStage() {
         titleEl.textContent = on
           ? 'Closed-Loop Pole Migration & Servo Loop Robustness Margins'
           : 'Interactive Root Locus 1 + KG(s) = 0 ↔ Bode Gain/Phase Margins';
+      } else if (isStateSpaceLesson()) {
+        titleEl.textContent = on
+          ? 'Actuator Phase Portrait, Torque Limits & Real-Time Sensor Fusion'
+          : 'Synchronized Phase Portrait, State Tracking & Effort / Kalman Gain';
       } else {
         titleEl.textContent = on
           ? 'Synchronized Position x(t) & Velocity v(t)'
@@ -2385,6 +2560,26 @@ function mountActiveStage() {
         break;
       default:
         mountFreqStage1Lab3D(container);
+    }
+    return;
+  }
+
+  if (isStateSpaceLesson()) {
+    switch (appState.stage) {
+      case '3d-lab':
+        mountStateSpaceStage1Lab3D(container);
+        break;
+      case 'intuition':
+        mountStateSpaceStage2Intuition(container);
+        break;
+      case 'solver':
+        mountStateSpaceStage3Solver(container);
+        break;
+      case 'word-problems':
+        mountStage4WordProblems(container);
+        break;
+      default:
+        mountStateSpaceStage1Lab3D(container);
     }
     return;
   }
@@ -3168,7 +3363,7 @@ function mountStage2Intuition(container) {
   const on = isMechatronicsLens();
   const s = getStoreState();
   const solvedDerivQuizzes = (s.solvedQuizzes || []).filter(
-    (id) => !String(id).startsWith('int-quiz-') && !String(id).startsWith('de-quiz-') && !String(id).startsWith('la-quiz-') && !String(id).startsWith('pid-quiz-') && !String(id).startsWith('mod-quiz-') && !String(id).startsWith('freq-quiz-')
+    (id) => !String(id).startsWith('int-quiz-') && !String(id).startsWith('de-quiz-') && !String(id).startsWith('la-quiz-') && !String(id).startsWith('pid-quiz-') && !String(id).startsWith('mod-quiz-') && !String(id).startsWith('freq-quiz-') && !String(id).startsWith('ss-quiz-')
   ).length;
   let activeSubTab = 'lab'; // 'lab' | 'quiz' on mobile (<lg)
 
@@ -3309,7 +3504,7 @@ function mountStage2Intuition(container) {
     try {
       const updateQuizTabCount = () => {
         const solvedDeriv = (getStoreState().solvedQuizzes || []).filter(
-          (id) => !String(id).startsWith('int-quiz-') && !String(id).startsWith('de-quiz-') && !String(id).startsWith('la-quiz-') && !String(id).startsWith('pid-quiz-') && !String(id).startsWith('mod-quiz-') && !String(id).startsWith('freq-quiz-')
+          (id) => !String(id).startsWith('int-quiz-') && !String(id).startsWith('de-quiz-') && !String(id).startsWith('la-quiz-') && !String(id).startsWith('pid-quiz-') && !String(id).startsWith('mod-quiz-') && !String(id).startsWith('freq-quiz-') && !String(id).startsWith('ss-quiz-')
         ).length;
         const quizBtn = container.querySelector('[data-stage2-subtab="quiz"]');
         if (quizBtn) quizBtn.textContent = `🎯 Match Quiz (${solvedDeriv}/8)`;
@@ -8542,6 +8737,858 @@ function mountFreqStage3Solver(container) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// CONTROLS 04 — MODERN STATE-SPACE, MPC & SOTA ESTIMATION (`mech-state-space`) STAGES 1–3
+// ---------------------------------------------------------------------------
+
+function mountStateSpaceStage1Lab3D(container) {
+  const presets = normalizeStateSpacePresets();
+  const activePreset = getActiveStateSpacePreset(presets);
+  const lensOn = isMechatronicsLens();
+  const initMetrics = appState.statespaceTelemetry?.metrics || {};
+
+  container.innerHTML = `
+    <section class="space-y-2 sm:space-y-4 view-enter">
+      <!-- Top Mode Preset Strip + Desktop Camera Presets -->
+      <div class="flex items-center justify-between gap-2 sm:gap-3">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar xl:flex-wrap flex-1 min-w-0 py-0.5" role="tablist" aria-label="State-space and estimation presets">
+          ${presets
+            .map((p) => {
+              const isSelected = activePreset && p.id === activePreset.id;
+              return `
+                <button
+                  type="button"
+                  data-ss-preset-id="${escapeHtml(p.id)}"
+                  class="shrink-0 whitespace-nowrap px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-medium border transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-emeraldGlow/20 border-emeraldGlow/55 text-emerald-200 shadow-[0_0_16px_rgba(52,211,153,0.22)]'
+                      : 'bg-slate-900/60 border-white/10 text-slate-300 hover:border-white/25 hover:text-white'
+                  }"
+                >
+                  <span class="sm:hidden">${escapeHtml(p.shortName)}</span>
+                  <span class="hidden sm:inline">${escapeHtml(p.name)}</span>
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+
+        <div class="hidden xl:flex items-center gap-1 bg-slate-900/75 p-1 rounded-xl border border-white/10 shrink-0">
+          ${[
+            { id: '3d', label: '3D Studio' },
+            { id: 'front', label: 'Phase 2D' },
+            { id: 'iso', label: 'Isometric' },
+          ]
+            .map((cam) => {
+              const active = appState.statespaceLab.cameraPreset === cam.id;
+              return `
+                <button
+                  type="button"
+                  data-ss-camera-preset="${cam.id}"
+                  class="px-3 py-1.5 rounded-lg text-[11px] font-mono transition-all cursor-pointer ${
+                    active
+                      ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+                      : 'text-slate-400 border border-transparent hover:text-white'
+                  }"
+                >
+                  ${cam.label}
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+      </div>
+
+      <!-- Main Split-Screen Mobile / Full-Bleed Desktop 3D State-Space & Estimation Studio -->
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-2.5 sm:gap-4 items-stretch">
+        <!-- 3D Viewport Canvas Container -->
+        <div class="xl:col-span-8 canvas-stage relative h-[35dvh] min-h-[210px] max-h-[290px] sm:h-[420px] sm:max-h-none xl:h-[calc(100vh-210px)] xl:min-h-[540px] flex flex-col">
+          <div id="ss-3d-canvas" class="absolute inset-0 w-full h-full"></div>
+
+          <!-- Top-Left Floating Formula HUD -->
+          <div class="pointer-events-none relative z-10 flex items-start justify-between gap-2 p-2.5 sm:p-4">
+            <div class="pointer-events-auto rounded-xl sm:rounded-2xl px-2.5 py-1.5 sm:px-4 sm:py-3 bg-[#0B0D12]/80 backdrop-blur-xl border border-white/15 shadow-lg max-w-full">
+              <div class="hidden sm:flex items-center gap-2 mb-1">
+                <span class="w-2 h-2 rounded-full bg-emeraldGlow shadow-[0_0_8px_#34D399]"></span>
+                <span id="ss-hud-title" class="text-[10px] font-mono uppercase tracking-widest text-slate-400">
+                  ${lensOn ? 'Hardware Rig + State-Space Manifold' : '3D State-Space, MPC & Estimation Manifold'}
+                </span>
+              </div>
+              <div class="flex flex-wrap items-center gap-x-2.5 text-[10px] sm:text-xs text-white">
+                <span id="ss-hud-formula-math" class="text-cyan-200"></span>
+              </div>
+            </div>
+
+            <!-- Mechatronics Actuator Rig Indicator -->
+            <div id="ss-hud-mech-indicator" class="hidden sm:block pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
+              lensOn
+                ? 'bg-amberGlow/15 border-amberGlow/45 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
+                : 'bg-[#0B0D12]/70 border-white/10 text-slate-400'
+            }">
+              <div class="flex items-center gap-2 text-[11px] font-mono">
+                <span class="w-2 h-2 rounded-full ${lensOn ? 'bg-amberGlow animate-pulse' : 'bg-slate-600'}"></span>
+                <span id="ss-hud-mech-text">${lensOn ? 'Cart-Pole Actuator Rig: LIVE' : 'Hardware Rig Overlay: Standby'}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Legend + Mobile Camera Switcher -->
+          <div class="pointer-events-none relative z-10 mt-auto p-2 sm:p-4 flex items-center justify-between gap-2">
+            <div class="hidden sm:inline-flex items-center gap-3 px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-300">
+              <span><span class="text-cyanGlow">━</span> Optimal / True x(t)</span>
+              <span><span class="text-violetGlow">◯</span> Covariance / Sigma</span>
+              <span><span class="text-emeraldGlow">◆</span> Safe / MAP Estimate</span>
+            </div>
+
+            <div class="pointer-events-auto xl:hidden ml-auto flex items-center gap-0.5 bg-[#0B0D12]/80 backdrop-blur-md p-0.5 rounded-xl border border-white/15">
+              ${[
+                { id: '3d', label: '3D' },
+                { id: 'front', label: '2D' },
+                { id: 'iso', label: 'Iso' },
+              ]
+                .map((cam) => {
+                  const active = appState.statespaceLab.cameraPreset === cam.id;
+                  return `
+                    <button
+                      type="button"
+                      data-ss-camera-preset="${cam.id}"
+                      class="px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all cursor-pointer ${
+                        active
+                          ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+                          : 'text-slate-400 border border-transparent hover:text-white'
+                      }"
+                    >
+                      ${cam.label}
+                    </button>
+                  `;
+                })
+                .join('')}
+            </div>
+
+            <div class="hidden xl:inline-flex items-center px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-400">
+              Drag to orbit • Scroll to zoom
+            </div>
+          </div>
+        </div>
+
+        <!-- Tactile State-Space Telemetry HUD + Dual Parameter Sliders -->
+        <aside class="xl:col-span-4 flex flex-col gap-2 sm:gap-4 xl:h-[calc(100vh-210px)] xl:overflow-y-auto studio-scroll pr-0.5">
+          <!-- Compact 1-Row Mobile Telemetry / Expanded Desktop Metrics Card -->
+          <div class="glass-panel p-2.5 sm:p-5 space-y-2 sm:space-y-4">
+            <div class="flex items-center justify-between gap-2">
+              <div class="hidden xl:block">
+                <div class="text-[10px] font-mono uppercase tracking-[0.14em] text-slate-400">State-Space &amp; Filter Telemetry</div>
+                <h2 id="ss-panel-mode-title" class="font-display font-semibold text-sm text-white mt-0.5">
+                  ${escapeHtml(activePreset?.name || 'LQR Regulator')}
+                </h2>
+              </div>
+
+              <!-- Mobile Compact Inline Readout -->
+              <div class="flex xl:hidden items-center gap-1.5 min-w-0 flex-1">
+                <div class="flex-1 min-w-0 rounded-xl px-2.5 py-1 bg-cyanGlow/[0.08] border border-cyanGlow/25">
+                  <div id="ss-lbl-primary-compact" class="text-[9px] font-mono uppercase tracking-wider text-cyanGlow/90 truncate">
+                    ${escapeHtml(initMetrics.primaryLabel || 'Primary')}
+                  </div>
+                  <div id="ss-val-primary-compact" class="font-mono font-semibold text-xs sm:text-sm text-white leading-tight truncate">
+                    ${escapeHtml(initMetrics.primaryValue || '—')}
+                  </div>
+                </div>
+                <div class="flex-1 min-w-0 rounded-xl px-2.5 py-1 bg-violetGlow/[0.08] border border-violetGlow/25">
+                  <div id="ss-lbl-secondary-compact" class="text-[9px] font-mono uppercase tracking-wider text-violetGlow/90 truncate">
+                    ${escapeHtml(initMetrics.secondaryLabel || 'Secondary')}
+                  </div>
+                  <div id="ss-val-secondary-compact" class="font-mono font-semibold text-xs sm:text-sm text-violet-200 leading-tight truncate">
+                    ${escapeHtml(initMetrics.secondaryValue || '—')}
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5 shrink-0">
+                <div
+                  id="ss-badge-status"
+                  class="px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-mono font-semibold border transition-all duration-300 bg-cyanGlow/15 border-cyanGlow/40 text-cyan-200 max-w-[130px] sm:max-w-none truncate"
+                >
+                  ${escapeHtml(initMetrics.statusText || 'OPTIMAL')}
+                </div>
+                <button
+                  id="ss-btn-toggle-mobile-formula"
+                  type="button"
+                  aria-expanded="false"
+                  title="Toggle equation & tertiary telemetry"
+                  class="xl:hidden px-2 py-1 rounded-lg bg-white/[0.05] border border-white/15 text-[11px] font-mono text-emerald-200 cursor-pointer"
+                >
+                  J ▾
+                </button>
+              </div>
+            </div>
+
+            <!-- Collapsible on Mobile (<xl), Always Open on Desktop (xl:block) -->
+            <div id="ss-mobile-formula-drawer" class="hidden xl:block space-y-2.5 sm:space-y-3.5">
+              <div class="katex-card flex flex-col items-center justify-center gap-1.5 min-h-[58px] sm:min-h-[68px]">
+                <div id="ss-telemetry-formula-katex" class="text-emerald-200 text-xs sm:text-sm overflow-x-auto max-w-full"></div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <div class="rounded-2xl p-2.5 sm:p-3 bg-cyanGlow/[0.06] border border-cyanGlow/25 min-w-0">
+                  <div id="ss-lbl-primary" class="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-cyanGlow/90 truncate">
+                    ${escapeHtml(initMetrics.primaryLabel || 'Primary')}
+                  </div>
+                  <div id="ss-val-primary" class="font-mono font-semibold text-xs sm:text-sm text-white mt-0.5 truncate">
+                    ${escapeHtml(initMetrics.primaryValue || '—')}
+                  </div>
+                </div>
+                <div class="rounded-2xl p-2.5 sm:p-3 bg-violetGlow/[0.06] border border-violetGlow/25 min-w-0">
+                  <div id="ss-lbl-secondary" class="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-violetGlow/90 truncate">
+                    ${escapeHtml(initMetrics.secondaryLabel || 'Secondary')}
+                  </div>
+                  <div id="ss-val-secondary" class="font-mono font-semibold text-xs sm:text-sm text-violet-200 mt-0.5 truncate">
+                    ${escapeHtml(initMetrics.secondaryValue || '—')}
+                  </div>
+                </div>
+                <div class="rounded-2xl p-2.5 sm:p-3 bg-amberGlow/[0.06] border border-amberGlow/25 min-w-0">
+                  <div id="ss-lbl-tertiary" class="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-amberGlow/90 truncate">
+                    ${escapeHtml(initMetrics.tertiaryLabel || 'Tertiary')}
+                  </div>
+                  <div id="ss-val-tertiary" class="font-mono font-semibold text-xs sm:text-sm text-amber-200 mt-0.5 truncate">
+                    ${escapeHtml(initMetrics.tertiaryValue || '—')}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dual Tactile Parameter Sliders -->
+          <div class="glass-panel p-2.5 sm:p-5 space-y-2.5 sm:space-y-4 flex-1 flex flex-col justify-between">
+            <div class="space-y-2 sm:space-y-4">
+              <!-- Parameter A Slider (Cyan) -->
+              <div class="space-y-1 sm:space-y-1.5">
+                <div class="flex items-center justify-between gap-2">
+                  <label for="slider-ss-param-a" id="label-ss-param-a" class="text-xs font-medium text-slate-200 flex items-center gap-2 min-w-0">
+                    <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE] shrink-0"></span>
+                    <span class="truncate">${escapeHtml(activePreset?.paramALabel || 'Parameter A')}</span>
+                  </label>
+                  <span id="readout-ss-param-a" class="px-2 py-0.5 rounded-lg bg-cyanGlow/15 border border-cyanGlow/30 font-mono text-[11px] sm:text-xs text-cyanGlow font-semibold shrink-0">
+                    ${formatStateSpaceParam(appState.statespaceLab.paramA, activePreset?.paramA?.step)}
+                  </span>
+                </div>
+                <input
+                  id="slider-ss-param-a"
+                  type="range"
+                  min="${activePreset?.paramA?.min ?? 0.2}"
+                  max="${activePreset?.paramA?.max ?? 25}"
+                  step="${activePreset?.paramA?.step ?? 0.2}"
+                  value="${appState.statespaceLab.paramA}"
+                  class="studio-slider-cyan"
+                />
+              </div>
+
+              <!-- Parameter B Slider (Amber) -->
+              <div class="space-y-1 sm:space-y-1.5">
+                <div class="flex items-center justify-between gap-2">
+                  <label for="slider-ss-param-b" id="label-ss-param-b" class="text-xs font-medium text-slate-200 flex items-center gap-2 min-w-0">
+                    <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B] shrink-0"></span>
+                    <span class="truncate">${escapeHtml(activePreset?.paramBLabel || 'Parameter B')}</span>
+                  </label>
+                  <span id="readout-ss-param-b" class="px-2 py-0.5 rounded-lg bg-amberGlow/15 border border-amberGlow/30 font-mono text-[11px] sm:text-xs text-amberGlow font-semibold shrink-0">
+                    ${formatStateSpaceParam(appState.statespaceLab.paramB, activePreset?.paramB?.step)}
+                  </span>
+                </div>
+                <input
+                  id="slider-ss-param-b"
+                  type="range"
+                  min="${activePreset?.paramB?.min ?? 0.6}"
+                  max="${activePreset?.paramB?.max ?? 2.6}"
+                  step="${activePreset?.paramB?.step ?? 0.1}"
+                  value="${appState.statespaceLab.paramB}"
+                  class="studio-slider-amber"
+                />
+              </div>
+
+              <!-- Action Row: Reset Preset + Quick Stage 2 Mobile Jump -->
+              <div class="flex items-center gap-2 pt-0.5">
+                <button
+                  id="btn-ss-reset"
+                  type="button"
+                  class="flex-1 py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl bg-white/[0.05] border border-white/15 text-slate-200 hover:border-emeraldGlow/45 hover:text-white font-display font-semibold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <span aria-hidden="true">↺</span>
+                  <span>Reset Defaults</span>
+                </button>
+                <button
+                  id="btn-ss-next-intuition-mobile"
+                  type="button"
+                  class="xl:hidden flex-1 py-2 px-3 rounded-xl bg-emeraldGlow/15 border border-emeraldGlow/40 text-emerald-200 font-display font-semibold text-xs transition-all cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <span>Phase/KF Lab</span>
+                  <span aria-hidden="true">→</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Desktop Stage 2 Forward Link -->
+            <div class="hidden xl:block pt-4 border-t border-white/10 space-y-3">
+              <div class="text-[11px] text-slate-400 leading-relaxed">
+                Toggle <span class="text-amberGlow font-medium">Mechatronics Lens</span> in the header to overlay the live cart-pole actuator rig &amp; force gauges directly on the 3D manifold.
+              </div>
+
+              <button
+                id="btn-ss-next-intuition"
+                type="button"
+                class="btn-glass w-full !justify-between !text-xs"
+              >
+                <span>Continue to Stage 2: Phase Plane &amp; KF Lab</span>
+                <span class="text-emeraldGlow" aria-hidden="true">→</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  `;
+
+  const sliderA = document.getElementById('slider-ss-param-a');
+  const sliderB = document.getElementById('slider-ss-param-b');
+  syncSliderTrackFill(sliderA);
+  syncSliderTrackFill(sliderB);
+
+  const syncSlidersForPreset = (preset, valA, valB) => {
+    if (!preset) return;
+    if (sliderA) {
+      sliderA.min = String(preset.paramA.min);
+      sliderA.max = String(preset.paramA.max);
+      sliderA.step = String(preset.paramA.step);
+      sliderA.value = String(valA);
+      syncSliderTrackFill(sliderA);
+    }
+    if (sliderB) {
+      sliderB.min = String(preset.paramB.min);
+      sliderB.max = String(preset.paramB.max);
+      sliderB.step = String(preset.paramB.step);
+      sliderB.value = String(valB);
+      syncSliderTrackFill(sliderB);
+    }
+    const lblA = document.getElementById('label-ss-param-a');
+    if (lblA) {
+      lblA.innerHTML = `<span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE] shrink-0"></span><span class="truncate">${escapeHtml(preset.paramALabel)}</span>`;
+    }
+    const lblB = document.getElementById('label-ss-param-b');
+    if (lblB) {
+      lblB.innerHTML = `<span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B] shrink-0"></span><span class="truncate">${escapeHtml(preset.paramBLabel)}</span>`;
+    }
+    const rA = document.getElementById('readout-ss-param-a');
+    const rB = document.getElementById('readout-ss-param-b');
+    if (rA) rA.textContent = formatStateSpaceParam(valA, preset.paramA.step);
+    if (rB) rB.textContent = formatStateSpaceParam(valB, preset.paramB.step);
+
+    const modeTitle = document.getElementById('ss-panel-mode-title');
+    if (modeTitle) modeTitle.textContent = preset.name;
+  };
+
+  const canvasHost = document.getElementById('ss-3d-canvas');
+
+  const handleStateSpaceTelemetry = (m = {}) => {
+    appState.statespaceTelemetry = {
+      ...appState.statespaceTelemetry,
+      ...m,
+    };
+    const preset = STATESPACE_PRESETS[m.presetId || appState.statespaceLab.presetId];
+    if (typeof m.paramA === 'number') {
+      appState.statespaceLab.paramA = m.paramA;
+      if (sliderA) {
+        sliderA.value = String(m.paramA);
+        syncSliderTrackFill(sliderA);
+      }
+      const rA = document.getElementById('readout-ss-param-a');
+      if (rA) rA.textContent = formatStateSpaceParam(m.paramA, preset?.paramA?.step);
+    }
+    if (typeof m.paramB === 'number') {
+      appState.statespaceLab.paramB = m.paramB;
+      if (sliderB) {
+        sliderB.value = String(m.paramB);
+        syncSliderTrackFill(sliderB);
+      }
+      const rB = document.getElementById('readout-ss-param-b');
+      if (rB) rB.textContent = formatStateSpaceParam(m.paramB, preset?.paramB?.step);
+    }
+    updateStateSpaceStage1TelemetryUI();
+  };
+
+  if (canvasHost && typeof StateSpace3DStudio === 'function') {
+    try {
+      const studio = new StateSpace3DStudio({
+        presetId: activePreset?.id || 'lqr-cart',
+        paramA: appState.statespaceLab.paramA,
+        paramB: appState.statespaceLab.paramB,
+        mechatronicsLens: isMechatronicsLens(),
+        onTelemetry: handleStateSpaceTelemetry,
+      });
+      studio.init(canvasHost, {
+        presetId: activePreset?.id || 'lqr-cart',
+        paramA: appState.statespaceLab.paramA,
+        paramB: appState.statespaceLab.paramB,
+        mechatronicsLens: isMechatronicsLens(),
+        onTelemetry: handleStateSpaceTelemetry,
+      });
+      studio.setCameraPreset?.(appState.statespaceLab.cameraPreset);
+      activeInstances.studio3D = studio;
+      if (typeof studio.getTelemetry === 'function') {
+        handleStateSpaceTelemetry(studio.getTelemetry());
+      }
+    } catch (err) {
+      console.error('[EIGENLAB] StateSpace3DStudio init error:', err);
+      canvasHost.innerHTML = `
+        <div class="w-full h-full flex items-center justify-center p-6 text-center text-sm text-slate-400">
+          3D WebGL State-Space &amp; Estimation viewport could not initialize on this device.
+        </div>
+      `;
+    }
+  }
+
+  updateStateSpaceStage1LensUI();
+  updateStateSpaceStage1TelemetryUI();
+
+  const mobBtn = document.getElementById('ss-btn-toggle-mobile-formula');
+  const mobDrawer = document.getElementById('ss-mobile-formula-drawer');
+  mobBtn?.addEventListener('click', () => {
+    playSfx('tick');
+    const isHidden = mobDrawer?.classList.toggle('hidden');
+    mobBtn.setAttribute('aria-expanded', String(!isHidden));
+    mobBtn.textContent = isHidden ? 'J ▾' : 'J ▴';
+  });
+
+  container.querySelectorAll('[data-ss-preset-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-ss-preset-id');
+      if (!id || id === appState.statespaceLab.presetId) return;
+      playSfx('tick');
+      appState.statespaceLab.presetId = id;
+      const preset = getActiveStateSpacePreset(presets);
+      if (preset) {
+        appState.statespaceLab.paramA = preset.paramA.default;
+        appState.statespaceLab.paramB = preset.paramB.default;
+        syncSlidersForPreset(preset, preset.paramA.default, preset.paramB.default);
+      }
+
+      container.querySelectorAll('[data-ss-preset-id]').forEach((b) => {
+        const sel = b.getAttribute('data-ss-preset-id') === id;
+        b.className = `shrink-0 whitespace-nowrap px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-medium border transition-all cursor-pointer ${
+          sel
+            ? 'bg-emeraldGlow/20 border-emeraldGlow/55 text-emerald-200 shadow-[0_0_16px_rgba(52,211,153,0.22)]'
+            : 'bg-slate-900/60 border-white/10 text-slate-300 hover:border-white/25 hover:text-white'
+        }`;
+      });
+
+      activeInstances.studio3D?.setPreset?.(id);
+      if (typeof activeInstances.studio3D?.getTelemetry === 'function') {
+        handleStateSpaceTelemetry(activeInstances.studio3D.getTelemetry());
+      } else {
+        handleStateSpaceTelemetry(
+          analyzeStateSpaceSystem({
+            presetId: id,
+            paramA: appState.statespaceLab.paramA,
+            paramB: appState.statespaceLab.paramB,
+          })
+        );
+      }
+      markStageDone('3d-lab');
+    });
+  });
+
+  container.querySelectorAll('[data-ss-camera-preset]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const camId = btn.getAttribute('data-ss-camera-preset');
+      if (!camId) return;
+      playSfx('tick');
+      appState.statespaceLab.cameraPreset = camId;
+      container.querySelectorAll('[data-ss-camera-preset]').forEach((b) => {
+        const act = b.getAttribute('data-ss-camera-preset') === camId;
+        const isCompact = b.textContent.trim().length <= 3;
+        b.className = `${isCompact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'} rounded-lg font-mono transition-all cursor-pointer ${
+          act
+            ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+            : 'text-slate-400 border border-transparent hover:text-white'
+        }`;
+      });
+      activeInstances.studio3D?.setCameraPreset?.(camId);
+    });
+  });
+
+  sliderA?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    const preset = getActiveStateSpacePreset(presets);
+    appState.statespaceLab.paramA = val;
+    syncSliderTrackFill(sliderA);
+    const r = document.getElementById('readout-ss-param-a');
+    if (r) r.textContent = formatStateSpaceParam(val, preset?.paramA?.step);
+    activeInstances.studio3D?.setParams?.({
+      paramA: val,
+      paramB: appState.statespaceLab.paramB,
+    });
+    markStageDone('3d-lab');
+  });
+
+  sliderB?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    const preset = getActiveStateSpacePreset(presets);
+    appState.statespaceLab.paramB = val;
+    syncSliderTrackFill(sliderB);
+    const r = document.getElementById('readout-ss-param-b');
+    if (r) r.textContent = formatStateSpaceParam(val, preset?.paramB?.step);
+    activeInstances.studio3D?.setParams?.({
+      paramA: appState.statespaceLab.paramA,
+      paramB: val,
+    });
+    markStageDone('3d-lab');
+  });
+
+  document.getElementById('btn-ss-reset')?.addEventListener('click', () => {
+    playSfx('snap');
+    const preset = getActiveStateSpacePreset(presets);
+    if (preset) {
+      appState.statespaceLab.paramA = preset.paramA.default;
+      appState.statespaceLab.paramB = preset.paramB.default;
+      appState.statespaceLab.cameraPreset = '3d';
+      syncSlidersForPreset(preset, preset.paramA.default, preset.paramB.default);
+    }
+    container.querySelectorAll('[data-ss-camera-preset]').forEach((b) => {
+      const act = b.getAttribute('data-ss-camera-preset') === '3d';
+      const isCompact = b.textContent.trim().length <= 3;
+      b.className = `${isCompact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'} rounded-lg font-mono transition-all cursor-pointer ${
+        act
+          ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+          : 'text-slate-400 border border-transparent hover:text-white'
+      }`;
+    });
+    if (typeof activeInstances.studio3D?.reset === 'function') {
+      const t = activeInstances.studio3D.reset();
+      if (t) handleStateSpaceTelemetry(t);
+    }
+  });
+
+  const goStage2 = () => {
+    playSfx('tick');
+    switchStage('intuition');
+  };
+  document.getElementById('btn-ss-next-intuition')?.addEventListener('click', goStage2);
+  document.getElementById('btn-ss-next-intuition-mobile')?.addEventListener('click', goStage2);
+}
+
+function updateStateSpaceStage1LensUI() {
+  const on = isMechatronicsLens();
+  const titleEl = document.getElementById('ss-hud-title');
+  if (titleEl) {
+    titleEl.textContent = on
+      ? 'Hardware Rig + State-Space Manifold'
+      : '3D State-Space, MPC & Estimation Manifold';
+  }
+  const mechBox = document.getElementById('ss-hud-mech-indicator');
+  const mechTxt = document.getElementById('ss-hud-mech-text');
+  if (mechBox) {
+    mechBox.className = `hidden sm:block pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
+      on
+        ? 'bg-amberGlow/15 border-amberGlow/45 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
+        : 'bg-[#0B0D12]/70 border-white/10 text-slate-400'
+    }`;
+    const dot = mechBox.querySelector('span.rounded-full');
+    if (dot) dot.className = `w-2 h-2 rounded-full ${on ? 'bg-amberGlow animate-pulse' : 'bg-slate-600'}`;
+  }
+  if (mechTxt) {
+    mechTxt.textContent = on ? 'Cart-Pole Actuator Rig: LIVE' : 'Hardware Rig Overlay: Standby';
+  }
+}
+
+function updateStateSpaceStage1TelemetryUI() {
+  const t = appState.statespaceTelemetry || {};
+  const m = t.metrics || {};
+
+  const setText = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  };
+
+  setText('ss-lbl-primary', m.primaryLabel || 'Primary');
+  setText('ss-lbl-primary-compact', m.primaryLabel || 'Primary');
+  setText('ss-val-primary', m.primaryValue || '—');
+  setText('ss-val-primary-compact', m.primaryValue || '—');
+
+  setText('ss-lbl-secondary', m.secondaryLabel || 'Secondary');
+  setText('ss-lbl-secondary-compact', m.secondaryLabel || 'Secondary');
+  setText('ss-val-secondary', m.secondaryValue || '—');
+  setText('ss-val-secondary-compact', m.secondaryValue || '—');
+
+  setText('ss-lbl-tertiary', m.tertiaryLabel || 'Tertiary');
+  setText('ss-val-tertiary', m.tertiaryValue || '—');
+
+  const badge = document.getElementById('ss-badge-status');
+  if (badge) {
+    const statusText = m.statusText || 'OPTIMAL';
+    badge.textContent = statusText;
+    const c = String(m.statusColor || '').toUpperCase();
+    if (c === '#FB7185') {
+      badge.className =
+        'px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-mono font-semibold border transition-all duration-300 bg-rose-500/20 border-rose-400/50 text-rose-200 max-w-[130px] sm:max-w-none truncate';
+    } else if (c === '#F59E0B') {
+      badge.className =
+        'px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-mono font-semibold border transition-all duration-300 bg-amberGlow/15 border-amberGlow/45 text-amber-200 max-w-[130px] sm:max-w-none truncate';
+    } else if (c === '#A78BFA') {
+      badge.className =
+        'px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-mono font-semibold border transition-all duration-300 bg-violetGlow/15 border-violetGlow/45 text-violet-200 max-w-[130px] sm:max-w-none truncate';
+    } else if (c === '#34D399') {
+      badge.className =
+        'px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-mono font-semibold border transition-all duration-300 bg-emeraldGlow/15 border-emeraldGlow/40 text-emerald-200 max-w-[130px] sm:max-w-none truncate';
+    } else {
+      badge.className =
+        'px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-mono font-semibold border transition-all duration-300 bg-cyanGlow/15 border-cyanGlow/40 text-cyan-200 max-w-[130px] sm:max-w-none truncate';
+    }
+  }
+
+  const formulaTex =
+    t.formulaLatex || STATESPACE_PRESETS[appState.statespaceLab.presetId]?.formulaLatex || '';
+  if (formulaTex) {
+    const hudFormulaEl = document.getElementById('ss-hud-formula-math');
+    if (hudFormulaEl) typesetMath(hudFormulaEl, formulaTex, false);
+    const panelFormulaEl = document.getElementById('ss-telemetry-formula-katex');
+    if (panelFormulaEl) typesetMath(panelFormulaEl, formulaTex, false);
+  }
+}
+
+function mountStateSpaceStage2Intuition(container) {
+  const on = isMechatronicsLens();
+  const s = getStoreState();
+  const solvedSsQuizzes = (s.solvedQuizzes || []).filter((id) =>
+    String(id).startsWith('ss-quiz-')
+  ).length;
+  let activeSubTab = 'lab';
+
+  container.innerHTML = `
+    <section class="space-y-3 lg:space-y-6 view-enter">
+      <!-- Mobile Segmented Sub-Tab Switcher (<lg) -->
+      <div class="lg:hidden grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[#0E121C]/90 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+        <button
+          type="button"
+          data-stage2-subtab="lab"
+          class="py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer bg-emeraldGlow/20 border border-emeraldGlow/45 text-emerald-100 shadow-sm"
+        >
+          📈 Phase/KF Lab
+        </button>
+        <button
+          type="button"
+          data-stage2-subtab="quiz"
+          class="py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer border border-transparent text-slate-300 hover:text-white"
+        >
+          🎯 Visual Quiz (${solvedSsQuizzes}/6)
+        </button>
+      </div>
+
+      <!-- Interactive 2D Phase Portrait, MPC & Kalman Filter Lab -->
+      <div id="stage2-panel-lab" class="glass-panel p-2.5 sm:p-5 lg:p-6 space-y-2.5 sm:space-y-4">
+        <div class="hidden sm:flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-emeraldGlow">Modern State-Space ↔ SOTA Estimation</div>
+            <h2 id="stage2-lab-title" class="font-display font-bold text-xl text-white mt-0.5">
+              ${
+                on
+                  ? 'Actuator Phase Portrait, Torque Limits & Real-Time Sensor Fusion'
+                  : 'Synchronized Phase Portrait, State Tracking & Effort / Kalman Gain'
+              }
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Scrub time across synchronized phase-plane, state-trajectory, and control/gain panels for LQR, MPC + CBF-QP, Kalman Fusion, UKF vs. EKF, and MHE Factor Graphs.
+            </p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-[11px] font-mono bg-white/[0.04] border border-white/10 text-slate-300">
+            Drag time cursor t
+          </span>
+        </div>
+
+        <div id="ss-graph-lab-host" class="w-full min-h-[300px] sm:min-h-[380px]"></div>
+      </div>
+
+      <!-- Visual State-Space & Estimation Quiz Engine -->
+      <div id="stage2-panel-quiz" class="hidden lg:block glass-panel p-2.5 sm:p-5 lg:p-6 space-y-2.5 sm:space-y-4">
+        <div class="hidden sm:flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-cyanGlow">Modern Control &amp; Estimation Mastery</div>
+            <h2 class="font-display font-bold text-xl text-white mt-0.5">State-Space, MPC &amp; SOTA Visual Challenges</h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Build deep geometric intuition across PBH controllability, LQR Q/R trade-offs, MPC constraint preview, CBF-QP invariance, Kalman gain trust, and UKF/MHE robustness.
+            </p>
+          </div>
+          <button
+            id="btn-next-solver"
+            type="button"
+            class="btn-glass !text-xs"
+          >
+            Next: State-Space &amp; MPC Solver →
+          </button>
+        </div>
+
+        <div id="ss-quiz-engine-host" class="w-full min-h-[280px] sm:min-h-[320px]"></div>
+      </div>
+    </section>
+  `;
+
+  const panelLab = document.getElementById('stage2-panel-lab');
+  const panelQuiz = document.getElementById('stage2-panel-quiz');
+  const setSubTab = (tab) => {
+    activeSubTab = tab;
+    if (panelLab && panelQuiz) {
+      panelLab.classList.toggle('hidden', tab !== 'lab');
+      panelLab.classList.add('lg:block');
+      panelQuiz.classList.toggle('hidden', tab !== 'quiz');
+      panelQuiz.classList.add('lg:block');
+    }
+    container.querySelectorAll('[data-stage2-subtab]').forEach((btn) => {
+      const isAct = btn.getAttribute('data-stage2-subtab') === tab;
+      btn.className = isAct
+        ? 'py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer bg-emeraldGlow/20 border border-emeraldGlow/45 text-emerald-100 shadow-sm'
+        : 'py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer border border-transparent text-slate-300 hover:text-white';
+    });
+    requestAnimationFrame(() => {
+      if (tab === 'lab') {
+        activeInstances.stackedLab?._resizeAll?.();
+        activeInstances.stackedLab?._drawAll?.();
+      } else {
+        activeInstances.quizEngine?._resizeCanvas?.();
+        activeInstances.quizEngine?._resizeCanvases?.();
+        activeInstances.quizEngine?._drawCanvas?.();
+        activeInstances.quizEngine?._drawCanvases?.();
+      }
+      window.dispatchEvent(new Event('resize'));
+    });
+  };
+
+  container.querySelectorAll('[data-stage2-subtab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const next = btn.getAttribute('data-stage2-subtab');
+      if (next && next !== activeSubTab) {
+        playSfx('tick');
+        setSubTab(next);
+      }
+    });
+  });
+
+  const labHost = document.getElementById('ss-graph-lab-host');
+  if (labHost && typeof StateSpaceGraphLab === 'function') {
+    try {
+      activeInstances.stackedLab = new StateSpaceGraphLab(labHost, {
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        initialPreset: appState.statespaceLab.presetId || 'lqr-cart',
+        onInteract: () => markStageDone('intuition'),
+        onOpenQuiz: () => {
+          playSfx('tick');
+          setSubTab('quiz');
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] StateSpaceGraphLab mount error:', err);
+    }
+  }
+
+  const quizHost = document.getElementById('ss-quiz-engine-host');
+  if (quizHost && typeof StateSpaceVisualQuizEngine === 'function') {
+    try {
+      const updateTabCount = (payload) => {
+        const count =
+          payload?.solvedCount ??
+          (getStoreState().solvedQuizzes || []).filter((id) =>
+            String(id).startsWith('ss-quiz-')
+          ).length;
+        const quizBtn = container.querySelector('[data-stage2-subtab="quiz"]');
+        if (quizBtn) quizBtn.textContent = `🎯 Visual Quiz (${count}/6)`;
+      };
+      activeInstances.quizEngine = new StateSpaceVisualQuizEngine(quizHost, {
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onAnswer: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+        onProgress: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+        onComplete: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] StateSpaceVisualQuizEngine mount error:', err);
+    }
+  }
+
+  document.getElementById('btn-next-solver')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('solver');
+  });
+}
+
+function mountStateSpaceStage3Solver(container) {
+  container.innerHTML = `
+    <section class="max-w-4xl mx-auto space-y-3 sm:space-y-5 view-enter">
+      <div class="hidden md:flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-emeraldGlow">Modern Control &amp; SOTA Estimation Drills</div>
+          <h2 class="font-display font-bold text-2xl text-white mt-0.5">State-Space, LQR, MPC &amp; SOTA Step Solver</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+            12 deep 5-to-7-part engineering drills covering (A,B,C,D) matrices, PBH controllability, LQR Riccati, condensed MPC QP, CBF-QP safety barriers, Kalman/UKF filtering, Factor Graphs, MHE, and InEKF on Lie groups.
+          </p>
+        </div>
+
+        <button
+          id="btn-next-word-problems"
+          type="button"
+          class="btn-glass !text-xs"
+        >
+          Next: Word Problems →
+        </button>
+      </div>
+
+      <div id="paperless-solver-host" class="glass-panel p-2.5 sm:p-5 md:p-6 min-h-[420px]"></div>
+    </section>
+  `;
+
+  const host = document.getElementById('paperless-solver-host');
+  if (host && typeof PaperlessStepSolver === 'function') {
+    try {
+      activeInstances.stepSolver = new PaperlessStepSolver(host, {
+        mode: 'statespace',
+        curriculum: 'statespace',
+        problems: STATESPACE_PROBLEMS,
+        tiers: STATESPACE_SOLVER_TIERS,
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onSolve: () => {
+          markStageDone('solver');
+          updateLessonStageDotsUI();
+        },
+        onProblemSolved: () => {
+          markStageDone('solver');
+          updateLessonStageDotsUI();
+        },
+        onProgress: (info) => {
+          if (!info || (info.solvedCount ?? 1) >= 1) {
+            markStageDone('solver');
+            updateLessonStageDotsUI();
+          }
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] StateSpace PaperlessStepSolver mount error:', err);
+    }
+  }
+
+  document.getElementById('btn-next-word-problems')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('word-problems');
+  });
+}
+
 function mountStage4WordProblems(container) {
   if (!container) return;
 
@@ -8551,33 +9598,38 @@ function mountStage4WordProblems(container) {
   const isMod = isModelingLesson();
   const isPid = isPidLesson();
   const isFreq = isFreqLesson();
-  const fallbackData = isFreq
-    ? FALLBACK_FREQ_WORD_PROBLEMS
-    : isPid
-      ? FALLBACK_PID_WORD_PROBLEMS
-      : isMod
-        ? FALLBACK_MODELING_WORD_PROBLEMS
-        : isLA
-          ? FALLBACK_LINALG_WORD_PROBLEMS
-          : isDE
-            ? FALLBACK_DIFFEQ_WORD_PROBLEMS
-            : isInt
-              ? FALLBACK_INTEGRAL_WORD_PROBLEMS
-              : FALLBACK_WORD_PROBLEMS;
+  const isSS = isStateSpaceLesson();
+  const fallbackData = isSS
+    ? FALLBACK_STATESPACE_WORD_PROBLEMS
+    : isFreq
+      ? FALLBACK_FREQ_WORD_PROBLEMS
+      : isPid
+        ? FALLBACK_PID_WORD_PROBLEMS
+        : isMod
+          ? FALLBACK_MODELING_WORD_PROBLEMS
+          : isLA
+            ? FALLBACK_LINALG_WORD_PROBLEMS
+            : isDE
+              ? FALLBACK_DIFFEQ_WORD_PROBLEMS
+              : isInt
+                ? FALLBACK_INTEGRAL_WORD_PROBLEMS
+                : FALLBACK_WORD_PROBLEMS;
   const data = appState.wordProblemsByLesson?.[appState.lessonId] || fallbackData;
-  const jsonFilePath = isFreq
-    ? 'data/lessons/freq-word-problems.json'
-    : isPid
-      ? 'data/lessons/pid-word-problems.json'
-      : isMod
-        ? 'data/lessons/modeling-word-problems.json'
-        : isLA
-          ? 'data/lessons/linalg-word-problems.json'
-          : isDE
-            ? 'data/lessons/diffeq-word-problems.json'
-            : isInt
-              ? 'data/lessons/integrals-word-problems.json'
-              : 'data/lessons/derivatives-word-problems.json';
+  const jsonFilePath = isSS
+    ? 'data/lessons/statespace-word-problems.json'
+    : isFreq
+      ? 'data/lessons/freq-word-problems.json'
+      : isPid
+        ? 'data/lessons/pid-word-problems.json'
+        : isMod
+          ? 'data/lessons/modeling-word-problems.json'
+          : isLA
+            ? 'data/lessons/linalg-word-problems.json'
+            : isDE
+              ? 'data/lessons/diffeq-word-problems.json'
+              : isInt
+                ? 'data/lessons/integrals-word-problems.json'
+                : 'data/lessons/derivatives-word-problems.json';
   const problems = Array.isArray(data.problems) ? data.problems : [];
   const rawPlanned =
     Array.isArray(data.plannedTopics) && data.plannedTopics.length
@@ -8615,37 +9667,41 @@ function mountStage4WordProblems(container) {
             <h2 class="font-display font-bold text-xl sm:text-3xl text-white">
               ${escapeHtml(
                 data.title ||
-                  (isFreq
-                    ? 'Applied Root Locus, Bode & Loop-Shaping Design Cases'
-                    : isPid
-                      ? 'Applied PID Control & Mechatronics Stabilization Problems'
-                      : isMod
-                        ? 'Applied Physical Modeling & s-Plane Design Problems'
-                        : isLA
-                          ? 'Applied Linear Algebra & Eigen-Engineering Problems'
-                          : isDE
-                            ? 'Applied ODE & Laplace Engineering Problems'
-                            : isInt
-                              ? 'Applied Integral Word Problems'
-                              : 'Applied Engineering Word Problems')
+                  (isSS
+                    ? 'Applied Modern Control, MPC & SOTA Estimation Cases'
+                    : isFreq
+                      ? 'Applied Root Locus, Bode & Loop-Shaping Design Cases'
+                      : isPid
+                        ? 'Applied PID Control & Mechatronics Stabilization Problems'
+                        : isMod
+                          ? 'Applied Physical Modeling & s-Plane Design Problems'
+                          : isLA
+                            ? 'Applied Linear Algebra & Eigen-Engineering Problems'
+                            : isDE
+                              ? 'Applied ODE & Laplace Engineering Problems'
+                              : isInt
+                                ? 'Applied Integral Word Problems'
+                                : 'Applied Engineering Word Problems')
               )}
             </h2>
             <p class="text-xs sm:text-sm text-slate-300/90 leading-relaxed">
               ${escapeHtml(
                 data.subtitle ||
-                  (isFreq
-                    ? 'Synthesize dual-stage HDD lead-lag servos, flexible-link notch filters, maglev Nyquist loops, and satellite attitude sensitivity budgets.'
-                    : isPid
-                      ? 'Design cascaded drone attitude controllers, anti-windup CNC servos, lead-compensated inverted pendulums, and Smith predictors for delayed thermal plants.'
-                      : isMod
-                        ? 'Model coupled quarter-car suspensions, voice-coil actuators, interacting hydraulic tanks, and MEMS proof-mass sensors from first principles.'
-                        : isLA
-                          ? 'Apply Jacobians, rigid-body inertia tensors, Kalman covariance propagation, and low-rank SVD compression to real robotics and AI pipelines.'
-                          : isDE
-                            ? 'Model RLC transients, closed-loop DC motor transfer functions, suspension damping, and continuous Neural ODEs.'
-                            : isInt
-                              ? 'Translate velocity profiles, variable force paths, pulsed currents, and probability densities into definite integrals.'
-                              : 'Translate physical mechatronics, electronics, thermal, and machine learning narratives into differential models and solve them interactively.')
+                  (isSS
+                    ? 'Synthesize quadruped whole-body MPC + InEKF contact estimators, drone CBF-QP safety filters, satellite reaction-wheel LQR observers, and autonomous car MHE/UKF fusion.'
+                    : isFreq
+                      ? 'Synthesize dual-stage HDD lead-lag servos, flexible-link notch filters, maglev Nyquist loops, and satellite attitude sensitivity budgets.'
+                      : isPid
+                        ? 'Design cascaded drone attitude controllers, anti-windup CNC servos, lead-compensated inverted pendulums, and Smith predictors for delayed thermal plants.'
+                        : isMod
+                          ? 'Model coupled quarter-car suspensions, voice-coil actuators, interacting hydraulic tanks, and MEMS proof-mass sensors from first principles.'
+                          : isLA
+                            ? 'Apply Jacobians, rigid-body inertia tensors, Kalman covariance propagation, and low-rank SVD compression to real robotics and AI pipelines.'
+                            : isDE
+                              ? 'Model RLC transients, closed-loop DC motor transfer functions, suspension damping, and continuous Neural ODEs.'
+                              : isInt
+                                ? 'Translate velocity profiles, variable force paths, pulsed currents, and probability densities into definite integrals.'
+                                : 'Translate physical mechatronics, electronics, thermal, and machine learning narratives into differential models and solve them interactively.')
               )}
             </p>
           </div>
@@ -8828,6 +9884,7 @@ async function boot() {
     modWordProblems,
     pidWordProblems,
     freqWordProblems,
+    statespaceWordProblems,
   ] = await Promise.all([
     fetchJsonSafe('./data/curriculum.json', FALLBACK_CURRICULUM),
     fetchJsonSafe('./data/lessons/derivatives-word-problems.json', FALLBACK_WORD_PROBLEMS),
@@ -8849,6 +9906,10 @@ async function boot() {
     ),
     fetchJsonSafe('./data/lessons/pid-word-problems.json', FALLBACK_PID_WORD_PROBLEMS),
     fetchJsonSafe('./data/lessons/freq-word-problems.json', FALLBACK_FREQ_WORD_PROBLEMS),
+    fetchJsonSafe(
+      './data/lessons/statespace-word-problems.json',
+      FALLBACK_STATESPACE_WORD_PROBLEMS
+    ),
     waitForKatex(),
   ]);
 
@@ -8876,6 +9937,9 @@ async function boot() {
   }
   if (freqWordProblems && typeof freqWordProblems === 'object') {
     appState.wordProblemsByLesson['mech-root-bode'] = freqWordProblems;
+  }
+  if (statespaceWordProblems && typeof statespaceWordProblems === 'object') {
+    appState.wordProblemsByLesson['mech-state-space'] = statespaceWordProblems;
   }
 
   subscribeToStoreUpdates();

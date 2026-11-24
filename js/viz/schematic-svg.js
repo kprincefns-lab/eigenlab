@@ -1436,6 +1436,765 @@ function renderPoleZeroMap(d, p, isSetup, activeStepIndex) {
   return wrapSVG(p, ariaLabel, body);
 }
 
+/* ==========================================================================
+   10. State-Space Control & Observer Loops (state-space-loop)
+   ========================================================================== */
+function renderStateSpaceLoop(d, p, isSetup, _activeStepIndex) {
+  const variant = String(d.variant || 'lqr').trim().toLowerCase();
+  const arrowFilter = isSetup ? `${p}glow-boost` : '';
+  const cueFilter = isSetup ? `${p}glow-soft` : '';
+  const cueOp = isSetup ? '1' : '0.84';
+
+  const aVal = fmt(d.A, 'A');
+  const bVal = fmt(d.B, 'B');
+  const cVal = fmt(d.C, 'C');
+
+  if (variant === 'pbh') {
+    const aSize = fitFontSize(aVal, 40, 11, 7.2);
+    const bSize = fitFontSize(bVal, 38, 11, 7.2);
+    const cSize = fitFontSize(cVal, 38, 11, 7.2);
+
+    const body =
+      labelText(14, 17, 'STATE-SPACE REALIZATION', {
+        color: COLORS.cyan,
+        size: 7.4,
+        weight: '700',
+        anchor: 'start',
+        opacity: '0.84',
+        letterSpacing: '0.8',
+      }) +
+      pillBadge(362, 16, '(A, B, C, D)', COLORS.violet, {
+        size: 8.2,
+        padX: 8,
+        h: 15,
+        bg: 'rgba(167,139,250,0.14)',
+        textColor: '#DDD6FE',
+      }) +
+
+      // Input u(t) -> [B]
+      `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+      `<line x1="14" y1="58" x2="60" y2="58" stroke="${COLORS.emerald}" stroke-width="${isSetup ? '2.15' : '1.85'}" marker-end="url(#${p}arrow-emerald)"/>` +
+      labelText(34, 47, 'u(t)', { color: COLORS.emerald, size: 10, weight: '700' }) +
+      `</g>` +
+
+      // Input Matrix [B]
+      `<rect x="64" y="42" width="46" height="32" rx="7" fill="url(#${p}glass-amber)" stroke="${COLORS.amber}" stroke-width="1.7"/>` +
+      `<line x1="70" y1="43.3" x2="104" y2="43.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.9"/>` +
+      labelText(87, 62, bVal, { color: COLORS.text, size: bSize, weight: '700' }) +
+
+      // [B] -> Sigma
+      `<line x1="110" y1="58" x2="135" y2="58" stroke="${COLORS.amber}" stroke-width="1.65" marker-end="url(#${p}arrow-amber)"/>` +
+
+      // Summing Junction Sigma
+      `<circle cx="149" cy="58" r="11.5" fill="url(#${p}glass-node)" stroke="${COLORS.wire}" stroke-width="1.6"/>` +
+      labelText(149, 62, 'Σ', { color: COLORS.text, size: 12, weight: '700' }) +
+      labelText(131, 51, '+', { color: COLORS.amber, size: 10, weight: '700', filter: cueFilter }) +
+      labelText(139, 78, '+', { color: COLORS.cyan, size: 10, weight: '700', filter: cueFilter }) +
+
+      // Sigma -> Integrator [∫]
+      `<g${cueFilter ? ` filter="url(#${cueFilter})"` : ''}>` +
+      `<line x1="160.5" y1="58" x2="196" y2="58" stroke="${COLORS.cyan}" stroke-width="1.75" marker-end="url(#${p}arrow-cyan)"/>` +
+      labelText(178, 47, 'ẋ(t)', { color: COLORS.cyan, size: 9.2, weight: '700', opacity: cueOp }) +
+      `</g>` +
+
+      // Integrator Block [∫]
+      `<rect x="200" y="40" width="50" height="36" rx="8" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.8"/>` +
+      `<line x1="207" y1="41.3" x2="243" y2="41.3" stroke="rgba(255,255,255,0.24)" stroke-width="0.95"/>` +
+      labelText(225, 63.5, '∫', { color: '#E0F2FE', size: 16, weight: '700', filter: cueFilter }) +
+
+      // Integrator -> [C] (with tap to [A])
+      `<line x1="250" y1="58" x2="304" y2="58" stroke="${COLORS.cyan}" stroke-width="1.8" marker-end="url(#${p}arrow-cyan)"/>` +
+      labelText(278, 47, 'x(t)', { color: COLORS.cyan, size: 9.6, weight: '700' }) +
+      `<circle cx="278" cy="58" r="2.8" fill="${COLORS.cyan}"/>` +
+
+      // Output Matrix [C]
+      `<rect x="308" y="42" width="46" height="32" rx="7" fill="url(#${p}glass-violet)" stroke="${COLORS.violet}" stroke-width="1.7"/>` +
+      `<line x1="314" y1="43.3" x2="348" y2="43.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.9"/>` +
+      labelText(331, 62, cVal, { color: COLORS.text, size: cSize, weight: '700' }) +
+
+      // Output y(t)
+      `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+      `<line x1="354" y1="58" x2="404" y2="58" stroke="${COLORS.emerald}" stroke-width="${isSetup ? '2.15' : '1.85'}" marker-end="url(#${p}arrow-emerald)"/>` +
+      labelText(384, 47, 'y(t)', { color: COLORS.emerald, size: 10, weight: '700' }) +
+      `</g>` +
+
+      // Feedback branch through [A]
+      `<path d="M 278,58 L 278,104 Q 278,108 274,108 L 250,108" fill="none" stroke="${COLORS.cyan}" stroke-width="1.65" stroke-linejoin="round" marker-end="url(#${p}arrow-cyan)"/>` +
+      `<rect x="198" y="93" width="48" height="30" rx="7" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.65"/>` +
+      `<line x1="204" y1="94.3" x2="240" y2="94.3" stroke="rgba(255,255,255,0.2)" stroke-width="0.9"/>` +
+      labelText(222, 112, aVal, { color: COLORS.text, size: aSize, weight: '700' }) +
+      `<path d="M 198,108 L 153,108 Q 149,108 149,104 L 149,71.5" fill="none" stroke="${COLORS.cyan}" stroke-width="1.65" stroke-linejoin="round" marker-end="url(#${p}arrow-cyan)"/>` +
+      labelText(171, 101, 'Ax', { color: COLORS.cyan, size: 8.6, weight: '600', opacity: cueOp }) +
+
+      // Right compact modal summary box
+      `<rect x="296" y="92" width="110" height="32" rx="7" fill="rgba(7,11,20,0.74)" stroke="rgba(148,163,184,0.22)" stroke-width="0.9"/>` +
+      labelText(351, 105, 'ẋ = Ax + Bu', { color: '#A5F3FC', size: 8.4, weight: '600' }) +
+      labelText(351, 117.5, 'y = Cx + Du', { color: '#A7F3D0', size: 8.2, weight: '500', opacity: '0.88' }) +
+
+      renderSubtitle(d.subtitle, 14, 142);
+
+    return wrapSVG(p, `State-space signal-flow schematic (${aVal}, ${bVal}, ${cVal})`, body);
+  }
+
+  if (variant === 'observer') {
+    const ctrlVal = fmt(d.controller, '−K');
+    const obsVal = fmt(d.observer, 'L');
+    const ctrlSize = fitFontSize(ctrlVal, 48, 11, 7.5);
+    const obsSize = fitFontSize(obsVal, 30, 11, 7.5);
+
+    const body =
+      labelText(14, 15.5, 'OBSERVER-BASED FEEDBACK', {
+        color: COLORS.cyan,
+        size: 7.3,
+        weight: '700',
+        anchor: 'start',
+        opacity: '0.84',
+        letterSpacing: '0.7',
+      }) +
+      pillBadge(342, 14.5, 'Separation Principle', COLORS.violet, {
+        size: 7.8,
+        padX: 8,
+        h: 14.5,
+        bg: 'rgba(167,139,250,0.14)',
+        textColor: '#DDD6FE',
+      }) +
+
+      // Left Controller Box [-K]
+      `<rect x="20" y="39" width="58" height="38" rx="7.5" fill="url(#${p}glass-amber)" stroke="${COLORS.amber}" stroke-width="1.7"/>` +
+      `<line x1="27" y1="40.3" x2="71" y2="40.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.9"/>` +
+      labelText(49, 51, 'CTRL', { color: COLORS.amber, size: 7.2, weight: '700', opacity: '0.86' }) +
+      labelText(49, 67, ctrlVal, { color: '#FEF3C7', size: ctrlSize, weight: '700' }) +
+
+      // Control u -> Plant (top) and -> Observer (bottom branch)
+      `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+      `<line x1="78" y1="54" x2="132" y2="54" stroke="${COLORS.amber}" stroke-width="${isSetup ? '2' : '1.75'}" marker-end="url(#${p}arrow-amber)"/>` +
+      labelText(96, 45, 'u', { color: COLORS.amber, size: 9.8, weight: '700' }) +
+      `</g>` +
+      `<circle cx="106" cy="54" r="2.6" fill="${COLORS.amber}"/>` +
+      `<path d="M 106,54 L 106,94 Q 106,98 110,98 L 132,98" fill="none" stroke="${COLORS.amber}" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#${p}arrow-amber)"/>` +
+
+      // Top Plant Box
+      `<rect x="136" y="29" width="140" height="42" rx="8" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.75"/>` +
+      `<line x1="143" y1="30.3" x2="269" y2="30.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.95"/>` +
+      labelText(206, 41, 'PLANT', { color: COLORS.cyan, size: 7.6, weight: '700', opacity: '0.9', letterSpacing: '0.6' }) +
+      labelText(206, 54, 'ẋ = Ax + Bu', { color: COLORS.text, size: 9.5, weight: '700' }) +
+      labelText(206, 65.5, 'y = Cx', { color: '#A5F3FC', size: 8.5, weight: '600' }) +
+
+      // Plant output y + tap down to Residual Sigma
+      `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+      `<line x1="276" y1="50" x2="404" y2="50" stroke="${COLORS.emerald}" stroke-width="${isSetup ? '2.05' : '1.8'}" marker-end="url(#${p}arrow-emerald)"/>` +
+      labelText(390, 41, 'y', { color: COLORS.emerald, size: 10, weight: '700' }) +
+      `</g>` +
+      `<circle cx="320" cy="50" r="2.6" fill="${COLORS.emerald}"/>` +
+      `<line x1="320" y1="50" x2="320" y2="66" stroke="${COLORS.emerald}" stroke-width="1.55" marker-end="url(#${p}arrow-emerald)"/>` +
+      labelText(311, 61, '+', { color: COLORS.emerald, size: 9.5, weight: '700' }) +
+
+      // Residual Summing Junction Sigma
+      `<circle cx="320" cy="78" r="9.5" fill="url(#${p}glass-node)" stroke="${COLORS.wire}" stroke-width="1.5"/>` +
+      labelText(320, 81.5, 'Σ', { color: COLORS.text, size: 10.5, weight: '700' }) +
+
+      // Observer output ŷ -> Sigma (-)
+      `<path d="M 276,99 L 316,99 Q 320,99 320,95 L 320,89.5" fill="none" stroke="${COLORS.violet}" stroke-width="1.55" stroke-linejoin="round" marker-end="url(#${p}arrow-violet)"/>` +
+      labelText(298, 93, 'ŷ', { color: COLORS.violet, size: 9, weight: '700' }) +
+      labelText(310, 94.5, '−', { color: COLORS.rose, size: 10.5, weight: '700' }) +
+
+      // Residual y - ŷ -> Observer Gain [L] -> Observer
+      `<line x1="329.5" y1="78" x2="356" y2="78" stroke="${COLORS.violet}" stroke-width="1.6" marker-end="url(#${p}arrow-violet)"/>` +
+      labelText(343, 69, 'y−ŷ', { color: '#DDD6FE', size: 7.8, weight: '600' }) +
+      `<rect x="360" y="65" width="38" height="26" rx="6.5" fill="url(#${p}glass-violet)" stroke="${COLORS.violet}" stroke-width="1.65"/>` +
+      `<line x1="365" y1="66.3" x2="393" y2="66.3" stroke="rgba(255,255,255,0.2)" stroke-width="0.85"/>` +
+      labelText(379, 82, obsVal, { color: '#EDE9FE', size: obsSize, weight: '700' }) +
+      `<path d="M 379,91 L 379,112 Q 379,116 375,116 L 279,116" fill="none" stroke="${COLORS.violet}" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#${p}arrow-violet)"/>` +
+      labelText(334, 125.5, 'L(y−ŷ)', { color: COLORS.violet, size: 7.8, weight: '600' }) +
+
+      // Bottom Luenberger Observer Box
+      `<rect x="136" y="86" width="140" height="41" rx="8" fill="url(#${p}glass-violet)" stroke="${COLORS.violet}" stroke-width="1.75"/>` +
+      `<line x1="143" y1="87.3" x2="269" y2="87.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.95"/>` +
+      labelText(206, 97.5, 'LUENBERGER OBSERVER', { color: COLORS.violet, size: 7.2, weight: '700', opacity: '0.92', letterSpacing: '0.4' }) +
+      labelText(206, 110.5, 'x̂̇ = Ax̂+Bu + L(y−ŷ)', { color: COLORS.text, size: 8.5, weight: '700' }) +
+      labelText(206, 122, 'eig(A−BK) ∪ eig(A−LC)', { color: '#C4B5FD', size: 7.1, weight: '500', opacity: '0.88' }) +
+
+      // Estimated state x̂ feedback -> [-K]
+      `<path d="M 136,114 L 53,114 Q 49,114 49,110 L 49,79" fill="none" stroke="${COLORS.cyan}" stroke-width="1.65" stroke-linejoin="round" marker-end="url(#${p}arrow-cyan)"/>` +
+      labelText(84, 107, 'x̂', { color: COLORS.cyan, size: 10, weight: '700', filter: cueFilter }) +
+
+      renderSubtitle(d.subtitle, 14, 142);
+
+    return wrapSVG(p, `Luenberger observer and separation principle schematic: controller ${ctrlVal}, observer ${obsVal}`, body);
+  }
+
+  // Default variant: 'lqr' (Full-State Feedback Loop)
+  const costText = fmt(d.controller, 'J = ∫(xᵀQx+uᵀRu)');
+  const costSize = fitFontSize(costText, 128, 8.0, 6.6);
+
+  const body =
+    labelText(14, 16.5, 'FULL-STATE FEEDBACK (LQR)', {
+      color: COLORS.cyan,
+      size: 7.4,
+      weight: '700',
+      anchor: 'start',
+      opacity: '0.86',
+      letterSpacing: '0.7',
+    }) +
+    pillBadge(352, 15.5, 'K = R⁻¹BᵀP', COLORS.amber, {
+      size: 8.0,
+      padX: 8,
+      h: 15,
+      bg: 'rgba(245,158,11,0.13)',
+      textColor: '#FDE68A',
+    }) +
+
+    // Reference r -> Pre-compensator [N̄]
+    `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+    `<line x1="12" y1="60" x2="43" y2="60" stroke="${COLORS.emerald}" stroke-width="${isSetup ? '2.1' : '1.8'}" marker-end="url(#${p}arrow-emerald)"/>` +
+    labelText(25, 49, 'r', { color: COLORS.emerald, size: 10.5, weight: '700' }) +
+    `</g>` +
+
+    // [N̄] Reference Gain Box
+    `<rect x="47" y="45" width="34" height="30" rx="7" fill="url(#${p}glass-emerald)" stroke="${COLORS.emerald}" stroke-width="1.55"/>` +
+    `<line x1="52" y1="46.3" x2="76" y2="46.3" stroke="rgba(255,255,255,0.2)" stroke-width="0.85"/>` +
+    labelText(64, 64, 'N̄', { color: '#D1FAE5', size: 11, weight: '700' }) +
+
+    // [N̄] -> Sigma
+    `<line x1="81" y1="60" x2="107" y2="60" stroke="${COLORS.emerald}" stroke-width="1.65" marker-end="url(#${p}arrow-emerald)"/>` +
+
+    // Summing Junction Sigma (+/-)
+    `<circle cx="121" cy="60" r="11.5" fill="url(#${p}glass-node)" stroke="${COLORS.wire}" stroke-width="1.6"/>` +
+    labelText(121, 64, 'Σ', { color: COLORS.text, size: 12, weight: '700' }) +
+    labelText(103, 52, '+', { color: COLORS.emerald, size: 10.5, weight: '700', filter: cueFilter }) +
+    labelText(111, 80, '−', { color: COLORS.amber, size: 11.5, weight: '700', filter: cueFilter }) +
+
+    // Control Signal u = -Kx -> Plant
+    `<g${cueFilter ? ` filter="url(#${cueFilter})"` : ''}>` +
+    `<line x1="132.5" y1="60" x2="206" y2="60" stroke="${COLORS.amber}" stroke-width="${isSetup ? '2.1' : '1.85'}" marker-end="url(#${p}arrow-amber)"/>` +
+    labelText(169, 48, 'u = −Kx', { color: COLORS.amber, size: 9.6, weight: '700', opacity: cueOp }) +
+    `</g>` +
+
+    // Cyan State-Space Plant Box
+    `<rect x="210" y="36" width="138" height="48" rx="8.5" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.8"/>` +
+    `<line x1="217" y1="37.3" x2="341" y2="37.3" stroke="rgba(255,255,255,0.24)" stroke-width="0.95"/>` +
+    labelText(279, 48, 'STATE-SPACE PLANT', { color: COLORS.cyan, size: 7.3, weight: '700', opacity: '0.88', letterSpacing: '0.5' }) +
+    labelText(279, 62.5, 'ẋ = Ax + Bu', { color: COLORS.text, size: 10.8, weight: '700' }) +
+    labelText(279, 76.5, costText, { color: '#DDD6FE', size: costSize, weight: '600' }) +
+
+    // State Output x(t)
+    `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+    `<line x1="348" y1="60" x2="404" y2="60" stroke="${COLORS.cyan}" stroke-width="${isSetup ? '2.1' : '1.85'}" marker-end="url(#${p}arrow-cyan)"/>` +
+    labelText(387, 48, 'x(t)', { color: COLORS.cyan, size: 10, weight: '700' }) +
+    `</g>` +
+    `<circle cx="368" cy="60" r="2.8" fill="${COLORS.cyan}"/>` +
+
+    // Lower State-Feedback Return via Amber [K]
+    `<path d="M 368,60 L 368,107 Q 368,111 364,111 L 269,111" fill="none" stroke="${COLORS.amber}" stroke-width="1.65" stroke-linejoin="round" marker-end="url(#${p}arrow-amber)"/>` +
+    `<rect x="215" y="96" width="50" height="30" rx="7.5" fill="url(#${p}glass-amber)" stroke="${COLORS.amber}" stroke-width="1.75"/>` +
+    `<line x1="221" y1="97.3" x2="259" y2="97.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.9"/>` +
+    labelText(240, 115, 'K', { color: '#FEF3C7', size: 12.5, weight: '700' }) +
+    `<path d="M 215,111 L 125,111 Q 121,111 121,107 L 121,73.5" fill="none" stroke="${COLORS.amber}" stroke-width="1.65" stroke-linejoin="round" marker-end="url(#${p}arrow-amber)"/>` +
+    labelText(168, 103, 'Kx', { color: COLORS.amber, size: 9, weight: '600', opacity: cueOp }) +
+
+    renderSubtitle(d.subtitle, 14, 142);
+
+  return wrapSVG(p, `Full-state feedback LQR control loop schematic: ${costText}`, body);
+}
+
+/* ==========================================================================
+   11. Model Predictive Control & CBF Safety Filter (mpc-cbf)
+   ========================================================================== */
+function renderMpcCbf(d, p, isSetup, _activeStepIndex) {
+  const variant = String(d.variant || 'mpc').trim().toLowerCase();
+  const arrowFilter = isSetup ? `${p}glow-boost` : '';
+  const cueFilter = isSetup ? `${p}glow-soft` : '';
+
+  if (variant === 'cbf') {
+    const costStr = fmt(d.cost, 'min ½‖u−u_nom‖²');
+    const barrierStr = fmt(d.barrier, 's.t. ḣ + αh ≥ 0');
+    const safeSetStr = fmt(d.constraint, 'C = {x : h(x) ≥ 0}');
+    const safeFont = fitFontSize(safeSetStr, 152, 8.2, 7.0);
+    const safeW = Math.max(76, Math.round(safeSetStr.length * safeFont * 0.62 + 16));
+    const safeCx = Math.round((408 - safeW / 2) * 10) / 10;
+
+    const body =
+      labelText(14, 17, 'CBF-QP SAFETY FILTER', {
+        color: COLORS.emerald,
+        size: 7.5,
+        weight: '700',
+        anchor: 'start',
+        opacity: '0.9',
+        letterSpacing: '0.8',
+      }) +
+      pillBadge(safeCx, 16, safeSetStr, COLORS.emerald, {
+        size: safeFont,
+        padX: 8,
+        h: 16,
+        bg: 'rgba(52,211,153,0.12)',
+        textColor: '#A7F3D0',
+      }) +
+
+      // Left: Nominal Policy (Cyan)
+      `<rect x="14" y="42" width="88" height="52" rx="8" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.65"/>` +
+      `<line x1="21" y1="43.3" x2="95" y2="43.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.9"/>` +
+      labelText(58, 56, 'NOMINAL', { color: COLORS.cyan, size: 7.4, weight: '700', opacity: '0.88', letterSpacing: '0.5' }) +
+      labelText(58, 66.5, 'POLICY', { color: COLORS.cyan, size: 7.4, weight: '700', opacity: '0.88', letterSpacing: '0.5' }) +
+      labelText(58, 83.5, 'LQR / MPC / RL', { color: COLORS.text, size: 8.3, weight: '600' }) +
+
+      // Arrow u_nom -> CBF-QP Shield
+      `<line x1="102" y1="68" x2="135" y2="68" stroke="${COLORS.amber}" stroke-width="1.75" marker-end="url(#${p}arrow-amber)"/>` +
+      labelText(119, 57, 'u_nom', { color: COLORS.amber, size: 8.6, weight: '700' }) +
+
+      // Center: Double-Bordered Emerald/Amber CBF-QP Shield
+      `<rect x="139" y="34" width="142" height="68" rx="10" fill="rgba(245,158,11,0.06)" stroke="${COLORS.amber}" stroke-opacity="0.7" stroke-width="1.35"/>` +
+      `<rect x="143" y="38" width="134" height="60" rx="7.5" fill="url(#${p}glass-emerald)" stroke="${COLORS.emerald}" stroke-width="1.8"/>` +
+      `<line x1="150" y1="39.3" x2="270" y2="39.3" stroke="rgba(255,255,255,0.24)" stroke-width="0.95"/>` +
+      // Vector shield emblem
+      `<path d="M 157,44.5 L 162,46.5 L 162,50.5 C 162,53.6 159.5,55.4 157,56.5 C 154.5,55.4 152,53.6 152,50.5 L 152,46.5 Z" fill="rgba(52,211,153,0.22)" stroke="${COLORS.emerald}" stroke-width="1.15"/>` +
+      labelText(216, 53, 'CBF-QP SHIELD', { color: COLORS.emerald, size: 8.0, weight: '700', letterSpacing: '0.6' }) +
+      labelText(210, 70, costStr, {
+        color: COLORS.text,
+        size: fitFontSize(costStr, 124, 9.0, 6.8),
+        weight: '700',
+      }) +
+      labelText(210, 86.5, barrierStr, {
+        color: '#FDE68A',
+        size: fitFontSize(barrierStr, 124, 8.6, 6.8),
+        weight: '600',
+      }) +
+
+      // Arrow u* (safe) -> Robot Plant
+      `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+      `<line x1="281" y1="68" x2="315" y2="68" stroke="${COLORS.emerald}" stroke-width="${isSetup ? '2.2' : '1.9'}" marker-end="url(#${p}arrow-emerald)"/>` +
+      labelText(298, 57, 'u*', { color: COLORS.emerald, size: 10.5, weight: '700' }) +
+      `</g>` +
+      labelText(298, 80, 'safe', { color: '#6EE7B7', size: 7.2, weight: '600', opacity: '0.9' }) +
+
+      // Right: Robot Plant (Cyan)
+      `<rect x="319" y="42" width="87" height="52" rx="8" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.7"/>` +
+      `<line x1="326" y1="43.3" x2="399" y2="43.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.9"/>` +
+      labelText(362.5, 56, 'ROBOT PLANT', { color: COLORS.cyan, size: 7.4, weight: '700', opacity: '0.9', letterSpacing: '0.4' }) +
+      labelText(362.5, 72, 'ẋ = f(x)+g(x)u', { color: COLORS.text, size: 8.2, weight: '700' }) +
+      labelText(362.5, 86, 'x(t) ∈ C', { color: COLORS.emerald, size: 8.4, weight: '700' }) +
+
+      // State feedback return to Nominal Policy & CBF-QP Shield
+      `<path d="M 362.5,94 L 362.5,115 Q 362.5,119 358.5,119 L 62,119 Q 58,119 58,115 L 58,96" fill="none" stroke="${COLORS.cyan}" stroke-width="1.55" stroke-linejoin="round" marker-end="url(#${p}arrow-cyan)"/>` +
+      `<circle cx="210" cy="119" r="2.6" fill="${COLORS.cyan}"/>` +
+      `<line x1="210" y1="119" x2="210" y2="104" stroke="${COLORS.emerald}" stroke-width="1.55" marker-end="url(#${p}arrow-emerald)"/>` +
+      labelText(286, 113, 'state x(t) → h(x)', { color: COLORS.cyan, size: 7.8, weight: '600', filter: cueFilter }) +
+
+      renderSubtitle(d.subtitle, 14, 143);
+
+    return wrapSVG(p, `Safety-critical CBF-QP safety filter schematic: ${costStr}, ${barrierStr}`, body);
+  }
+
+  // Default variant: 'mpc' (Receding-Horizon MPC Loop)
+  const horizonRaw = fmt(d.horizon, 'N');
+  const horizonLabel = /^k\s*[→\-]/i.test(horizonRaw)
+    ? horizonRaw
+    : /^N\s*=\s*(.+)$/i.test(horizonRaw)
+      ? `k → k+${horizonRaw.replace(/^N\s*=\s*/i, '').trim()}`
+      : `k → k+${horizonRaw}`;
+  const costStr = fmt(d.cost, 'min Σ xᵀQx+uᵀRu');
+  const constrStr = fmt(d.constraint, '|u| ≤ u_max');
+
+  const body =
+    labelText(14, 17, 'RECEDING-HORIZON MPC', {
+      color: COLORS.violet,
+      size: 7.5,
+      weight: '700',
+      anchor: 'start',
+      opacity: '0.9',
+      letterSpacing: '0.8',
+    }) +
+
+    // Sleek Top-Right Receding-Horizon Sparkline Preview Pill (k -> k+N)
+    `<g>` +
+    `<rect x="208" y="7" width="198" height="28" rx="8" fill="rgba(11,15,25,0.9)" stroke="${COLORS.violet}" stroke-opacity="0.52" stroke-width="1"/>` +
+    `<line x1="215" y1="8.2" x2="399" y2="8.2" stroke="rgba(255,255,255,0.16)" stroke-width="0.8"/>` +
+    labelText(216, 17.5, 'HORIZON', { color: COLORS.violet, size: 6.7, weight: '700', anchor: 'start', opacity: '0.88', letterSpacing: '0.5' }) +
+    labelText(216, 29.5, horizonLabel, {
+      color: '#EDE9FE',
+      size: fitFontSize(horizonLabel, 74, 8.2, 6.8),
+      weight: '700',
+      anchor: 'start',
+    }) +
+    // Applied first-step Emerald highlight band
+    `<rect x="296" y="10.5" width="18" height="21" rx="3" fill="rgba(52,211,153,0.16)" stroke="${COLORS.emerald}" stroke-opacity="0.4" stroke-width="0.75"/>` +
+    // Reference dashed line
+    `<line x1="296" y1="15" x2="398" y2="15" stroke="${COLORS.emerald}" stroke-opacity="0.48" stroke-width="0.9" stroke-dasharray="2.5 2"/>` +
+    // Predicted trajectory sparkline curve
+    `<path d="M 300,29 C 320,28 336,16.5 396,15" fill="none" stroke="${COLORS.cyan}" stroke-width="1.5" stroke-linecap="round"/>` +
+    // Receding horizon discrete nodes (u0* emerald + future violet)
+    `<circle cx="300" cy="29" r="2.6" fill="${COLORS.emerald}" filter="url(#${p}glow-soft)"/>` +
+    `<circle cx="322" cy="24.5" r="1.9" fill="${COLORS.violet}"/>` +
+    `<circle cx="344" cy="18.8" r="1.9" fill="${COLORS.violet}" fill-opacity="0.85"/>` +
+    `<circle cx="368" cy="16.2" r="1.8" fill="${COLORS.violet}" fill-opacity="0.7"/>` +
+    `<circle cx="392" cy="15.2" r="1.7" fill="${COLORS.violet}" fill-opacity="0.55"/>` +
+    `</g>` +
+
+    // Left Box: Convex QP Solver (Violet/Amber)
+    `<rect x="14" y="42" width="146" height="56" rx="8.5" fill="url(#${p}glass-violet)" stroke="${COLORS.violet}" stroke-width="1.75"/>` +
+    `<line x1="22" y1="43.3" x2="152" y2="43.3" stroke="${COLORS.amber}" stroke-opacity="0.82" stroke-width="1.25"/>` +
+    labelText(87, 54.5, 'CONVEX QP SOLVER', { color: COLORS.amber, size: 7.5, weight: '700', letterSpacing: '0.6' }) +
+    labelText(87, 70.5, costStr, {
+      color: COLORS.text,
+      size: fitFontSize(costStr, 134, 9.2, 6.8),
+      weight: '700',
+    }) +
+    labelText(87, 86.5, constrStr, {
+      color: '#FDE68A',
+      size: fitFontSize(constrStr, 132, 8.4, 6.8),
+      weight: '600',
+    }) +
+
+    // Center Arrow: apply u0* only (Emerald)
+    `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+    `<line x1="160" y1="70" x2="252" y2="70" stroke="${COLORS.emerald}" stroke-width="${isSetup ? '2.15' : '1.85'}" marker-end="url(#${p}arrow-emerald)"/>` +
+    labelText(206, 58, 'u₀*', { color: COLORS.emerald, size: 10.5, weight: '700' }) +
+    `</g>` +
+    labelText(206, 84, 'apply u₀* only', { color: '#A7F3D0', size: 7.8, weight: '600' }) +
+
+    // Right Box: Discrete Plant (Cyan)
+    `<rect x="256" y="45" width="150" height="50" rx="8.5" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.75"/>` +
+    `<line x1="263" y1="46.3" x2="399" y2="46.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.95"/>` +
+    labelText(331, 58, 'DISCRETE PLANT', { color: COLORS.cyan, size: 7.5, weight: '700', opacity: '0.9', letterSpacing: '0.6' }) +
+    labelText(
+      331,
+      73.5,
+      'x<tspan dy="2.2" font-size="6.8">k+1</tspan><tspan dy="-2.2"> = A</tspan><tspan dy="2.2" font-size="6.8">d</tspan><tspan dy="-2.2">x</tspan><tspan dy="2.2" font-size="6.8">k</tspan><tspan dy="-2.2"> + B</tspan><tspan dy="2.2" font-size="6.8">d</tspan><tspan dy="-2.2">u</tspan><tspan dy="2.2" font-size="6.8">k</tspan>',
+      { color: COLORS.text, size: 9.2, weight: '700', raw: true }
+    ) +
+    labelText(331, 87, 'Zero-Order Hold (k → k+1)', { color: '#A5F3FC', size: 7.2, weight: '500', opacity: '0.84' }) +
+
+    // Feedback return path: measure x_k
+    `<path d="M 331,95 L 331,116 Q 331,120 327,120 L 91,120 Q 87,120 87,116 L 87,100" fill="none" stroke="${COLORS.cyan}" stroke-width="1.65" stroke-linejoin="round" marker-end="url(#${p}arrow-cyan)"/>` +
+    pillBadge(209, 120, 'measure x_k', COLORS.cyan, {
+      size: 8.0,
+      padX: 9,
+      h: 15,
+      bg: 'rgba(7,11,20,0.94)',
+      textColor: '#A5F3FC',
+      filter: cueFilter,
+    }) +
+
+    renderSubtitle(d.subtitle, 14, 143);
+
+  return wrapSVG(p, `Receding-horizon MPC loop schematic: ${costStr}, ${constrStr}, horizon ${horizonRaw}`, body);
+}
+
+/* ==========================================================================
+   12. State Estimation & Sensor Fusion Architectures (estimator-arch)
+   ========================================================================== */
+function renderEstimatorArch(d, p, isSetup, _activeStepIndex) {
+  const variant = String(d.variant || 'kf').trim().toLowerCase();
+  const arrowFilter = isSetup ? `${p}glow-boost` : '';
+  const cueFilter = isSetup ? `${p}glow-soft` : '';
+
+  if (variant === 'ukf') {
+    const warpExpr = fmt(d.model, 'yᵢ = f(χᵢ)');
+    const highlightText = fmt(d.highlight, 'No Jacobians!');
+
+    const body =
+      labelText(14, 16, 'UNSCENTED TRANSFORM (UKF)', {
+        color: COLORS.violet,
+        size: 7.4,
+        weight: '700',
+        anchor: 'start',
+        opacity: '0.9',
+        letterSpacing: '0.7',
+      }) +
+      pillBadge(354, 15.5, highlightText, COLORS.emerald, {
+        size: fitFontSize(highlightText, 92, 8.0, 6.8),
+        padX: 8,
+        h: 15,
+        bg: 'rgba(52,211,153,0.14)',
+        textColor: '#A7F3D0',
+      }) +
+
+      // Left Panel: Prior Ellipse + 5 Glowing Violet Sigma Points (2n+1)
+      `<rect x="14" y="29" width="112" height="92" rx="9" fill="rgba(7,11,20,0.74)" stroke="rgba(34,211,238,0.32)" stroke-width="1"/>` +
+      labelText(70, 41, 'PRIOR (x̂, P)', { color: COLORS.cyan, size: 7.3, weight: '700', opacity: '0.88' }) +
+      `<ellipse cx="70" cy="74" rx="34" ry="18" transform="rotate(-22 70 74)" fill="rgba(34,211,238,0.12)" stroke="${COLORS.cyan}" stroke-width="1.5"/>` +
+      `<ellipse cx="70" cy="74" rx="18" ry="9.5" transform="rotate(-22 70 74)" fill="none" stroke="${COLORS.cyan}" stroke-opacity="0.35" stroke-width="0.9" stroke-dasharray="2.5 2"/>` +
+      // 5 glowing Violet sigma-point dots (center + 4 principal endpoints)
+      `<g filter="url(#${p}glow-soft)">` +
+      `<circle cx="40" cy="86" r="2.9" fill="${COLORS.violet}"/>` +
+      `<circle cx="100" cy="62" r="2.9" fill="${COLORS.violet}"/>` +
+      `<circle cx="63.5" cy="58" r="2.9" fill="${COLORS.violet}"/>` +
+      `<circle cx="76.5" cy="90" r="2.9" fill="${COLORS.violet}"/>` +
+      `</g>` +
+      `<circle cx="70" cy="74" r="3.6" fill="#DDD6FE" stroke="${COLORS.violet}" stroke-width="1.4" filter="url(#${p}glow-boost)"/>` +
+      labelText(70, 112.5, '2n+1 Sigma Pts', { color: COLORS.violet, size: 7.9, weight: '700' }) +
+
+      // Arrow 1: true f(.), h(.) -> Nonlinear Warp
+      `<line x1="126" y1="75" x2="165" y2="75" stroke="${COLORS.amber}" stroke-width="1.8" marker-end="url(#${p}arrow-amber)"/>` +
+      labelText(146, 56, 'true', { color: COLORS.amber, size: 7.6, weight: '600' }) +
+      labelText(146, 66.5, 'f(·), h(·)', { color: '#FDE68A', size: 7.6, weight: '700' }) +
+      labelText(146, 87.5, 'χᵢ', { color: COLORS.violet, size: 8.6, weight: '700' }) +
+
+      // Center Block: Nonlinear Warp (Amber)
+      `<rect x="169" y="42" width="82" height="66" rx="9" fill="url(#${p}glass-amber)" stroke="${COLORS.amber}" stroke-width="1.75"/>` +
+      `<line x1="176" y1="43.3" x2="244" y2="43.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.9"/>` +
+      labelText(210, 55, 'NONLINEAR', { color: COLORS.amber, size: 7.3, weight: '700', opacity: '0.92', letterSpacing: '0.4' }) +
+      `<path d="M 183,80 C 194,80 198,64 210,72 C 222,80 226,64 237,64" fill="none" stroke="${COLORS.amber}" stroke-width="1.8" stroke-linecap="round" filter="url(#${p}glow-soft)"/>` +
+      labelText(210, 98.5, warpExpr, {
+        color: '#FEF3C7',
+        size: fitFontSize(warpExpr, 72, 8.6, 6.8),
+        weight: '700',
+      }) +
+
+      // Arrow 2: weights W_i -> Posterior Cloud
+      `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+      `<line x1="251" y1="75" x2="286" y2="75" stroke="${COLORS.emerald}" stroke-width="${isSetup ? '2.05' : '1.8'}" marker-end="url(#${p}arrow-emerald)"/>` +
+      labelText(269, 65.5, 'Wᵢ', { color: COLORS.emerald, size: 8.8, weight: '700' }) +
+      `</g>` +
+
+      // Right Panel: Curved Banana Posterior Cloud + Emerald Weighted Mean & Cov
+      `<rect x="290" y="29" width="116" height="92" rx="9" fill="rgba(7,11,20,0.74)" stroke="rgba(52,211,153,0.36)" stroke-width="1"/>` +
+      labelText(348, 41, 'POSTERIOR CLOUD', { color: COLORS.emerald, size: 7.3, weight: '700', opacity: '0.9' }) +
+      // Curved banana-shaped posterior distribution
+      `<path d="M 306,86 C 312,61 340,48 383,55 C 394,57 396,67 386,70 C 355,66 333,74 323,90 C 318,97 304,94 306,86 Z" fill="rgba(167,139,250,0.18)" stroke="${COLORS.violet}" stroke-opacity="0.74" stroke-width="1.25"/>` +
+      // Warped sigma-point dots inside banana
+      `<g filter="url(#${p}glow-soft)">` +
+      `<circle cx="315" cy="86" r="2.4" fill="${COLORS.violet}"/>` +
+      `<circle cx="329" cy="70" r="2.4" fill="${COLORS.violet}"/>` +
+      `<circle cx="348" cy="61.5" r="2.4" fill="${COLORS.violet}"/>` +
+      `<circle cx="368" cy="59.5" r="2.4" fill="${COLORS.violet}"/>` +
+      `<circle cx="385" cy="63" r="2.4" fill="${COLORS.violet}"/>` +
+      `</g>` +
+      // Emerald fitted weighted mean & covariance ellipse
+      `<ellipse cx="349" cy="69" rx="34" ry="12.5" transform="rotate(-18 349 69)" fill="none" stroke="${COLORS.emerald}" stroke-width="1.5" stroke-dasharray="3.2 2"/>` +
+      `<circle cx="349" cy="69" r="3.4" fill="${COLORS.emerald}" filter="url(#${p}glow-boost)"/>` +
+      labelText(348, 112.5, 'Σ Wᵢ yᵢ , P_y', { color: COLORS.emerald, size: 8.0, weight: '700' }) +
+
+      renderSubtitle(d.subtitle, 14, 143);
+
+    return wrapSVG(p, `Unscented Transform UKF sigma-point pipeline schematic (${highlightText})`, body);
+  }
+
+  if (variant === 'factor-graph') {
+    const windowTitle = fmt(d.highlight, 'MHE SLIDING WINDOW');
+
+    const body =
+      // Translucent MHE Sliding Window Bracket
+      `<rect x="46" y="14" width="328" height="109" rx="11" fill="rgba(34,211,238,0.04)" stroke="${COLORS.cyan}" stroke-opacity="0.34" stroke-width="1" stroke-dasharray="5 3.5"/>` +
+      // Solid corner bracket accents
+      `<path d="M 46,27 L 46,18 Q 46,14 50,14 L 59,14" fill="none" stroke="${COLORS.cyan}" stroke-width="1.8" stroke-linecap="round"/>` +
+      `<path d="M 361,14 L 370,14 Q 374,14 374,18 L 374,27" fill="none" stroke="${COLORS.cyan}" stroke-width="1.8" stroke-linecap="round"/>` +
+      `<path d="M 46,110 L 46,119 Q 46,123 50,123 L 59,123" fill="none" stroke="${COLORS.cyan}" stroke-width="1.8" stroke-linecap="round"/>` +
+      `<path d="M 361,123 L 370,123 Q 374,123 374,119 L 374,110" fill="none" stroke="${COLORS.cyan}" stroke-width="1.8" stroke-linecap="round"/>` +
+      pillBadge(210, 14, windowTitle, COLORS.cyan, {
+        size: fitFontSize(windowTitle, 180, 7.5, 6.8),
+        padX: 9,
+        h: 14.5,
+        bg: 'rgba(7,11,20,0.95)',
+        textColor: '#A5F3FC',
+      }) +
+
+      // Left Prior Factor into x0
+      `<line x1="29" y1="68" x2="82" y2="68" stroke="${COLORS.violet}" stroke-width="1.5" stroke-dasharray="3 2"/>` +
+      `<rect x="16" y="61" width="14" height="14" rx="2.5" fill="url(#${p}glass-violet)" stroke="${COLORS.violet}" stroke-width="1.45"/>` +
+      labelText(23, 86, 'prior', { color: COLORS.violet, size: 7.4, weight: '600' }) +
+
+      // Dashed Violet Loop-Closure / Prior Arc (x0 <-> x2)
+      `<path d="M 96,54 Q 210,16 324,54" fill="none" stroke="${COLORS.violet}" stroke-width="1.55" stroke-dasharray="4 2.8"/>` +
+      `<rect x="204" y="29" width="12" height="12" rx="2.5" fill="url(#${p}glass-violet)" stroke="${COLORS.violet}" stroke-width="1.45" filter="url(#${p}glow-soft)"/>` +
+      labelText(267, 36.5, 'loop-closure', { color: '#DDD6FE', size: 7.6, weight: '600' }) +
+
+      // Motion Factor Connectors (Amber)
+      `<line x1="110" y1="68" x2="196" y2="68" stroke="${COLORS.amber}" stroke-width="1.7"/>` +
+      `<line x1="224" y1="68" x2="310" y2="68" stroke="${COLORS.amber}" stroke-width="1.7"/>` +
+
+      // Amber Square Motion Factors (f_dyn)
+      `<rect x="145" y="60" width="16" height="16" rx="3" fill="url(#${p}glass-amber)" stroke="${COLORS.amber}" stroke-width="1.55"/>` +
+      labelText(153, 71, 'f', { color: '#FEF3C7', size: 8.5, weight: '700' }) +
+      labelText(153, 88, 'f_dyn', { color: COLORS.amber, size: 7.8, weight: '600' }) +
+      `<rect x="259" y="60" width="16" height="16" rx="3" fill="url(#${p}glass-amber)" stroke="${COLORS.amber}" stroke-width="1.55"/>` +
+      labelText(267, 71, 'f', { color: '#FEF3C7', size: 8.5, weight: '700' }) +
+      labelText(267, 88, 'f_dyn', { color: COLORS.amber, size: 7.8, weight: '600' }) +
+
+      // Hanging Emerald Measurement Factors (z_0, z_1, z_2)
+      `<line x1="96" y1="81.5" x2="96" y2="98" stroke="${COLORS.emerald}" stroke-width="1.55"/>` +
+      `<rect x="88.5" y="98" width="15" height="15" rx="3" fill="url(#${p}glass-emerald)" stroke="${COLORS.emerald}" stroke-width="1.5"/>` +
+      labelText(96, 108.5, 'z', { color: '#D1FAE5', size: 8.2, weight: '700' }) +
+      labelText(109, 109, 'z_0', { color: COLORS.emerald, size: 8.2, weight: '700', anchor: 'start' }) +
+
+      `<line x1="210" y1="81.5" x2="210" y2="98" stroke="${COLORS.emerald}" stroke-width="1.55"/>` +
+      `<rect x="202.5" y="98" width="15" height="15" rx="3" fill="url(#${p}glass-emerald)" stroke="${COLORS.emerald}" stroke-width="1.5"/>` +
+      labelText(210, 108.5, 'z', { color: '#D1FAE5', size: 8.2, weight: '700' }) +
+      labelText(223, 109, 'z_1', { color: COLORS.emerald, size: 8.2, weight: '700', anchor: 'start' }) +
+
+      `<line x1="324" y1="81.5" x2="324" y2="98" stroke="${COLORS.emerald}" stroke-width="1.55"/>` +
+      `<rect x="316.5" y="98" width="15" height="15" rx="3" fill="url(#${p}glass-emerald)" stroke="${COLORS.emerald}" stroke-width="1.5"/>` +
+      labelText(324, 108.5, 'z', { color: '#D1FAE5', size: 8.2, weight: '700' }) +
+      labelText(337, 109, 'z_2', { color: COLORS.emerald, size: 8.2, weight: '700', anchor: 'start' }) +
+
+      // Three Glowing Cyan State Variable Circles (x0, x1, x2)
+      `<g filter="url(#${p}glow-soft)">` +
+      `<circle cx="96" cy="68" r="13.5" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.85"/>` +
+      `<circle cx="210" cy="68" r="13.5" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.85"/>` +
+      `<circle cx="324" cy="68" r="13.5" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.85"/>` +
+      `</g>` +
+      labelText(96, 72, 'x₀', { color: COLORS.text, size: 10.5, weight: '700' }) +
+      labelText(210, 72, 'x₁', { color: COLORS.text, size: 10.5, weight: '700' }) +
+      labelText(324, 72, 'x₂', { color: COLORS.text, size: 10.5, weight: '700' }) +
+
+      // Right horizon continuation dots
+      `<circle cx="388" cy="68" r="1.6" fill="${COLORS.muted}" fill-opacity="0.7"/>` +
+      `<circle cx="395" cy="68" r="1.6" fill="${COLORS.muted}" fill-opacity="0.5"/>` +
+      `<circle cx="402" cy="68" r="1.6" fill="${COLORS.muted}" fill-opacity="0.32"/>` +
+
+      renderSubtitle(d.subtitle, 14, 143);
+
+    return wrapSVG(p, 'Bipartite factor graph and MHE sliding window schematic', body);
+  }
+
+  if (variant === 'inekf') {
+    const errEq = fmt(d.model, 'ξ̇ = A_t ξ');
+    const badgeText = fmt(d.highlight, 'State-Independent!');
+
+    const body =
+      labelText(14, 16, 'INVARIANT EKF ON LIE GROUP', {
+        color: COLORS.cyan,
+        size: 7.3,
+        weight: '700',
+        anchor: 'start',
+        opacity: '0.86',
+        letterSpacing: '0.7',
+      }) +
+
+      // Left: 3D-Like Curved Translucent Cyan Manifold Surface SE_2(3)
+      `<path d="M 20,94 Q 112,68 206,88 L 194,117 Q 106,96 32,119 Z" fill="url(#${p}glass-cyan)" fill-opacity="0.74" stroke="${COLORS.cyan}" stroke-width="1.55"/>` +
+      // Curved wireframe iso-lines on manifold
+      `<path d="M 24,103 Q 110,78 202,98" fill="none" stroke="${COLORS.cyan}" stroke-opacity="0.25" stroke-width="0.85"/>` +
+      `<path d="M 28,111 Q 108,87 198,108" fill="none" stroke="${COLORS.cyan}" stroke-opacity="0.22" stroke-width="0.85"/>` +
+      `<path d="M 66,84 Q 72,97 76,111" fill="none" stroke="${COLORS.cyan}" stroke-opacity="0.22" stroke-width="0.85"/>` +
+      `<path d="M 114,80 Q 116,94 118,107" fill="none" stroke="${COLORS.cyan}" stroke-opacity="0.22" stroke-width="0.85"/>` +
+      `<path d="M 162,83 Q 160,96 158,109" fill="none" stroke="${COLORS.cyan}" stroke-opacity="0.22" stroke-width="0.85"/>` +
+
+      // Geodesic error arc on manifold between X̂ and X
+      `<path d="M 95,91 Q 123,85 147,95" fill="none" stroke="${COLORS.emerald}" stroke-width="1.5" stroke-dasharray="3 2"/>` +
+      `<circle cx="92" cy="92" r="3.4" fill="${COLORS.cyan}" filter="url(#${p}glow-soft)"/>` +
+      labelText(80, 102, 'X̂', { color: COLORS.cyan, size: 8.8, weight: '700' }) +
+      `<circle cx="150" cy="96" r="3.4" fill="${COLORS.emerald}" filter="url(#${p}glow-boost)"/>` +
+      labelText(162, 104, 'X', { color: COLORS.emerald, size: 8.8, weight: '700' }) +
+      labelText(113, 129, 'Lie Group SE₂(3) (X, X̂)', { color: COLORS.cyan, size: 8.0, weight: '700' }) +
+
+      // Floating Tangent Plane (Tangent Space 𝔤) above manifold
+      `<line x1="92" y1="56" x2="92" y2="88" stroke="${COLORS.cyan}" stroke-opacity="0.48" stroke-width="1.1" stroke-dasharray="2.5 2"/>` +
+      `<polygon points="44,44 164,30 198,54 78,68" fill="rgba(52,211,153,0.11)" stroke="${COLORS.emerald}" stroke-opacity="0.72" stroke-width="1.25"/>` +
+      labelText(115, 40, 'Tangent Space 𝔤', { color: '#A7F3D0', size: 7.8, weight: '700' }) +
+      `<circle cx="92" cy="54" r="2.4" fill="${COLORS.cyan}"/>` +
+      `<line x1="94.5" y1="53.6" x2="140" y2="48.5" stroke="${COLORS.violet}" stroke-width="1.65" marker-end="url(#${p}arrow-violet)"/>` +
+      labelText(117, 59, 'ξ', { color: '#DDD6FE', size: 9.0, weight: '700' }) +
+
+      // Glowing Emerald Exponential Map Arrow exp(ξ∧)
+      `<g filter="url(#${p}glow-boost)">` +
+      `<path d="M 145,50 Q 162,68 152,90" fill="none" stroke="${COLORS.emerald}" stroke-width="1.95" marker-end="url(#${p}arrow-emerald)"/>` +
+      `</g>` +
+      labelText(179, 69, 'exp(ξ∧)', { color: COLORS.emerald, size: 8.4, weight: '700' }) +
+
+      // Connecting Arrow -> Log-Linear Error Box
+      `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+      `<line x1="208" y1="76" x2="246" y2="76" stroke="${COLORS.violet}" stroke-width="1.85" marker-end="url(#${p}arrow-violet)"/>` +
+      `</g>` +
+      labelText(227, 65, 'η = X̂⁻¹X', { color: '#DDD6FE', size: 7.4, weight: '600' }) +
+
+      // Right Violet Glass Box: Log-Linear Error
+      `<rect x="250" y="32" width="156" height="86" rx="9" fill="url(#${p}glass-violet)" stroke="${COLORS.violet}" stroke-width="1.8"/>` +
+      `<line x1="257" y1="33.3" x2="399" y2="33.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.95"/>` +
+      labelText(328, 47, 'LOG-LINEAR ERROR', { color: COLORS.violet, size: 7.7, weight: '700', letterSpacing: '0.6' }) +
+      labelText(328, 69, errEq, {
+        color: COLORS.text,
+        size: fitFontSize(errEq, 140, 12.5, 8.5),
+        weight: '700',
+      }) +
+      labelText(328, 85, 'η = exp(ξ∧)', { color: '#A7F3D0', size: 8.4, weight: '600' }) +
+      pillBadge(328, 103.5, badgeText, COLORS.emerald, {
+        size: fitFontSize(badgeText, 130, 7.7, 6.6),
+        padX: 8,
+        h: 15,
+        bg: 'rgba(52,211,153,0.14)',
+        textColor: '#A7F3D0',
+      }) +
+
+      renderSubtitle(d.subtitle, 14, 143);
+
+    return wrapSVG(p, `Matrix Lie Group SE2(3) Invariant EKF schematic: ${errEq} (${badgeText})`, body);
+  }
+
+  // Default variant: 'kf' (Kalman Filter Predict <-> Update Cycle)
+  const modelStr = fmt(d.model, 'x̂⁻ = Fx̂ + Bu');
+  const measStr = fmt(d.meas, 'z_k (H, R)');
+  const noiseTag = fmt(d.noise, '');
+  const bottomBadge = fmt(d.highlight, 'x̂_k, P_k  ·  Joseph PSD');
+
+  const body =
+    labelText(14, 16, 'KALMAN FILTER RECURSION', {
+      color: COLORS.cyan,
+      size: 7.4,
+      weight: '700',
+      anchor: 'start',
+      opacity: '0.86',
+      letterSpacing: '0.7',
+    }) +
+    (noiseTag
+      ? pillBadge(96, 29, noiseTag, COLORS.cyan, {
+          size: fitFontSize(noiseTag, 110, 7.4, 6.6),
+          padX: 7,
+          h: 13.5,
+          bg: 'rgba(34,211,238,0.12)',
+          textColor: '#A5F3FC',
+        })
+      : '') +
+
+    // Top Sensor Measurement Arrow z_k (H, R) (Amber)
+    pillBadge(324, 15.5, measStr, COLORS.amber, {
+      size: fitFontSize(measStr, 128, 8.2, 7.0),
+      padX: 8,
+      h: 15.5,
+      bg: 'rgba(245,158,11,0.12)',
+      textColor: '#FDE68A',
+    }) +
+    `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+    `<line x1="324" y1="23.5" x2="324" y2="40" stroke="${COLORS.amber}" stroke-width="1.8" marker-end="url(#${p}arrow-amber)"/>` +
+    `</g>` +
+
+    // Left Cyan Glass Box: PREDICT
+    `<rect x="18" y="43" width="156" height="58" rx="9" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.8"/>` +
+    `<line x1="25" y1="44.3" x2="167" y2="44.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.95"/>` +
+    labelText(96, 56, '1. PREDICT (TIME UPDATE)', { color: COLORS.cyan, size: 7.4, weight: '700', opacity: '0.92', letterSpacing: '0.4' }) +
+    labelText(96, 73.5, modelStr, {
+      color: COLORS.text,
+      size: fitFontSize(modelStr, 142, 9.8, 7.2),
+      weight: '700',
+    }) +
+    labelText(96, 90, 'P⁻ = FPFᵀ + Q', { color: '#A5F3FC', size: 9.2, weight: '600' }) +
+
+    // Forward Arrow: prior (x̂⁻, P⁻)
+    `<line x1="174" y1="72" x2="242" y2="72" stroke="${COLORS.cyan}" stroke-width="1.85" marker-end="url(#${p}arrow-cyan)"/>` +
+    labelText(208, 61, 'prior', { color: COLORS.cyan, size: 9.0, weight: '700', filter: cueFilter }) +
+    labelText(208, 85, 'x̂⁻, P⁻', { color: '#A5F3FC', size: 8.2, weight: '600' }) +
+
+    // Right Emerald Glass Box: UPDATE
+    `<rect x="246" y="43" width="156" height="58" rx="9" fill="url(#${p}glass-emerald)" stroke="${COLORS.emerald}" stroke-width="1.8"/>` +
+    `<line x1="253" y1="44.3" x2="395" y2="44.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.95"/>` +
+    labelText(324, 56, '2. UPDATE (MEASUREMENT)', { color: COLORS.emerald, size: 7.4, weight: '700', opacity: '0.92', letterSpacing: '0.4' }) +
+    labelText(324, 73.5, 'K = P⁻HᵀS⁻¹', { color: COLORS.text, size: 9.8, weight: '700' }) +
+    labelText(324, 90, 'x̂ = x̂⁻ + Kỹ', { color: '#A7F3D0', size: 9.4, weight: '600' }) +
+
+    // Bottom Feedback Return Loop + Joseph PSD Badge
+    `<path d="M 324,101 L 324,117 Q 324,121 320,121 L 100,121 Q 96,121 96,117 L 96,103" fill="none" stroke="${COLORS.emerald}" stroke-width="1.65" stroke-linejoin="round" marker-end="url(#${p}arrow-emerald)"/>` +
+    pillBadge(210, 121, bottomBadge, COLORS.violet, {
+      size: fitFontSize(bottomBadge, 180, 7.8, 6.8),
+      padX: 9,
+      h: 15.5,
+      bg: 'rgba(7,11,20,0.94)',
+      textColor: '#DDD6FE',
+    }) +
+
+    renderSubtitle(d.subtitle, 14, 143);
+
+  return wrapSVG(p, `Kalman filter predict-update cycle schematic: ${modelStr}, ${measStr}`, body);
+}
+
 const RENDERERS = {
   msd: renderMSD,
   rotational: renderRotational,
@@ -1446,6 +2205,9 @@ const RENDERERS = {
   'thermal-2zone': renderThermal2Zone,
   'feedback-pd': renderFeedbackPD,
   'pole-zero': renderPoleZeroMap,
+  'state-space-loop': renderStateSpaceLoop,
+  'mpc-cbf': renderMpcCbf,
+  'estimator-arch': renderEstimatorArch,
 };
 
 /**

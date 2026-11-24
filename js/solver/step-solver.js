@@ -1,7 +1,8 @@
 /**
  * EIGENLAB — Paperless Multi-Step Symbolic Solver
  * Supports Derivatives, Integrals, Diff Eq / Laplace, Linear Algebra,
- * Physical Modeling & s-Plane, PID Control, and Root Locus & Bode Frequency Design.
+ * Physical Modeling & s-Plane, PID Control, Root Locus & Bode Frequency Design,
+ * and Modern State-Space, MPC & SOTA Estimation.
  * Zero scratch paper required: every completed micro-step locks into a persistent
  * Working Step Ledger with per-step "Why This Step?" and "⚡ System Impact" insights,
  * culminating in a high-DPI interactive numerical or geometric verification plot.
@@ -32,6 +33,10 @@ import {
   FREQ_PROBLEMS,
   FREQ_SOLVER_TIERS,
 } from '../../data/lessons/freq-problems.js';
+import {
+  STATESPACE_PROBLEMS,
+  STATESPACE_SOLVER_TIERS,
+} from '../../data/lessons/statespace-problems.js';
 import { store, sound, renderKatex, renderInlineMathText } from '../store.js';
 import { renderSystemSchematicSVG } from '../viz/schematic-svg.js';
 
@@ -350,6 +355,57 @@ const FREQ_CHEAT_SHEET_RULES = [
   },
 ];
 
+const STATESPACE_CHEAT_SHEET_RULES = [
+  {
+    name: 'State-Space (A,B,C,D)',
+    tag: 'Modeling',
+    latex:
+      '\\dot{x}=\\textcolor{#22D3EE}{A}x+\\textcolor{#F59E0B}{B}u,\\; y=\\textcolor{#34D399}{C}x+Du',
+  },
+  {
+    name: 'Controllability & PBH',
+    tag: 'Structure',
+    latex:
+      '\\mathcal{C}=[B\\; AB\\; \\dots\\; A^{n-1}B],\\;\\; \\operatorname{rank}[A-\\lambda I\\;\\; B]=n',
+  },
+  {
+    name: 'LQR & Riccati (CARE)',
+    tag: 'Optimal',
+    latex:
+      'A^TP+PA-PBR^{-1}B^TP+Q=0,\\;\\; \\textcolor{#34D399}{K=R^{-1}B^TP}',
+  },
+  {
+    name: 'Receding-Horizon MPC',
+    tag: 'Constrained',
+    latex:
+      '\\min_U \\tfrac{1}{2}U^THU+f^TU\\;\\text{ s.t. }\\; GU\\le w\\;(\\text{apply }\\textcolor{#34D399}{u_0^*})',
+  },
+  {
+    name: 'CBF-QP Safety Filter',
+    tag: 'Safety SOTA',
+    latex:
+      '\\dot{h}(x,u)+\\alpha h(x)\\ge 0 \\;\\implies\\; \\textcolor{#34D399}{x(t)\\in\\mathcal{C}\\;\\forall t}',
+  },
+  {
+    name: 'Luenberger Observer',
+    tag: 'Observer',
+    latex:
+      '\\dot{\\hat{x}}=A\\hat{x}+Bu+\\textcolor{#F59E0B}{L}(y-C\\hat{x}),\\;\\; \\dot{e}=(A-LC)e',
+  },
+  {
+    name: 'Kalman Filter (Joseph)',
+    tag: 'Bayesian',
+    latex:
+      'K_k=P^-H^T(HP^-H^T+R)^{-1},\\;\\; P_k=(I-K_kH)P^-(I-K_kH)^T+K_kRK_k^T',
+  },
+  {
+    name: 'UKF, InEKF & MHE',
+    tag: 'Modern SOTA',
+    latex:
+      '\\mathcal{X}_i=\\hat{x}\\pm\\sqrt{(n+\\lambda)P},\\;\\; \\dot{\\xi}=A_t\\xi,\\;\\; \\min\\sum\\|r\\|_{\\Sigma^{-1}}^2',
+  },
+];
+
 function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
@@ -442,20 +498,23 @@ export class PaperlessStepSolver {
 
     const options = isElement ? maybeOptions || {} : containerOrOptions || {};
 
+    const modeOpt = options.mode ?? options.curriculum;
     this.mode =
-      options.mode === 'integrals'
+      modeOpt === 'integrals'
         ? 'integrals'
-        : options.mode === 'diffeq'
+        : modeOpt === 'diffeq'
           ? 'diffeq'
-          : options.mode === 'linalg'
+          : modeOpt === 'linalg'
             ? 'linalg'
-            : options.mode === 'pid'
+            : modeOpt === 'pid'
               ? 'pid'
-              : options.mode === 'modeling'
+              : modeOpt === 'modeling'
                 ? 'modeling'
-                : options.mode === 'freq'
+                : modeOpt === 'freq'
                   ? 'freq'
-                  : 'derivatives';
+                  : modeOpt === 'statespace'
+                    ? 'statespace'
+                    : 'derivatives';
     this.problems =
       Array.isArray(options.problems) && options.problems.length
         ? options.problems
@@ -471,7 +530,9 @@ export class PaperlessStepSolver {
                   ? MODELING_PROBLEMS
                   : this.mode === 'freq'
                     ? FREQ_PROBLEMS
-                    : DERIVATIVE_PROBLEMS;
+                    : this.mode === 'statespace'
+                      ? STATESPACE_PROBLEMS
+                      : DERIVATIVE_PROBLEMS;
     this.tiers =
       Array.isArray(options.tiers) && options.tiers.length
         ? options.tiers
@@ -487,7 +548,9 @@ export class PaperlessStepSolver {
                   ? MODELING_SOLVER_TIERS
                   : this.mode === 'freq'
                     ? FREQ_SOLVER_TIERS
-                    : SOLVER_TIERS;
+                    : this.mode === 'statespace'
+                      ? STATESPACE_SOLVER_TIERS
+                      : SOLVER_TIERS;
     this.cheatSheetRules =
       this.mode === 'integrals'
         ? INTEGRAL_CHEAT_SHEET_RULES
@@ -501,7 +564,9 @@ export class PaperlessStepSolver {
                 ? MODELING_CHEAT_SHEET_RULES
                 : this.mode === 'freq'
                   ? FREQ_CHEAT_SHEET_RULES
-                  : CHEAT_SHEET_RULES;
+                  : this.mode === 'statespace'
+                    ? STATESPACE_CHEAT_SHEET_RULES
+                    : CHEAT_SHEET_RULES;
 
     this.mechatronicsLens = Boolean(
       options.mechatronicsLens ?? options.lens === 'mechatronics'
@@ -661,8 +726,17 @@ export class PaperlessStepSolver {
     return this.mode === 'freq';
   }
 
+  _isStateSpaceMode() {
+    return this.mode === 'statespace';
+  }
+
   _isControlPlotMode() {
-    return this.mode === 'pid' || this.mode === 'modeling' || this.mode === 'freq';
+    return (
+      this.mode === 'pid' ||
+      this.mode === 'modeling' ||
+      this.mode === 'freq' ||
+      this.mode === 'statespace'
+    );
   }
 
   _isLaplaceForward(problem) {
@@ -978,6 +1052,7 @@ export class PaperlessStepSolver {
     const isPid = this._isPidMode();
     const isModeling = this._isModelingMode();
     const isFreq = this._isFreqMode();
+    const isStateSpace = this._isStateSpaceMode();
     const solvedSet = this._getSolvedSet();
     const totalSolved = this.problems.filter((p) => solvedSet.has(p.id)).length;
     const totalProblems = this.problems.length;
@@ -990,67 +1065,77 @@ export class PaperlessStepSolver {
       ? 'Physical Modeling Reference'
       : isFreq
         ? 'Root Locus & Bode Reference'
-        : isPid
-          ? 'Control & PID Reference'
-          : isLinAlg
-            ? 'Linear Algebra Reference'
-            : isDiffEq
-              ? 'ODE & Laplace Reference'
-              : isIntegral
-                ? 'Integration Formula Reference'
-                : 'Differentiation Formula Reference';
+        : isStateSpace
+          ? 'Modern Controls Formula Sheet'
+          : isPid
+            ? 'Control & PID Reference'
+            : isLinAlg
+              ? 'Linear Algebra Reference'
+              : isDiffEq
+                ? 'ODE & Laplace Reference'
+                : isIntegral
+                  ? 'Integration Formula Reference'
+                  : 'Differentiation Formula Reference';
     const targetHeaderLabel = isModeling
       ? 'MODEL & DESIGN s-PLANE'
       : isFreq
         ? 'ROOT LOCUS & BODE DESIGN'
-        : isPid
-          ? 'SOLVE CONTROL & PID'
-          : isLinAlg
-            ? 'Solve Linear Algebra'
-            : isDiffEq
-              ? 'Solve the ODE / Laplace'
-              : isIntegral
-                ? 'Evaluate the Integral'
-                : 'Differentiate w.r.t. x';
+        : isStateSpace
+          ? 'MODERN STATE-SPACE & ESTIMATION'
+          : isPid
+            ? 'SOLVE CONTROL & PID'
+            : isLinAlg
+              ? 'Solve Linear Algebra'
+              : isDiffEq
+                ? 'Solve the ODE / Laplace'
+                : isIntegral
+                  ? 'Evaluate the Integral'
+                  : 'Differentiate w.r.t. x';
     const legendCyan = isModeling
       ? 'Cyan: Plant Physics / G(s)'
       : isFreq
         ? 'Cyan: Open-Loop L(s) / ω'
-        : isPid
-          ? 'Cyan: Plant G(s) / Loop L(s)'
-          : isLinAlg
-            ? 'Cyan: Primary / A / u'
-            : isDiffEq
-              ? 'Cyan: y / P(t) / f(t)'
-              : isIntegral
-                ? 'Cyan: u / Factor A'
-                : 'Cyan: Outer / u';
+        : isStateSpace
+          ? 'Cyan: State Matrix A / x / P'
+          : isPid
+            ? 'Cyan: Plant G(s) / Loop L(s)'
+            : isLinAlg
+              ? 'Cyan: Primary / A / u'
+              : isDiffEq
+                ? 'Cyan: y / P(t) / f(t)'
+                : isIntegral
+                  ? 'Cyan: u / Factor A'
+                  : 'Cyan: Outer / u';
     const legendAmber = isModeling
       ? 'Amber: Damping / Gain / Spec'
       : isFreq
         ? 'Amber: Gain K / Target φm / −1'
-        : isPid
-          ? 'Amber: Gain / Spec / Delay'
-          : isLinAlg
-            ? 'Amber: Secondary / λ / b'
-            : isDiffEq
-              ? 'Amber: t / Q(t) / IC'
-              : isIntegral
-                ? 'Amber: dv / Factor B'
-                : 'Amber: Inner / v';
+        : isStateSpace
+          ? 'Amber: Input B / Gain L / R'
+          : isPid
+            ? 'Amber: Gain / Spec / Delay'
+            : isLinAlg
+              ? 'Amber: Secondary / λ / b'
+              : isDiffEq
+                ? 'Amber: t / Q(t) / IC'
+                : isIntegral
+                  ? 'Amber: dv / Factor B'
+                  : 'Amber: Inner / v';
     const legendEmerald = isModeling
       ? 'Emerald: Poles / CL T(s)'
       : isFreq
         ? 'Emerald: Compensator / Margin'
-        : isPid
-          ? 'Emerald: Closed-Loop / Margin'
-          : isLinAlg
-            ? 'Emerald: Result / Eigen / Fit'
-            : isDiffEq
-              ? 'Emerald: Solution / F(s)'
-              : isIntegral
-                ? 'Emerald: Antideriv'
-                : 'Emerald: Deriv';
+        : isStateSpace
+          ? 'Emerald: Optimal K / MPC / Safe'
+          : isPid
+            ? 'Emerald: Closed-Loop / Margin'
+            : isLinAlg
+              ? 'Emerald: Result / Eigen / Fit'
+              : isDiffEq
+                ? 'Emerald: Solution / F(s)'
+                : isIntegral
+                  ? 'Emerald: Antideriv'
+                  : 'Emerald: Deriv';
 
     const tierPillsHtml = this.tiers.map((tier) => {
       const list =
@@ -1494,9 +1579,9 @@ export class PaperlessStepSolver {
         <!-- Step Progress Bar & Header -->
         <div class="flex flex-col gap-1.5 sm:gap-2">
           <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-center gap-1.5 sm:gap-2">
-              <span class="font-mono text-[11px] sm:text-xs font-semibold text-cyan-300">Step ${stepNum}/${totalSteps}</span>
-              <span class="chip-outer">${escapeHtml(step.badge)}</span>
+            <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
+              <span class="shrink-0 font-mono text-[11px] sm:text-xs font-semibold text-cyan-300">Step ${stepNum}/${totalSteps}</span>
+              <span class="chip-outer !whitespace-normal !leading-snug max-w-full">${escapeHtml(step.badge)}</span>
             </div>
             <div class="flex items-center gap-2">
               <span class="hidden sm:inline font-mono text-[11px] text-slate-500">Keys 1–4 select • H hint</span>
@@ -1816,6 +1901,7 @@ export class PaperlessStepSolver {
     const isPid = this._isPidMode();
     const isModeling = this._isModelingMode();
     const isFreq = this._isFreqMode();
+    const isStateSpace = this._isStateSpaceMode();
     const isControlPlot = this._isControlPlotMode();
     const isLaplaceFwd = this._isLaplaceForward(problem);
     const isLaplaceInv = this._isLaplaceInverse(problem);
@@ -1827,15 +1913,17 @@ export class PaperlessStepSolver {
       ? 'Physical Model & s-Plane Verified'
       : isFreq
         ? 'Frequency & Stability Verified'
-        : isPid
-          ? 'Closed-Loop Verification'
-          : isLinAlg
-            ? 'Geometric Verification'
-            : isDiffEq
-              ? 'Solution Verified Numerically'
-              : isIntegral
-                ? 'Antiderivative Verified Numerically'
-                : 'Derivative Verified Numerically';
+        : isStateSpace
+          ? 'State-Space & SOTA Estimation Verified'
+          : isPid
+            ? 'Closed-Loop Verification'
+            : isLinAlg
+              ? 'Geometric Verification'
+              : isDiffEq
+                ? 'Solution Verified Numerically'
+                : isIntegral
+                  ? 'Antiderivative Verified Numerically'
+                  : 'Derivative Verified Numerically';
 
     const subtitle = isControlPlot
       ? pidMeta.subtitleHtml
