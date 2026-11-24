@@ -954,12 +954,12 @@ code, pre, kbd, .font-mono {
   }
   100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
 .view-enter {
-  animation: viewEnter 0.34s var(--ease-studio) both;
+  animation: viewEnter 0.34s var(--ease-studio) backwards;
 }
 
 @keyframes fadeIn {

@@ -1,5 +1,5 @@
 /**
- * EIGENLAB — Paperless Multi-Step Symbolic Calculus Solver (Derivatives & Integrals)
+ * EIGENLAB — Paperless Multi-Step Symbolic Calculus Solver (Derivatives, Integrals & Diff Eq / Laplace)
  * Zero scratch paper required: every completed micro-step locks into a persistent
  * Working Step Ledger directly above tactile KaTeX choice tiles, culminating in
  * a high-DPI interactive dual-curve numerical verification plot.
@@ -10,6 +10,10 @@ import {
   INTEGRAL_PROBLEMS,
   INTEGRAL_SOLVER_TIERS,
 } from '../../data/lessons/integrals-problems.js';
+import {
+  DIFFEQ_PROBLEMS,
+  DIFFEQ_SOLVER_TIERS,
+} from '../../data/lessons/diffeq-problems.js';
 import { store, sound, renderKatex, renderInlineMathText } from '../store.js';
 
 const CHEAT_SHEET_RULES = [
@@ -102,6 +106,51 @@ const INTEGRAL_CHEAT_SHEET_RULES = [
   },
 ];
 
+const DIFFEQ_CHEAT_SHEET_RULES = [
+  {
+    name: 'Separable ODE',
+    tag: 'g(y)dy = h(t)dt',
+    latex:
+      '\\frac{dy}{dt} = \\textcolor{#22D3EE}{f(y)}\\,\\textcolor{#F59E0B}{g(t)} \\implies \\int \\frac{dy}{\\textcolor{#22D3EE}{f(y)}} = \\int \\textcolor{#F59E0B}{g(t)}\\,dt',
+  },
+  {
+    name: 'Integrating Factor',
+    tag: '1st-Order Linear',
+    latex:
+      'y\' + \\textcolor{#22D3EE}{P(t)}y = \\textcolor{#F59E0B}{Q(t)}, \\;\; \\textcolor{#34D399}{\\mu = e^{\\int P\\,dt}} \\implies (\\mu y)\' = \\mu Q',
+  },
+  {
+    name: 'Characteristic Roots',
+    tag: 'ar² + br + c = 0',
+    latex:
+      'a\\textcolor{#22D3EE}{r}^2 + b\\textcolor{#22D3EE}{r} + c = 0 \\implies \\textcolor{#34D399}{e^{r_1 t},\\; t e^{rt},\\; e^{\\alpha t}\\cos\\omega t}',
+  },
+  {
+    name: 'Core Laplace Table',
+    tag: '1, tⁿ, eᵃᵗ',
+    latex:
+      '\\mathcal{L}\\{1\\}=\\textcolor{#34D399}{\\tfrac{1}{s}},\\; \\mathcal{L}\\{t^n\\}=\\textcolor{#34D399}{\\tfrac{n!}{s^{n+1}}},\\; \\mathcal{L}\\{e^{at}\\}=\\textcolor{#34D399}{\\tfrac{1}{s-a}}',
+  },
+  {
+    name: 'Trig Laplace Table',
+    tag: 'sin ωt / cos ωt',
+    latex:
+      '\\mathcal{L}\\{\\sin\\omega t\\}=\\textcolor{#34D399}{\\frac{\\omega}{s^2+\\omega^2}}, \\;\; \\mathcal{L}\\{\\cos\\omega t\\}=\\textcolor{#34D399}{\\frac{s}{s^2+\\omega^2}}',
+  },
+  {
+    name: 'Derivative Property',
+    tag: 'IVP → Algebra',
+    latex:
+      '\\mathcal{L}\\{y\'\\} = \\textcolor{#34D399}{sY - y(0)}, \\;\; \\mathcal{L}\\{y\'\'\\} = \\textcolor{#34D399}{s^2Y - sy(0) - y\'(0)}',
+  },
+  {
+    name: 'First Shifting Theorem',
+    tag: 's → s + a',
+    latex:
+      '\\mathcal{L}\\!\\left\\{\\textcolor{#F59E0B}{e^{-at}}\\,\\textcolor{#22D3EE}{f(t)}\\right\\} = \\textcolor{#34D399}{F(s + a)}',
+  },
+];
+
 function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
@@ -134,6 +183,21 @@ function centralDiff(fn, x, h = 1e-5) {
   return (fn(x + h) - fn(x - h)) / (2 * h);
 }
 
+function numericalLaplace(fn, s) {
+  if (!Number.isFinite(s) || s <= 0) return NaN;
+  const upper = Math.max(24, Math.min(120, 22 / Math.max(s, 0.15)));
+  let n = Math.max(600, Math.min(6000, Math.ceil(upper * 36) * 2));
+  if (n % 2 !== 0) n += 1;
+  const h = upper / n;
+  let sum = fn(0) + Math.exp(-s * upper) * fn(upper);
+  for (let i = 1; i < n; i++) {
+    const t = i * h;
+    const w = i % 2 === 0 ? 2 : 4;
+    sum += w * Math.exp(-s * t) * fn(t);
+  }
+  return (h / 3) * sum;
+}
+
 export class PaperlessStepSolver {
   /**
    * Supports both calling conventions:
@@ -148,21 +212,34 @@ export class PaperlessStepSolver {
 
     const options = isElement ? maybeOptions || {} : containerOrOptions || {};
 
-    this.mode = options.mode === 'integrals' ? 'integrals' : 'derivatives';
+    this.mode =
+      options.mode === 'integrals'
+        ? 'integrals'
+        : options.mode === 'diffeq'
+          ? 'diffeq'
+          : 'derivatives';
     this.problems =
       Array.isArray(options.problems) && options.problems.length
         ? options.problems
         : this.mode === 'integrals'
           ? INTEGRAL_PROBLEMS
-          : DERIVATIVE_PROBLEMS;
+          : this.mode === 'diffeq'
+            ? DIFFEQ_PROBLEMS
+            : DERIVATIVE_PROBLEMS;
     this.tiers =
       Array.isArray(options.tiers) && options.tiers.length
         ? options.tiers
         : this.mode === 'integrals'
           ? INTEGRAL_SOLVER_TIERS
-          : SOLVER_TIERS;
+          : this.mode === 'diffeq'
+            ? DIFFEQ_SOLVER_TIERS
+            : SOLVER_TIERS;
     this.cheatSheetRules =
-      this.mode === 'integrals' ? INTEGRAL_CHEAT_SHEET_RULES : CHEAT_SHEET_RULES;
+      this.mode === 'integrals'
+        ? INTEGRAL_CHEAT_SHEET_RULES
+        : this.mode === 'diffeq'
+          ? DIFFEQ_CHEAT_SHEET_RULES
+          : CHEAT_SHEET_RULES;
 
     this.mechatronicsLens = Boolean(
       options.mechatronicsLens ?? options.lens === 'mechatronics'
@@ -297,6 +374,18 @@ export class PaperlessStepSolver {
 
   _isIntegralMode() {
     return this.mode === 'integrals';
+  }
+
+  _isDiffEqMode() {
+    return this.mode === 'diffeq';
+  }
+
+  _isLaplaceForward(problem) {
+    return this._isDiffEqMode() && problem?.verifyKind === 'laplace-forward';
+  }
+
+  _isLaplaceInverse(problem) {
+    return this._isDiffEqMode() && problem?.verifyKind === 'laplace-inverse';
   }
 
   _getDefaultVerifyCursorX(problem) {
@@ -582,6 +671,7 @@ export class PaperlessStepSolver {
     this._detachCanvasListeners();
 
     const isIntegral = this._isIntegralMode();
+    const isDiffEq = this._isDiffEqMode();
     const solvedSet = this._getSolvedSet();
     const totalSolved = this.problems.filter((p) => solvedSet.has(p.id)).length;
     const totalProblems = this.problems.length;
@@ -590,15 +680,31 @@ export class PaperlessStepSolver {
     const globalIndex = this.problems.findIndex((p) => p.id === problem.id);
     const problemIsSolved = solvedSet.has(problem.id);
 
-    const cheatTitle = isIntegral
-      ? 'Integration Formula Reference'
-      : 'Differentiation Formula Reference';
-    const targetHeaderLabel = isIntegral
-      ? 'Evaluate the Integral'
-      : 'Differentiate w.r.t. x';
-    const legendCyan = isIntegral ? 'Cyan: u / Factor A' : 'Cyan: Outer / u';
-    const legendAmber = isIntegral ? 'Amber: dv / Factor B' : 'Amber: Inner / v';
-    const legendEmerald = isIntegral ? 'Emerald: Antideriv' : 'Emerald: Deriv';
+    const cheatTitle = isDiffEq
+      ? 'ODE & Laplace Reference'
+      : isIntegral
+        ? 'Integration Formula Reference'
+        : 'Differentiation Formula Reference';
+    const targetHeaderLabel = isDiffEq
+      ? 'Solve the ODE / Laplace'
+      : isIntegral
+        ? 'Evaluate the Integral'
+        : 'Differentiate w.r.t. x';
+    const legendCyan = isDiffEq
+      ? 'Cyan: y / P(t) / f(t)'
+      : isIntegral
+        ? 'Cyan: u / Factor A'
+        : 'Cyan: Outer / u';
+    const legendAmber = isDiffEq
+      ? 'Amber: t / Q(t) / IC'
+      : isIntegral
+        ? 'Amber: dv / Factor B'
+        : 'Amber: Inner / v';
+    const legendEmerald = isDiffEq
+      ? 'Emerald: Solution / F(s)'
+      : isIntegral
+        ? 'Emerald: Antideriv'
+        : 'Emerald: Deriv';
 
     const tierPillsHtml = this.tiers.map((tier) => {
       const list =
@@ -1015,63 +1121,157 @@ export class PaperlessStepSolver {
 
   _buildVerificationCardHtml(problem) {
     const isIntegral = this._isIntegralMode();
-    const heading = isIntegral
-      ? 'Antiderivative Verified Numerically'
-      : 'Derivative Verified Numerically';
-    const subtitle = isIntegral
-      ? renderInlineMathText(
-          "Hover or drag across the plot to verify $\\frac{d}{dx}F(x) = f(x)$ and watch the shaded area under $f(x)$."
-        )
-      : renderInlineMathText(
-          "Hover or drag across the plot to compare your solved $f'(x)$ against the curve's true tangent slope."
-        );
+    const isDiffEq = this._isDiffEqMode();
+    const isLaplaceFwd = this._isLaplaceForward(problem);
+    const isLaplaceInv = this._isLaplaceInverse(problem);
+    const hasDiffEqDeriv = isDiffEq && typeof problem.verifyDerivFn === 'function';
 
-    const legendHtml = isIntegral
-      ? `
-          <span class="inline-flex items-center gap-1 text-cyan-300">
-            <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
-            f(x)
-          </span>
-          <span class="inline-flex items-center gap-1 text-emerald-300">
-            <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
-            F(x)
-          </span>
-          <span class="inline-flex items-center gap-1 text-emerald-200/90">
-            <span class="w-2.5 h-2 rounded-sm bg-emeraldGlow/35 border border-emeraldGlow/60 inline-block"></span>
-            area
-          </span>
-          <span class="inline-flex items-center gap-1 text-amber-300">
-            <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
-            F'(x) tangent
-          </span>
-        `
-      : `
-          <span class="inline-flex items-center gap-1 text-cyan-300">
-            <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
-            f(x)
-          </span>
-          <span class="inline-flex items-center gap-1 text-emerald-300">
-            <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
-            f'(x)
-          </span>
-          <span class="inline-flex items-center gap-1 text-amber-300">
-            <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
-            tangent
-          </span>
-        `;
+    const heading = isDiffEq
+      ? 'Solution Verified Numerically'
+      : isIntegral
+        ? 'Antiderivative Verified Numerically'
+        : 'Derivative Verified Numerically';
 
-    const domainMeta =
-      isIntegral && Array.isArray(problem.definiteBounds)
+    const subtitle = isDiffEq
+      ? isLaplaceFwd
+        ? renderInlineMathText(
+            'Hover or drag across the plot to compare the time signal $f(t)$ against its Laplace transform $F(s) = \\int_0^\\infty e^{-st}f(t)\\,dt$.'
+          )
+        : isLaplaceInv
+          ? renderInlineMathText(
+              "Hover or drag across the plot to inspect the inverted signal $y(t)$, its slope $y'(t)$, and the numerical Laplace check."
+            )
+          : renderInlineMathText(
+              "Hover or drag across the plot to verify your solution $y(t)$, its slope $y'(t)$, and confirm the ODE residual vanishes everywhere."
+            )
+      : isIntegral
+        ? renderInlineMathText(
+            'Hover or drag across the plot to verify $\\frac{d}{dx}F(x) = f(x)$ and watch the shaded area under $f(x)$.'
+          )
+        : renderInlineMathText(
+            "Hover or drag across the plot to compare your solved $f'(x)$ against the curve's true tangent slope."
+          );
+
+    const legendHtml = isDiffEq
+      ? isLaplaceFwd
+        ? `
+            <span class="inline-flex items-center gap-1 text-cyan-300">
+              <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
+              f(t) signal
+            </span>
+            <span class="inline-flex items-center gap-1 text-emerald-300">
+              <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
+              F(s) transform
+            </span>
+          `
+        : `
+            <span class="inline-flex items-center gap-1 text-emerald-300">
+              <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
+              y(t) solution
+            </span>
+            ${
+              hasDiffEqDeriv
+                ? `<span class="inline-flex items-center gap-1 text-cyan-300">
+                    <span class="w-3 h-0 border-t-2 border-dashed border-cyanGlow inline-block"></span>
+                    y'(t) rate
+                  </span>`
+                : ''
+            }
+            <span class="inline-flex items-center gap-1 text-amber-300">
+              <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
+              tangent
+            </span>
+          `
+      : isIntegral
+        ? `
+            <span class="inline-flex items-center gap-1 text-cyan-300">
+              <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
+              f(x)
+            </span>
+            <span class="inline-flex items-center gap-1 text-emerald-300">
+              <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
+              F(x)
+            </span>
+            <span class="inline-flex items-center gap-1 text-emerald-200/90">
+              <span class="w-2.5 h-2 rounded-sm bg-emeraldGlow/35 border border-emeraldGlow/60 inline-block"></span>
+              area
+            </span>
+            <span class="inline-flex items-center gap-1 text-amber-300">
+              <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
+              F'(x) tangent
+            </span>
+          `
+        : `
+            <span class="inline-flex items-center gap-1 text-cyan-300">
+              <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
+              f(x)
+            </span>
+            <span class="inline-flex items-center gap-1 text-emerald-300">
+              <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
+              f'(x)
+            </span>
+            <span class="inline-flex items-center gap-1 text-amber-300">
+              <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
+              tangent
+            </span>
+          `;
+
+    const domainMeta = isDiffEq
+      ? isLaplaceFwd && Array.isArray(problem.sDomain)
+        ? `t ∈ [${problem.domain[0]}, ${problem.domain[1]}] · s ∈ [${problem.sDomain[0]}, ${problem.sDomain[1]}]`
+        : `t ∈ [${problem.domain[0]}, ${problem.domain[1]}]`
+      : isIntegral && Array.isArray(problem.definiteBounds)
         ? `∫[${problem.definiteBounds[0]}, ${problem.definiteBounds[1]}] = ${problem.definiteValue} · [${problem.domain[0]}, ${problem.domain[1]}]`
         : `[${problem.domain[0]}, ${problem.domain[1]}]`;
 
-    const canvasAria = isIntegral
-      ? 'Interactive dual curve graph comparing integrand f(x) and antiderivative F(x)'
-      : "Interactive dual curve graph comparing f(x) and f'(x)";
+    const canvasAria = isDiffEq
+      ? isLaplaceFwd
+        ? 'Interactive dual curve graph comparing time-domain signal f(t) and Laplace transform F(s)'
+        : "Interactive dual curve graph verifying ODE solution y(t) and rate y'(t)"
+      : isIntegral
+        ? 'Interactive dual curve graph comparing integrand f(x) and antiderivative F(x)'
+        : "Interactive dual curve graph comparing f(x) and f'(x)";
 
-    const col2Label = isIntegral ? 'Integrand f(x)' : 'f(x) Height';
-    const col3Label = isIntegral ? 'Antideriv F(x)' : "Exact f'(x)";
-    const col4Label = isIntegral ? "Slope F'(x)" : 'True Slope';
+    const col1Label = isDiffEq ? (isLaplaceFwd ? 'Time t / s' : 'Time t') : 'Probe x';
+    const col2Label = isDiffEq
+      ? isLaplaceFwd
+        ? 'Signal f(t)'
+        : 'Solution y(t)'
+      : isIntegral
+        ? 'Integrand f(x)'
+        : 'f(x) Height';
+    const col3Label = isDiffEq
+      ? isLaplaceFwd
+        ? 'Transform F(s)'
+        : "Slope y'(t)"
+      : isIntegral
+        ? 'Antideriv F(x)'
+        : "Exact f'(x)";
+    const col4Label = isDiffEq
+      ? isLaplaceFwd || isLaplaceInv
+        ? 'Laplace Residual'
+        : 'ODE Residual'
+      : isIntegral
+        ? "Slope F'(x)"
+        : 'True Slope';
+
+    const col2BoxClass =
+      isDiffEq && !isLaplaceFwd
+        ? 'bg-emeraldGlow/[0.08] border border-emeraldGlow/25'
+        : 'bg-cyanGlow/[0.06] border border-cyanGlow/20';
+    const col2LabelClass =
+      isDiffEq && !isLaplaceFwd ? 'text-emerald-300/80' : 'text-cyan-300/80';
+    const col2ValClass =
+      isDiffEq && !isLaplaceFwd ? 'text-emerald-200' : 'text-cyan-200';
+
+    const col3BoxClass =
+      isDiffEq && !isLaplaceFwd
+        ? 'bg-cyanGlow/[0.06] border border-cyanGlow/20'
+        : 'bg-emeraldGlow/[0.08] border border-emeraldGlow/25';
+    const col3LabelClass =
+      isDiffEq && !isLaplaceFwd ? 'text-cyan-300/80' : 'text-emerald-300/80';
+    const col3ValClass =
+      isDiffEq && !isLaplaceFwd ? 'text-cyan-200' : 'text-emerald-200';
 
     return `
       <div class="rounded-2xl p-3 sm:p-5 bg-gradient-to-b from-emeraldGlow/[0.11] to-slate-950/85 border border-emeraldGlow/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] flex flex-col gap-3 sm:gap-4 snap-in">
@@ -1126,16 +1326,16 @@ export class PaperlessStepSolver {
           <!-- Live Numerical Verification Telemetry Bar -->
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 border-t border-white/[0.08] bg-slate-950/90 font-mono text-xs">
             <div class="rounded-lg px-2.5 py-1.5 bg-white/[0.03] border border-white/[0.06]">
-              <div class="text-[10px] uppercase tracking-wider text-slate-400">Probe x</div>
+              <div class="text-[10px] uppercase tracking-wider text-slate-400">${escapeHtml(col1Label)}</div>
               <div class="text-slate-100 font-semibold mt-0.5" data-verify-x>—</div>
             </div>
-            <div class="rounded-lg px-2.5 py-1.5 bg-cyanGlow/[0.06] border border-cyanGlow/20">
-              <div class="text-[10px] uppercase tracking-wider text-cyan-300/80">${escapeHtml(col2Label)}</div>
-              <div class="text-cyan-200 font-semibold mt-0.5" data-verify-fx>—</div>
+            <div class="rounded-lg px-2.5 py-1.5 ${col2BoxClass}">
+              <div class="text-[10px] uppercase tracking-wider ${col2LabelClass}">${escapeHtml(col2Label)}</div>
+              <div class="${col2ValClass} font-semibold mt-0.5" data-verify-fx>—</div>
             </div>
-            <div class="rounded-lg px-2.5 py-1.5 bg-emeraldGlow/[0.08] border border-emeraldGlow/25">
-              <div class="text-[10px] uppercase tracking-wider text-emerald-300/80">${escapeHtml(col3Label)}</div>
-              <div class="text-emerald-200 font-semibold mt-0.5" data-verify-exact>—</div>
+            <div class="rounded-lg px-2.5 py-1.5 ${col3BoxClass}">
+              <div class="text-[10px] uppercase tracking-wider ${col3LabelClass}">${escapeHtml(col3Label)}</div>
+              <div class="${col3ValClass} font-semibold mt-0.5" data-verify-exact>—</div>
             </div>
             <div class="rounded-lg px-2.5 py-1.5 bg-violetGlow/[0.08] border border-violetGlow/25">
               <div class="flex items-center justify-between gap-1">
@@ -1423,8 +1623,13 @@ export class PaperlessStepSolver {
     const canvas = this.verifyCanvas;
     if (!canvas || !canvas.isConnected) return;
 
-    const isIntegral = this._isIntegralMode();
     const problem = this._getActiveProblem();
+    if (this._isDiffEqMode()) {
+      this._drawDiffEqVerificationCanvas(canvas, problem);
+      return;
+    }
+
+    const isIntegral = this._isIntegralMode();
     const secondFn = isIntegral
       ? problem.verifyAntiderivFn || problem.verifyDerivFn
       : problem.verifyDerivFn;
@@ -1785,6 +1990,420 @@ export class PaperlessStepSolver {
       const denom = Math.max(1, Math.abs(expected));
       const relErr = Math.abs(expected - numericSlope) / denom;
       matchEl.textContent = relErr < 1e-4 ? 'MATCH ✓' : `Δ ${relErr.toExponential(1)}`;
+    }
+  }
+
+  _drawDiffEqVerificationCanvas(canvas, problem) {
+    if (typeof problem?.verifyFn !== 'function') return;
+
+    const isLaplaceFwd = this._isLaplaceForward(problem);
+    const hasDeriv = !isLaplaceFwd && typeof problem.verifyDerivFn === 'function';
+    const hasTransform = typeof problem.verifyTransformFn === 'function';
+    if (isLaplaceFwd && !hasTransform) return;
+
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width < 10 || rect.height < 10) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const width = rect.width;
+    const height = rect.height;
+
+    if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+
+    // Background studio fill
+    ctx.fillStyle = '#080B11';
+    ctx.fillRect(0, 0, width, height);
+
+    const [xMin, xMax] = problem.domain;
+    const [sMin, sMax] = Array.isArray(problem.sDomain) ? problem.sDomain : [0.2, 6];
+    const samples = 220;
+    const xs = [];
+    const primaryVals = [];
+    const secondaryVals = [];
+
+    let pMin = Infinity;
+    let pMax = -Infinity;
+    let sValMin = Infinity;
+    let sValMax = -Infinity;
+
+    for (let i = 0; i <= samples; i++) {
+      const u = i / samples;
+      const t = xMin + u * (xMax - xMin);
+      const pVal = problem.verifyFn(t);
+      const secVal = isLaplaceFwd
+        ? problem.verifyTransformFn(sMin + u * (sMax - sMin))
+        : hasDeriv
+          ? problem.verifyDerivFn(t)
+          : NaN;
+
+      xs.push(t);
+      primaryVals.push(pVal);
+      secondaryVals.push(secVal);
+
+      if (Number.isFinite(pVal)) {
+        if (pVal < pMin) pMin = pVal;
+        if (pVal > pMax) pMax = pVal;
+      }
+      if (Number.isFinite(secVal)) {
+        if (secVal < sValMin) sValMin = secVal;
+        if (secVal > sValMax) sValMax = secVal;
+      }
+    }
+
+    const hasSecondaryCurve = (isLaplaceFwd && hasTransform) || hasDeriv;
+    const pSpan = Math.max(1e-3, pMax - pMin);
+    const secSpan = hasSecondaryCurve ? Math.max(1e-3, sValMax - sValMin) : pSpan;
+    const scaleRatio = hasSecondaryCurve
+      ? Math.max(pSpan / secSpan, secSpan / pSpan)
+      : 1;
+    const useDualAxis = hasSecondaryCurve && scaleRatio > 2.6;
+
+    let pyMin;
+    let pyMax;
+    let secyMin;
+    let secyMax;
+
+    if (!hasSecondaryCurve) {
+      pyMin = pMin - pSpan * 0.14;
+      pyMax = pMax + pSpan * 0.14;
+      secyMin = pyMin;
+      secyMax = pyMax;
+    } else if (useDualAxis) {
+      pyMin = pMin - pSpan * 0.14;
+      pyMax = pMax + pSpan * 0.14;
+      secyMin = sValMin - secSpan * 0.14;
+      secyMax = sValMax + secSpan * 0.14;
+    } else {
+      const combMin = Math.min(pMin, sValMin);
+      const combMax = Math.max(pMax, sValMax);
+      const combSpan = Math.max(1e-3, combMax - combMin);
+      pyMin = combMin - combSpan * 0.14;
+      pyMax = combMax + combSpan * 0.14;
+      secyMin = pyMin;
+      secyMax = pyMax;
+    }
+
+    const padL = 52;
+    const padR = useDualAxis ? 54 : 22;
+    const padT = isLaplaceFwd ? 24 : 18;
+    const padB = 30;
+    const plotW = Math.max(40, width - padL - padR);
+    const plotH = Math.max(40, height - padT - padB);
+
+    this.verifyPlotGeom = { padL, padR, padT, padB, plotW, plotH, xMin, xMax };
+
+    const mapX = (x) => padL + ((x - xMin) / (xMax - xMin)) * plotW;
+    const mapYp = (y) => padT + (1 - (y - pyMin) / (pyMax - pyMin)) * plotH;
+    const mapYsec = (y) => padT + (1 - (y - secyMin) / (secyMax - secyMin)) * plotH;
+
+    // Subtle grid lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.055)';
+    ctx.lineWidth = 1;
+    const gridRows = 4;
+    const gridCols = 5;
+
+    ctx.font = '10px "JetBrains Mono", monospace';
+    for (let r = 0; r <= gridRows; r++) {
+      const yPx = padT + (r / gridRows) * plotH;
+      ctx.beginPath();
+      ctx.moveTo(padL, yPx);
+      ctx.lineTo(padL + plotW, yPx);
+      ctx.stroke();
+
+      const leftTick = pyMax - (r / gridRows) * (pyMax - pyMin);
+      ctx.fillStyle = useDualAxis
+        ? isLaplaceFwd
+          ? 'rgba(103, 232, 249, 0.8)'
+          : 'rgba(110, 231, 183, 0.85)'
+        : 'rgba(148, 163, 184, 0.78)';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(formatAxisTick(leftTick), padL - 7, yPx);
+
+      if (useDualAxis) {
+        const rightTick = secyMax - (r / gridRows) * (secyMax - secyMin);
+        ctx.fillStyle = isLaplaceFwd
+          ? 'rgba(110, 231, 183, 0.85)'
+          : 'rgba(103, 232, 249, 0.8)';
+        ctx.textAlign = 'left';
+        ctx.fillText(formatAxisTick(rightTick), padL + plotW + 7, yPx);
+      }
+    }
+
+    for (let c = 0; c <= gridCols; c++) {
+      const u = c / gridCols;
+      const xPx = padL + u * plotW;
+      ctx.beginPath();
+      ctx.moveTo(xPx, padT);
+      ctx.lineTo(xPx, padT + plotH);
+      ctx.stroke();
+
+      const tTick = xMin + u * (xMax - xMin);
+      ctx.fillStyle = isLaplaceFwd
+        ? 'rgba(103, 232, 249, 0.78)'
+        : 'rgba(148, 163, 184, 0.75)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(
+        isLaplaceFwd ? `t=${formatAxisTick(tTick)}` : formatAxisTick(tTick),
+        xPx,
+        padT + plotH + 8
+      );
+
+      if (isLaplaceFwd) {
+        const sTick = sMin + u * (sMax - sMin);
+        ctx.fillStyle = 'rgba(110, 231, 183, 0.78)';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(`s=${formatAxisTick(sTick)}`, xPx, padT - 5);
+      }
+    }
+
+    // Emphasized zero axis when in view
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+    ctx.lineWidth = 1.1;
+    if (pyMin < 0 && pyMax > 0) {
+      const y0 = mapYp(0);
+      ctx.beginPath();
+      ctx.moveTo(padL, y0);
+      ctx.lineTo(padL + plotW, y0);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    const cx = this.verifyCursorX ?? this._getDefaultVerifyCursorX(problem);
+    const uCursor = Math.max(0, Math.min(1, (cx - xMin) / (xMax - xMin)));
+    const sCursor = sMin + uCursor * (sMax - sMin);
+
+    // Clip to plot box for curves and cursor markers
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(padL, padT, plotW, plotH);
+    ctx.clip();
+
+    // Draw secondary curve:
+    //  - laplace-forward: F(s) in solid luminous Emerald
+    //  - ODE / laplace-inverse: y'(t) in dashed luminous Cyan
+    if (hasSecondaryCurve) {
+      ctx.save();
+      ctx.strokeStyle = isLaplaceFwd ? '#34D399' : '#22D3EE';
+      ctx.lineWidth = isLaplaceFwd ? 2.5 : 2.0;
+      if (!isLaplaceFwd) {
+        ctx.setLineDash([6, 4]);
+      }
+      ctx.shadowColor = isLaplaceFwd
+        ? 'rgba(52, 211, 153, 0.6)'
+        : 'rgba(34, 211, 238, 0.5)';
+      ctx.shadowBlur = isLaplaceFwd ? 11 : 8;
+      ctx.beginPath();
+      let started = false;
+      for (let i = 0; i <= samples; i++) {
+        if (!Number.isFinite(secondaryVals[i])) continue;
+        const px = mapX(xs[i]);
+        const py = mapYsec(secondaryVals[i]);
+        if (!started) {
+          ctx.moveTo(px, py);
+          started = true;
+        } else {
+          ctx.lineTo(px, py);
+        }
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Draw primary curve:
+    //  - laplace-forward: f(t) in solid luminous Cyan
+    //  - ODE / laplace-inverse: y(t) solution in solid luminous Emerald
+    ctx.save();
+    ctx.strokeStyle = isLaplaceFwd ? '#22D3EE' : '#34D399';
+    ctx.lineWidth = 2.6;
+    ctx.shadowColor = isLaplaceFwd
+      ? 'rgba(34, 211, 238, 0.6)'
+      : 'rgba(52, 211, 153, 0.65)';
+    ctx.shadowBlur = 11;
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i <= samples; i++) {
+      if (!Number.isFinite(primaryVals[i])) continue;
+      const px = mapX(xs[i]);
+      const py = mapYp(primaryVals[i]);
+      if (!started) {
+        ctx.moveTo(px, py);
+        started = true;
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // Evaluate cursor telemetry values
+    const yVal = problem.verifyFn(cx);
+    const dyExact = hasDeriv
+      ? problem.verifyDerivFn(cx)
+      : !isLaplaceFwd
+        ? centralDiff(problem.verifyFn, cx, 1e-5)
+        : NaN;
+    const transformVal = isLaplaceFwd ? problem.verifyTransformFn(sCursor) : NaN;
+
+    const cxPx = mapX(cx);
+    const pyPx = mapYp(yVal);
+    const secAtCursor = isLaplaceFwd ? transformVal : dyExact;
+    const secyPx = mapYsec(secAtCursor);
+
+    // Vertical glowing scan line
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(cxPx, padT);
+    ctx.lineTo(cxPx, padT + plotH);
+    ctx.stroke();
+    ctx.restore();
+
+    // Exact tangent segment kissing y(t) for ODE & Laplace-inverse modes
+    if (!isLaplaceFwd && Number.isFinite(yVal) && Number.isFinite(dyExact)) {
+      const dPxDx = plotW / (xMax - xMin);
+      const dPyDx = (-dyExact * plotH) / (pyMax - pyMin);
+      const mag = Math.hypot(dPxDx, dPyDx) || 1;
+      const halfLen = 40;
+      const ux = (dPxDx / mag) * halfLen;
+      const uy = (dPyDx / mag) * halfLen;
+
+      ctx.save();
+      ctx.strokeStyle = '#F59E0B';
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = 'round';
+      ctx.shadowColor = 'rgba(245, 158, 11, 0.8)';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.moveTo(cxPx - ux, pyPx - uy);
+      ctx.lineTo(cxPx + ux, pyPx + uy);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Glowing point on secondary curve
+    if (hasSecondaryCurve && Number.isFinite(secAtCursor)) {
+      ctx.save();
+      ctx.fillStyle = isLaplaceFwd ? '#34D399' : '#22D3EE';
+      ctx.shadowColor = isLaplaceFwd
+        ? 'rgba(52, 211, 153, 0.95)'
+        : 'rgba(34, 211, 238, 0.9)';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(cxPx, secyPx, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = isLaplaceFwd ? '#FFFFFF' : '#080B11';
+      ctx.lineWidth = 1.7;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Glowing point on primary curve
+    if (Number.isFinite(yVal)) {
+      ctx.save();
+      ctx.fillStyle = isLaplaceFwd ? '#22D3EE' : '#34D399';
+      ctx.shadowColor = isLaplaceFwd
+        ? 'rgba(34, 211, 238, 0.95)'
+        : 'rgba(52, 211, 153, 0.95)';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(cxPx, pyPx, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    ctx.restore(); // end clip
+
+    // Dual-axis hint tag if dual scaling is active
+    if (useDualAxis) {
+      ctx.font = '10px "JetBrains Mono", monospace';
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.72)';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'top';
+      const dualHint = isLaplaceFwd
+        ? 'Dual Y-axis: Cyan f(t) left · Emerald F(s) right'
+        : "Dual Y-axis: Emerald y(t) left · Cyan y'(t) right";
+      ctx.fillText(dualHint, padL + plotW - 6, padT + 4);
+    }
+
+    ctx.restore();
+
+    // Compute exact numerical residual to prove ODE or Laplace identity at hovered point
+    let residual = NaN;
+    if (isLaplaceFwd) {
+      const fsNum = numericalLaplace(problem.verifyFn, sCursor);
+      residual = Math.abs(transformVal - fsNum);
+    } else if (typeof problem.odeResidual === 'function') {
+      const dyNum = centralDiff(problem.verifyFn, cx, 1e-5);
+      const d2yNum = hasDeriv
+        ? centralDiff(problem.verifyDerivFn, cx, 1e-5)
+        : (problem.verifyFn(cx + 1e-4) - 2 * yVal + problem.verifyFn(cx - 1e-4)) / 1e-8;
+      residual = Math.abs(problem.odeResidual(cx, yVal, dyNum, d2yNum));
+    } else if (hasTransform) {
+      const fsExact = problem.verifyTransformFn(sCursor);
+      const fsNum = numericalLaplace(problem.verifyFn, sCursor);
+      residual = Math.abs(fsExact - fsNum);
+    }
+
+    this._updateDiffEqVerificationReadout({
+      isLaplaceFwd,
+      t: cx,
+      s: sCursor,
+      primaryVal: yVal,
+      secondaryVal: secAtCursor,
+      residual,
+    });
+  }
+
+  _updateDiffEqVerificationReadout({
+    isLaplaceFwd,
+    t,
+    s,
+    primaryVal,
+    secondaryVal,
+    residual,
+  }) {
+    if (!this.container) return;
+    const xEl = this.container.querySelector('[data-verify-x]');
+    const fxEl = this.container.querySelector('[data-verify-fx]');
+    const exactEl = this.container.querySelector('[data-verify-exact]');
+    const numEl = this.container.querySelector('[data-verify-numeric]');
+    const matchEl = this.container.querySelector('[data-verify-match]');
+
+    if (xEl) {
+      xEl.textContent = isLaplaceFwd
+        ? `${formatNum(t, 2)} / ${formatNum(s, 2)}`
+        : formatNum(t, 3);
+    }
+    if (fxEl) fxEl.textContent = formatNum(primaryVal, 4);
+    if (exactEl) exactEl.textContent = formatNum(secondaryVal, 4);
+
+    if (Number.isFinite(residual)) {
+      const isClean = residual < 1e-4;
+      if (numEl) {
+        numEl.textContent = isClean ? '0.0000 ✓' : formatNum(residual, 5);
+      }
+      if (matchEl) {
+        matchEl.textContent = isClean ? 'MATCH ✓' : `Δ ${residual.toExponential(1)}`;
+      }
+    } else {
+      if (numEl) numEl.textContent = '—';
     }
   }
 }

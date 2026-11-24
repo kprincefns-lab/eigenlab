@@ -1,0 +1,11 @@
+{
+  "lessonId": "math-diff-eq",
+  "status": "coming_soon",
+  "plannedTopics": [
+    "RLC Circuit Transient & Resonance Analysis",
+    "Closed-Loop DC Motor Speed Transfer Function",
+    "Quarter-Car Suspension Damping & Ride Stability",
+    "Neural ODEs & Continuous-Depth Dynamics"
+  ],
+  "problems": []
+}

@@ -42,11 +42,17 @@
         },
         {
           "id": "math-diff-eq",
-          "status": "planned",
-          "title": "Differential Equations & System Dynamics",
-          "tag": "Lesson 03 • Coming Next",
-          "description": "Explore phase portraits, damped harmonic oscillators, and exponential stability in first- and second-order ODE systems.",
-          "estimatedMinutes": 35
+          "status": "live",
+          "title": "Differential Equations & Laplace Transforms",
+          "tag": "Lesson 03 • 3D Dynamics, s-Plane & Laplace",
+          "description": "Explore 3D damped spring-mass phase helices, drag poles directly across the complex Laplace s-plane, and solve separable, integrating-factor, 2nd-order ODEs, and Laplace IVPs step by step.",
+          "estimatedMinutes": 35,
+          "stages": [
+            "3d-lab",
+            "intuition",
+            "solver",
+            "word-problems"
+          ]
         },
         {
           "id": "math-lin-alg",

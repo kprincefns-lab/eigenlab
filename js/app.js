@@ -18,8 +18,11 @@ import {
 import { StackedDerivativeLab, VisualQuizEngine } from './viz/stacked-graphs.js';
 import { Integral3DStudio, INTEGRAL_PRESETS } from './viz/integral-3d.js';
 import { StackedIntegralLab, IntegralVisualQuizEngine } from './viz/integral-graphs.js';
+import { DiffEq3DStudio, DIFFEQ_PRESETS } from './viz/diffeq-3d.js';
+import { LaplaceSPlaneLab, DiffEqVisualQuizEngine } from './viz/diffeq-graphs.js';
 import { PaperlessStepSolver } from './solver/step-solver.js';
 import { INTEGRAL_PROBLEMS, INTEGRAL_SOLVER_TIERS } from '../data/lessons/integrals-problems.js';
+import { DIFFEQ_PROBLEMS, DIFFEQ_SOLVER_TIERS } from '../data/lessons/diffeq-problems.js';
 
 // ---------------------------------------------------------------------------
 // Constants & Fallback Data
@@ -27,6 +30,7 @@ import { INTEGRAL_PROBLEMS, INTEGRAL_SOLVER_TIERS } from '../data/lessons/integr
 
 const LESSON_ID = 'calc-derivatives';
 const INTEGRAL_LESSON_ID = 'calc-integrals';
+const DIFFEQ_LESSON_ID = 'math-diff-eq';
 
 const STAGES = [
   {
@@ -98,6 +102,41 @@ const INTEGRAL_STAGES = [
   },
 ];
 
+const DIFFEQ_STAGES = [
+  {
+    id: '3d-lab',
+    number: 1,
+    icon: '🌐',
+    shortLabel: '3D Dynamics',
+    mobileLabel: '3D ODE',
+    label: '1. 3D Dynamics & Phase Lab',
+  },
+  {
+    id: 'intuition',
+    number: 2,
+    icon: '📈',
+    shortLabel: 's-Plane Lab',
+    mobileLabel: 's-Plane',
+    label: '2. Laplace s-Plane & Quiz',
+  },
+  {
+    id: 'solver',
+    number: 3,
+    icon: '🧮',
+    shortLabel: 'ODE/Laplace Solver',
+    mobileLabel: 'Solver',
+    label: '3. ODE & Laplace Step Solver',
+  },
+  {
+    id: 'word-problems',
+    number: 4,
+    icon: '⚙️',
+    shortLabel: 'Word Problems',
+    mobileLabel: 'Applied',
+    label: '4. Applied Word Problems',
+  },
+];
+
 const PLANNED_TOPIC_METADATA = {
   'Servo Velocity & Acceleration Profiling': {
     domain: 'Mechatronics',
@@ -154,6 +193,34 @@ const PLANNED_TOPIC_METADATA = {
     equation: '\\mathbb{E}[X] = \\int_{-\\infty}^{\\infty} x\\,p(x)\\,dx',
     summary:
       'Connect continuous area under probability density curves to Bayesian expectations and sensor fusion.',
+  },
+  'RLC Circuit Transient & Resonance Analysis': {
+    domain: 'Electronics',
+    accent: 'cyan',
+    equation: 'L\\ddot{q} + R\\dot{q} + \\frac{1}{C}q = V(t)',
+    summary:
+      'Analyze damping ratios, quality factors, and Laplace impedance poles for switched power filters.',
+  },
+  'Closed-Loop DC Motor Speed Transfer Function': {
+    domain: 'Mechatronics',
+    accent: 'amber',
+    equation: 'G(s) = \\frac{\\Omega(s)}{V(s)} = \\frac{K_t}{(Js+b)(Ls+R)+K_e K_t}',
+    summary:
+      'Map armature dynamics to s-plane poles to predict step settling time and zero steady-state error.',
+  },
+  'Quarter-Car Suspension Damping & Ride Stability': {
+    domain: 'Physics',
+    accent: 'violet',
+    equation: 'm\\ddot{x} + c\\dot{x} + kx = F_{\\text{road}}(t)',
+    summary:
+      'Tune damper coefficient c to hit critical damping and eliminate chassis overshoot over road impulses.',
+  },
+  'Neural ODEs & Continuous-Depth Dynamics': {
+    domain: 'AI & ML',
+    accent: 'emerald',
+    equation: '\\frac{d\\mathbf{h}(t)}{dt} = f_{\\theta}(\\mathbf{h}(t), t)',
+    summary:
+      'Interpret residual neural network layers as continuous differential flows solved with adaptive integrators.',
   },
 };
 
@@ -260,6 +327,18 @@ const FALLBACK_INTEGRAL_WORD_PROBLEMS = {
   problems: [],
 };
 
+const FALLBACK_DIFFEQ_WORD_PROBLEMS = {
+  lessonId: 'math-diff-eq',
+  status: 'coming_soon',
+  plannedTopics: [
+    'RLC Circuit Transient & Resonance Analysis',
+    'Closed-Loop DC Motor Speed Transfer Function',
+    'Quarter-Car Suspension Damping & Ride Stability',
+    'Neural ODEs & Continuous-Depth Dynamics',
+  ],
+  problems: [],
+};
+
 // ---------------------------------------------------------------------------
 // Application Runtime State
 // ---------------------------------------------------------------------------
@@ -273,6 +352,7 @@ const appState = {
   wordProblemsByLesson: {
     'calc-derivatives': FALLBACK_WORD_PROBLEMS,
     'calc-integrals': FALLBACK_INTEGRAL_WORD_PROBLEMS,
+    'math-diff-eq': FALLBACK_DIFFEQ_WORD_PROBLEMS,
   },
   lab: {
     presetId: null,
@@ -314,6 +394,30 @@ const appState = {
     fb: 0,
     isExactLocked: false,
   },
+  diffeqLab: {
+    presetId: 'underdamped',
+    zeta: 0.25,
+    omega: 2.6,
+    t: 1.4,
+    cameraPreset: '3d',
+    showPhaseWall: true,
+    isAnimating: false,
+  },
+  diffeqTelemetry: {
+    order: 2,
+    zeta: 0.25,
+    omega: 2.6,
+    t: 1.4,
+    yt: 0,
+    dydt: 0,
+    regime: 'UNDERDAMPED',
+    overshootPct: 44.4,
+    settlingTime: 6.15,
+    polesLatex: 's = -0.65 \\pm 2.52j',
+    poles: [],
+    transferLatex: '',
+    odeLatex: '',
+  },
 };
 
 const activeInstances = {
@@ -329,12 +433,20 @@ function isIntegralLesson() {
   return appState.lessonId === INTEGRAL_LESSON_ID;
 }
 
+function isDiffEqLesson() {
+  return appState.lessonId === DIFFEQ_LESSON_ID;
+}
+
 function getLessonStages() {
-  return isIntegralLesson() ? INTEGRAL_STAGES : STAGES;
+  if (isIntegralLesson()) return INTEGRAL_STAGES;
+  if (isDiffEqLesson()) return DIFFEQ_STAGES;
+  return STAGES;
 }
 
 function stageStoreKey(stageId) {
-  return isIntegralLesson() ? `int:${stageId}` : stageId;
+  if (isIntegralLesson()) return `int:${stageId}`;
+  if (isDiffEqLesson()) return `de:${stageId}`;
+  return stageId;
 }
 
 // ---------------------------------------------------------------------------
@@ -384,6 +496,33 @@ function normalizeIntegralPresets() {
     defaultB: p.defaultB ?? (p.domain?.[1] ?? 2.0),
     raw: p,
   }));
+}
+
+function normalizeDiffEqPresets() {
+  if (!DIFFEQ_PRESETS) return [];
+  const list = Array.isArray(DIFFEQ_PRESETS)
+    ? DIFFEQ_PRESETS
+    : Object.entries(DIFFEQ_PRESETS).map(([id, v]) => ({ id, ...v }));
+
+  return list.map((p, idx) => ({
+    id: p.id ?? p.key ?? `de-preset-${idx}`,
+    name: p.name ?? p.label ?? `System ${idx + 1}`,
+    mechatronicsLabel: p.mechatronicsLabel ?? null,
+    order: p.order ?? 2,
+    defaultZeta: p.defaultZeta ?? 0.25,
+    defaultOmega: p.defaultOmega ?? 2.5,
+    odeLatex: p.odeLatex ?? '',
+    transferLatex: p.transferLatex ?? '',
+    raw: p,
+  }));
+}
+
+function getActiveDiffEqPreset(presets) {
+  if (!presets.length) return null;
+  if (!appState.diffeqLab.presetId) {
+    appState.diffeqLab.presetId = presets[0].id;
+  }
+  return presets.find((p) => p.id === appState.diffeqLab.presetId) || presets[0];
 }
 
 function getActiveIntegralPreset(presets) {
@@ -456,10 +595,10 @@ function getMasterySnapshot() {
   return {
     percent,
     solvedProblems,
-    totalProblems: 32,
+    totalProblems: 46,
     solvedVisual,
-    totalVisual: 14,
-    totalStages: 8,
+    totalVisual: 20,
+    totalStages: 12,
     streak,
     accuracyPct: stats.accuracyPct ?? 100,
     completedStages,
@@ -903,8 +1042,17 @@ function renderHubView() {
                   type="button"
                   class="btn-glass w-full sm:w-auto !rounded-2xl !px-4 !py-2.5 sm:!py-3 !text-sm !border-violetGlow/40 !text-violet-200 hover:!border-violetGlow/70 hover:!bg-violetGlow/10"
                 >
-                  <span>Lesson 02: Integrals 3D Lab</span>
+                  <span>Lesson 02: Integrals</span>
                   <span aria-hidden="true" class="text-base text-violetGlow">→</span>
+                </button>
+
+                <button
+                  id="hub-hero-launch-diffeq"
+                  type="button"
+                  class="btn-glass w-full sm:w-auto !rounded-2xl !px-4 !py-2.5 sm:!py-3 !text-sm !border-amberGlow/40 !text-amber-200 hover:!border-amberGlow/70 hover:!bg-amberGlow/10"
+                >
+                  <span>Lesson 03: ODE &amp; Laplace</span>
+                  <span aria-hidden="true" class="text-base text-amberGlow">→</span>
                 </button>
               </div>
             </div>
@@ -1026,6 +1174,11 @@ function renderHubView() {
     openLesson(INTEGRAL_LESSON_ID, '3d-lab');
   });
 
+  document.getElementById('hub-hero-launch-diffeq')?.addEventListener('click', () => {
+    playSfx('tick');
+    openLesson(DIFFEQ_LESSON_ID, '3d-lab');
+  });
+
   document.getElementById('hub-preview-launch')?.addEventListener('click', () => {
     playSfx('tick');
     openLesson(LESSON_ID, '3d-lab');
@@ -1059,12 +1212,14 @@ function bindHubAudioToggle() {
 }
 
 // ---------------------------------------------------------------------------
-// VIEW 2 — Interactive Lesson Studio (`calc-derivatives` & `calc-integrals`)
+// VIEW 2 — Interactive Lesson Studio (`calc-derivatives`, `calc-integrals`, `math-diff-eq`)
 // ---------------------------------------------------------------------------
 
 function openLesson(lessonId = LESSON_ID, stageId = '3d-lab') {
   appState.view = 'lesson';
-  appState.lessonId = lessonId === INTEGRAL_LESSON_ID ? INTEGRAL_LESSON_ID : LESSON_ID;
+  if (lessonId === INTEGRAL_LESSON_ID) appState.lessonId = INTEGRAL_LESSON_ID;
+  else if (lessonId === DIFFEQ_LESSON_ID) appState.lessonId = DIFFEQ_LESSON_ID;
+  else appState.lessonId = LESSON_ID;
   appState.stage = stageId;
   renderLessonShell();
   mountActiveStage();
@@ -1075,6 +1230,11 @@ function getLessonSubtitleText(on) {
     return on
       ? 'Mechatronics Lens: Velocity v(t) → Net Displacement Δx & Accumulator Dynamics'
       : 'Calculus Lens: 3D Riemann Sums, FTC Accumulation & Symbolic Integration';
+  }
+  if (isDiffEqLesson()) {
+    return on
+      ? 'Mechatronics Lens: Spring-Mass-Damper Dynamics, Poles & Closed-Loop Stability'
+      : 'Calculus Lens: ODE Phase Space, Laplace s-Plane & Transfer Functions';
   }
   return on
     ? 'Mechatronics Lens: Displacement x(t) → Velocity v(t) & Actuator Dynamics'
@@ -1152,8 +1312,14 @@ function renderLessonShell() {
 
   const stages = getLessonStages();
   const isInt = isIntegralLesson();
-  const lessonBadge = isInt ? 'Lesson 02' : 'Lesson 01';
-  const lessonTitle = isInt ? 'Integrals Studio' : 'Derivatives Studio';
+  const isDE = isDiffEqLesson();
+  const lessonBadge = isDE ? 'Lesson 03' : isInt ? 'Lesson 02' : 'Lesson 01';
+  const lessonBadgeColor = isDE ? 'text-amberGlow' : isInt ? 'text-violetGlow' : 'text-cyanGlow';
+  const lessonTitle = isDE
+    ? 'ODE & Laplace Studio'
+    : isInt
+      ? 'Integrals Studio'
+      : 'Derivatives Studio';
 
   root.innerHTML = `
     <div class="min-h-screen flex flex-col relative view-enter">
@@ -1176,9 +1342,7 @@ function renderLessonShell() {
 
             <div class="min-w-0">
               <div class="flex items-center gap-2">
-                <span class="text-[10px] font-mono uppercase tracking-wider ${
-                  isInt ? 'text-violetGlow' : 'text-cyanGlow'
-                } hidden md:inline">${lessonBadge}</span>
+                <span class="text-[10px] font-mono uppercase tracking-wider ${lessonBadgeColor} hidden md:inline">${lessonBadge}</span>
                 <h1 class="font-display font-bold text-xs sm:text-base text-white truncate">
                   ${lessonTitle}
                 </h1>
@@ -1325,6 +1489,9 @@ function propagateLensToActiveStage() {
     if (isIntegralLesson()) {
       updateIntegralStage1LensUI();
       updateIntegralStage1TelemetryUI();
+    } else if (isDiffEqLesson()) {
+      updateDiffEqStage1LensUI();
+      updateDiffEqStage1TelemetryUI();
     } else {
       updateStage1LensUI();
       updateStage1TelemetryUI();
@@ -1339,6 +1506,10 @@ function propagateLensToActiveStage() {
         titleEl.textContent = on
           ? 'Synchronized Velocity v(t) & Displacement x(t)'
           : 'Synchronized Integrand f(x) & Accumulation F(x)';
+      } else if (isDiffEqLesson()) {
+        titleEl.textContent = on
+          ? 'Control s-Plane Poles & Impulse Response x(t)'
+          : 'Interactive Laplace s-Plane ↔ Time Response y(t)';
       } else {
         titleEl.textContent = on
           ? 'Synchronized Position x(t) & Velocity v(t)'
@@ -1394,6 +1565,26 @@ function mountActiveStage() {
         break;
       default:
         mountIntegralStage1Lab3D(container);
+    }
+    return;
+  }
+
+  if (isDiffEqLesson()) {
+    switch (appState.stage) {
+      case '3d-lab':
+        mountDiffEqStage1Lab3D(container);
+        break;
+      case 'intuition':
+        mountDiffEqStage2Intuition(container);
+        break;
+      case 'solver':
+        mountDiffEqStage3Solver(container);
+        break;
+      case 'word-problems':
+        mountStage4WordProblems(container);
+        break;
+      default:
+        mountDiffEqStage1Lab3D(container);
     }
     return;
   }
@@ -2177,7 +2368,7 @@ function mountStage2Intuition(container) {
   const on = isMechatronicsLens();
   const s = getStoreState();
   const solvedDerivQuizzes = (s.solvedQuizzes || []).filter(
-    (id) => !String(id).startsWith('int-quiz-')
+    (id) => !String(id).startsWith('int-quiz-') && !String(id).startsWith('de-quiz-')
   ).length;
   let activeSubTab = 'lab'; // 'lab' | 'quiz' on mobile (<lg)
 
@@ -2318,7 +2509,7 @@ function mountStage2Intuition(container) {
     try {
       const updateQuizTabCount = () => {
         const solvedDeriv = (getStoreState().solvedQuizzes || []).filter(
-          (id) => !String(id).startsWith('int-quiz-')
+          (id) => !String(id).startsWith('int-quiz-') && !String(id).startsWith('de-quiz-')
         ).length;
         const quizBtn = container.querySelector('[data-stage2-subtab="quiz"]');
         if (quizBtn) quizBtn.textContent = `🎯 Match Quiz (${solvedDeriv}/8)`;
@@ -3388,15 +3579,846 @@ function mountIntegralStage3Solver(container) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// LESSON 03 — ODE & LAPLACE STUDIO (`math-diff-eq`) STAGES 1–3
+// ---------------------------------------------------------------------------
+
+function mountDiffEqStage1Lab3D(container) {
+  const presets = normalizeDiffEqPresets();
+  const activePreset = getActiveDiffEqPreset(presets);
+  const lensOn = isMechatronicsLens();
+  const isFirstOrder = activePreset?.order === 1;
+
+  container.innerHTML = `
+    <section class="space-y-2 sm:space-y-4 view-enter">
+      <!-- Top System Preset Strip + Desktop Camera Presets -->
+      <div class="flex items-center justify-between gap-2 sm:gap-3">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar xl:flex-wrap flex-1 min-w-0 py-0.5" role="tablist" aria-label="Dynamical system presets">
+          ${presets
+            .map((p) => {
+              const isSelected = activePreset && p.id === activePreset.id;
+              return `
+                <button
+                  type="button"
+                  data-de-preset-id="${escapeHtml(p.id)}"
+                  class="shrink-0 whitespace-nowrap px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-medium border transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-cyanGlow/15 border-cyanGlow/50 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.2)]'
+                      : 'bg-slate-900/60 border-white/10 text-slate-300 hover:border-white/25 hover:text-white'
+                  }"
+                >
+                  ${escapeHtml(p.name)}
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+
+        <div class="hidden xl:flex items-center gap-1 bg-slate-900/75 p-1 rounded-xl border border-white/10 shrink-0">
+          ${[
+            { id: '3d', label: '3D Studio' },
+            { id: 'front', label: 'Front 2D Graph' },
+            { id: 'iso', label: 'Isometric' },
+          ]
+            .map((cam) => {
+              const active = appState.diffeqLab.cameraPreset === cam.id;
+              return `
+                <button
+                  type="button"
+                  data-de-camera-preset="${cam.id}"
+                  class="px-3 py-1.5 rounded-lg text-[11px] font-mono transition-all cursor-pointer ${
+                    active
+                      ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+                      : 'text-slate-400 border border-transparent hover:text-white'
+                  }"
+                >
+                  ${cam.label}
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+      </div>
+
+      <!-- Main Split-Screen Mobile / Full-Bleed Desktop 3D ODE Studio -->
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-2.5 sm:gap-4 items-stretch">
+        <!-- 3D Viewport Canvas Container -->
+        <div class="xl:col-span-8 canvas-stage relative h-[36dvh] min-h-[210px] max-h-[295px] sm:h-[420px] sm:max-h-none xl:h-[calc(100vh-210px)] xl:min-h-[540px] flex flex-col">
+          <div id="diffeq-3d-canvas" class="absolute inset-0 w-full h-full"></div>
+
+          <!-- Top-Left Floating ODE & Transfer Function HUD -->
+          <div class="pointer-events-none relative z-10 flex items-start justify-between gap-2 p-2.5 sm:p-4">
+            <div class="pointer-events-auto rounded-xl sm:rounded-2xl px-2.5 py-1.5 sm:px-4 sm:py-3 bg-[#0B0D12]/80 backdrop-blur-xl border border-white/15 shadow-lg max-w-full">
+              <div class="hidden sm:flex items-center gap-2 mb-1.5">
+                <span class="w-2 h-2 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE]"></span>
+                <span id="de-hud-curve-label" class="text-[10px] font-mono uppercase tracking-widest text-slate-400">
+                  ${lensOn ? 'Spring-Mass-Damper Dynamics' : 'ODE Time–Phase Trajectory'}
+                </span>
+              </div>
+              <div class="flex flex-wrap items-center gap-x-2.5 sm:gap-x-4 gap-y-0.5 text-[11px] sm:text-sm text-white">
+                <span id="de-hud-ode-math" class="text-cyan-200"></span>
+              </div>
+            </div>
+
+            <!-- Mechatronics Spring-Mass-Damper Rig Indicator -->
+            <div id="de-hud-mech-indicator" class="hidden sm:block pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
+              lensOn
+                ? 'bg-amberGlow/15 border-amberGlow/45 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
+                : 'bg-[#0B0D12]/70 border-white/10 text-slate-400'
+            }">
+              <div class="flex items-center gap-2 text-[11px] font-mono">
+                <span class="w-2 h-2 rounded-full ${lensOn ? 'bg-amberGlow animate-pulse' : 'bg-slate-600'}"></span>
+                <span id="de-hud-mech-text">${lensOn ? '3D Spring-Mass Rig: SYNCED' : '3D Rig: Standby'}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Legend + Compact Mobile Camera Switcher -->
+          <div class="pointer-events-none relative z-10 mt-auto p-2 sm:p-4 flex items-center justify-between gap-2">
+            <div class="hidden sm:inline-flex items-center gap-3 px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-300">
+              <span><span class="text-cyanGlow">●</span> 3D Helix (t, y, y&apos;)</span>
+              <span><span class="text-emeraldGlow">—</span> Setpoint y=1</span>
+              <span><span class="text-violetGlow">●</span> Phase Portrait</span>
+            </div>
+
+            <div class="pointer-events-auto xl:hidden ml-auto flex items-center gap-0.5 bg-[#0B0D12]/80 backdrop-blur-md p-0.5 rounded-xl border border-white/15">
+              ${[
+                { id: '3d', label: '3D' },
+                { id: 'front', label: '2D' },
+                { id: 'iso', label: 'Iso' },
+              ]
+                .map((cam) => {
+                  const active = appState.diffeqLab.cameraPreset === cam.id;
+                  return `
+                    <button
+                      type="button"
+                      data-de-camera-preset="${cam.id}"
+                      class="px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all cursor-pointer ${
+                        active
+                          ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+                          : 'text-slate-400 border border-transparent hover:text-white'
+                      }"
+                    >
+                      ${cam.label}
+                    </button>
+                  `;
+                })
+                .join('')}
+            </div>
+
+            <div class="hidden xl:inline-flex items-center px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-400">
+              Drag to orbit • Scroll to zoom
+            </div>
+          </div>
+        </div>
+
+        <!-- Tactile ODE & Laplace Telemetry + Parameter Sliders -->
+        <aside class="xl:col-span-4 flex flex-col gap-2 sm:gap-4 xl:h-[calc(100vh-210px)] xl:overflow-y-auto studio-scroll pr-0.5">
+          <!-- Compact 1-Row Mobile Telemetry / Expanded Desktop Transfer Function Card -->
+          <div class="glass-panel p-2.5 sm:p-5 space-y-2 sm:space-y-4">
+            <div class="flex items-center justify-between gap-2">
+              <div class="hidden xl:block">
+                <div class="text-[10px] font-mono uppercase tracking-[0.14em] text-slate-400">Laplace Domain Telemetry</div>
+                <h2 class="font-display font-semibold text-sm text-white mt-0.5">Transfer Function &amp; Poles</h2>
+              </div>
+
+              <!-- Mobile Compact Inline Readout -->
+              <div class="flex xl:hidden items-center gap-2 min-w-0 flex-1">
+                <div class="flex-1 min-w-0 rounded-xl px-2.5 py-1 bg-cyanGlow/[0.08] border border-cyanGlow/25">
+                  <div class="text-[9px] font-mono uppercase tracking-wider text-cyanGlow/90 truncate">Overshoot</div>
+                  <div id="de-val-os-compact" class="font-mono font-semibold text-sm text-white leading-tight">44.4%</div>
+                </div>
+                <div class="flex-1 min-w-0 rounded-xl px-2.5 py-1 bg-violetGlow/[0.08] border border-violetGlow/25">
+                  <div class="text-[9px] font-mono uppercase tracking-wider text-violetGlow/90 truncate">Settling Ts</div>
+                  <div id="de-val-ts-compact" class="font-mono font-semibold text-sm text-violet-200 leading-tight">6.15s</div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5 shrink-0">
+                <div
+                  id="de-badge-regime"
+                  class="px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-cyanGlow/15 border-cyanGlow/40 text-cyan-200"
+                >
+                  UNDERDAMPED
+                </div>
+                <button
+                  id="de-btn-toggle-mobile-formula"
+                  type="button"
+                  aria-expanded="false"
+                  title="Toggle Laplace transfer function & poles"
+                  class="xl:hidden px-2 py-1 rounded-lg bg-white/[0.05] border border-white/15 text-[11px] font-mono text-cyan-200 cursor-pointer"
+                >
+                  ℒ ▾
+                </button>
+              </div>
+            </div>
+
+            <!-- Collapsible on Mobile (<xl), Always Open on Desktop (xl:block) -->
+            <div id="de-mobile-formula-drawer" class="hidden xl:block space-y-2.5 sm:space-y-3.5">
+              <div class="katex-card flex flex-col items-center justify-center gap-1.5 min-h-[68px] sm:min-h-[82px]">
+                <div id="de-telemetry-transfer-katex" class="text-slate-100 text-xs sm:text-sm overflow-x-auto"></div>
+                <div id="de-telemetry-poles-katex" class="text-violet-300 text-xs overflow-x-auto"></div>
+              </div>
+
+              <div class="hidden xl:grid grid-cols-2 gap-3">
+                <div class="rounded-2xl p-3.5 bg-cyanGlow/[0.06] border border-cyanGlow/25">
+                  <div class="text-[10px] font-mono uppercase tracking-wider text-cyanGlow/90">Percent Overshoot</div>
+                  <div id="de-val-os" class="font-mono font-semibold text-xl text-white mt-1">44.4%</div>
+                </div>
+                <div class="rounded-2xl p-3.5 bg-violetGlow/[0.06] border border-violetGlow/25">
+                  <div class="text-[10px] font-mono uppercase tracking-wider text-violetGlow/90">2% Settling Time</div>
+                  <div id="de-val-ts" class="font-mono font-semibold text-xl text-violet-200 mt-1">6.15s</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tactile Damping & Natural Frequency Sliders -->
+          <div class="glass-panel p-2.5 sm:p-5 space-y-2.5 sm:space-y-4 flex-1 flex flex-col justify-between">
+            <div class="space-y-2 sm:space-y-4">
+              <!-- Damping Ratio ζ Slider (Amber) -->
+              <div id="de-zeta-wrap" class="space-y-1 sm:space-y-1.5 ${isFirstOrder ? 'opacity-45' : ''}">
+                <div class="flex items-center justify-between">
+                  <label for="slider-de-zeta" class="text-xs font-medium text-slate-200 flex items-center gap-2">
+                    <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B]"></span>
+                    Damping Ratio ζ
+                  </label>
+                  <span id="readout-de-zeta" class="px-2 py-0.5 rounded-lg bg-amberGlow/15 border border-amberGlow/30 font-mono text-[11px] sm:text-xs text-amberGlow font-semibold">
+                    ${formatNum(appState.diffeqLab.zeta, 2)}
+                  </span>
+                </div>
+                <input
+                  id="slider-de-zeta"
+                  type="range"
+                  min="0"
+                  max="2.0"
+                  step="0.02"
+                  value="${appState.diffeqLab.zeta}"
+                  ${isFirstOrder ? 'disabled' : ''}
+                  class="studio-slider-amber"
+                />
+              </div>
+
+              <!-- Natural Frequency ωn Slider (Cyan) -->
+              <div class="space-y-1 sm:space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label for="slider-de-omega" id="label-de-omega" class="text-xs font-medium text-slate-200 flex items-center gap-2">
+                    <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE]"></span>
+                    ${isFirstOrder ? 'Decay Rate a = 1/τ' : 'Natural Freq ωₙ (rad/s)'}
+                  </label>
+                  <span id="readout-de-omega" class="px-2 py-0.5 rounded-lg bg-cyanGlow/15 border border-cyanGlow/30 font-mono text-[11px] sm:text-xs text-cyanGlow font-semibold">
+                    ${formatNum(appState.diffeqLab.omega, 2)}
+                  </span>
+                </div>
+                <input
+                  id="slider-de-omega"
+                  type="range"
+                  min="0.8"
+                  max="4.0"
+                  step="0.05"
+                  value="${appState.diffeqLab.omega}"
+                  class="studio-slider-cyan"
+                />
+              </div>
+
+              <!-- Action Row: Simulate Step Response + Mobile Phase Wall Toggle -->
+              <div class="flex items-center gap-2 pt-0.5">
+                <button
+                  id="btn-animate-diffeq"
+                  type="button"
+                  class="flex-1 py-2.5 sm:py-3.5 px-3 sm:px-4 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amberGlow via-cyanGlow to-violetGlow text-slate-950 font-display font-bold text-xs sm:text-sm tracking-wide shadow-[0_0_24px_rgba(34,211,238,0.28)] hover:brightness-110 active:scale-[0.985] transition-all cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2"
+                >
+                  <span id="de-anim-icon" aria-hidden="true">▶</span>
+                  <span id="de-anim-text">Simulate Step Response</span>
+                </button>
+
+                <label class="xl:hidden shrink-0 inline-flex items-center gap-1.5 px-2.5 py-2.5 rounded-xl bg-violetGlow/10 border border-violetGlow/30 text-[11px] font-mono text-violet-200 cursor-pointer select-none">
+                  <input
+                    id="toggle-phase-wall-mobile"
+                    type="checkbox"
+                    ${appState.diffeqLab.showPhaseWall ? 'checked' : ''}
+                    class="w-3.5 h-3.5 rounded accent-violet-400 cursor-pointer"
+                  />
+                  <span>Phase</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Desktop Phase Wall Toggle + Stage 2 Forward Link -->
+            <div class="hidden xl:block pt-4 border-t border-white/10 space-y-3">
+              <label class="flex items-center justify-between gap-3 cursor-pointer select-none group">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-2.5 h-2.5 rounded-full bg-violetGlow shadow-[0_0_8px_#A78BFA]"></span>
+                  <div>
+                    <div class="text-xs font-medium text-slate-200 group-hover:text-white">
+                      Show 3D Phase-Portrait Wall (y vs y&apos;)
+                    </div>
+                    <div class="text-[11px] text-slate-400">State-space spiral converging to equilibrium</div>
+                  </div>
+                </div>
+                <input
+                  id="toggle-phase-wall"
+                  type="checkbox"
+                  ${appState.diffeqLab.showPhaseWall ? 'checked' : ''}
+                  class="w-4 h-4 rounded accent-violet-400 cursor-pointer"
+                />
+              </label>
+
+              <button
+                id="btn-de-next-intuition"
+                type="button"
+                class="btn-glass w-full !justify-between !text-xs"
+              >
+                <span>Continue to Stage 2: Laplace s-Plane Lab</span>
+                <span class="text-cyanGlow" aria-hidden="true">→</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  `;
+
+  const sliderZeta = document.getElementById('slider-de-zeta');
+  const sliderOmega = document.getElementById('slider-de-omega');
+  syncSliderTrackFill(sliderZeta);
+  syncSliderTrackFill(sliderOmega);
+
+  const canvasHost = document.getElementById('diffeq-3d-canvas');
+
+  const handleDiffEqTelemetry = (m = {}) => {
+    appState.diffeqTelemetry = {
+      ...appState.diffeqTelemetry,
+      ...m,
+    };
+    if (Number.isFinite(m.zeta)) {
+      appState.diffeqLab.zeta = m.zeta;
+      if (sliderZeta && Math.abs(parseFloat(sliderZeta.value) - m.zeta) > 0.005) {
+        sliderZeta.value = String(m.zeta);
+        syncSliderTrackFill(sliderZeta);
+      }
+    }
+    if (Number.isFinite(m.omega)) {
+      appState.diffeqLab.omega = m.omega;
+      if (sliderOmega && Math.abs(parseFloat(sliderOmega.value) - m.omega) > 0.01) {
+        sliderOmega.value = String(m.omega);
+        syncSliderTrackFill(sliderOmega);
+      }
+    }
+    updateDiffEqStage1TelemetryUI();
+  };
+
+  if (canvasHost && typeof DiffEq3DStudio === 'function') {
+    try {
+      const studio = new DiffEq3DStudio({
+        presetKey: activePreset?.id || 'underdamped',
+        zeta: appState.diffeqLab.zeta,
+        omega: appState.diffeqLab.omega,
+        t: appState.diffeqLab.t,
+        showPhaseWall: appState.diffeqLab.showPhaseWall,
+        showMechatronics: lensOn,
+        onChange: handleDiffEqTelemetry,
+      });
+      studio.init(canvasHost);
+      studio.setCameraPreset?.(appState.diffeqLab.cameraPreset);
+      activeInstances.studio3D = studio;
+      const initM = studio.getMetrics?.();
+      if (initM) handleDiffEqTelemetry(initM);
+    } catch (err) {
+      console.error('[EIGENLAB] DiffEq3DStudio init error:', err);
+    }
+  }
+
+  updateDiffEqStage1LensUI();
+  updateDiffEqStage1TelemetryUI();
+
+  let cancelSimAnim = null;
+  const finishSimUI = () => {
+    appState.diffeqLab.isAnimating = false;
+    const icon = document.getElementById('de-anim-icon');
+    const txt = document.getElementById('de-anim-text');
+    if (icon) icon.textContent = '▶';
+    if (txt) txt.textContent = 'Simulate Step Response';
+  };
+  const stopSimAnim = () => {
+    if (typeof cancelSimAnim === 'function') {
+      try {
+        cancelSimAnim();
+      } catch {
+        // Ignore
+      }
+      cancelSimAnim = null;
+    }
+    finishSimUI();
+  };
+  activeInstances.cleanupFns.push(stopSimAnim);
+
+  // Wire System Preset Pills
+  container.querySelectorAll('[data-de-preset-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-de-preset-id');
+      if (!id || id === appState.diffeqLab.presetId) return;
+      playSfx('tick');
+      stopSimAnim();
+      appState.diffeqLab.presetId = id;
+      const preset = presets.find((p) => p.id === id);
+
+      container.querySelectorAll('[data-de-preset-id]').forEach((el) => {
+        const sel = el.getAttribute('data-de-preset-id') === id;
+        el.className = `shrink-0 whitespace-nowrap px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-medium border transition-all cursor-pointer ${
+          sel
+            ? 'bg-cyanGlow/15 border-cyanGlow/50 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.2)]'
+            : 'bg-slate-900/60 border-white/10 text-slate-300 hover:border-white/25 hover:text-white'
+        }`;
+      });
+
+      if (preset) {
+        appState.diffeqLab.zeta = preset.defaultZeta;
+        appState.diffeqLab.omega = preset.defaultOmega;
+        const firstOrd = preset.order === 1;
+        const zWrap = document.getElementById('de-zeta-wrap');
+        if (zWrap) zWrap.classList.toggle('opacity-45', firstOrd);
+        if (sliderZeta) {
+          sliderZeta.disabled = firstOrd;
+          sliderZeta.value = String(preset.defaultZeta);
+          syncSliderTrackFill(sliderZeta);
+        }
+        if (sliderOmega) {
+          sliderOmega.value = String(preset.defaultOmega);
+          syncSliderTrackFill(sliderOmega);
+        }
+        const omLbl = document.getElementById('label-de-omega');
+        if (omLbl) {
+          omLbl.innerHTML = `<span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE]"></span>${
+            firstOrd ? 'Decay Rate a = 1/τ' : 'Natural Freq ωₙ (rad/s)'
+          }`;
+        }
+        const m = activeInstances.studio3D?.setPreset?.(id);
+        if (m) handleDiffEqTelemetry(m);
+        updateDiffEqStage1LensUI();
+      }
+    });
+  });
+
+  // Wire Camera Presets
+  container.querySelectorAll('[data-de-camera-preset]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const camId = btn.getAttribute('data-de-camera-preset');
+      if (!camId) return;
+      playSfx('tick');
+      appState.diffeqLab.cameraPreset = camId;
+      container.querySelectorAll('[data-de-camera-preset]').forEach((el) => {
+        const active = el.getAttribute('data-de-camera-preset') === camId;
+        el.className = `${
+          el.textContent.trim().length <= 3 ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'
+        } rounded-lg font-mono transition-all cursor-pointer ${
+          active
+            ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+            : 'text-slate-400 border border-transparent hover:text-white'
+        }`;
+      });
+      activeInstances.studio3D?.setCameraPreset?.(camId);
+    });
+  });
+
+  // Wire Damping & Natural Frequency Sliders
+  sliderZeta?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    syncSliderTrackFill(sliderZeta);
+    appState.diffeqLab.zeta = val;
+    playSfx('tick');
+    activeInstances.studio3D?.setDamping?.(val);
+    if (Math.abs(val - 1.0) <= 0.03) markStageDone('3d-lab');
+  });
+
+  sliderOmega?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    syncSliderTrackFill(sliderOmega);
+    appState.diffeqLab.omega = val;
+    playSfx('tick');
+    activeInstances.studio3D?.setOmega?.(val);
+  });
+
+  // Wire Phase Wall Toggle (Desktop + Mobile synced)
+  const phToggle = document.getElementById('toggle-phase-wall');
+  const phToggleMob = document.getElementById('toggle-phase-wall-mobile');
+  const syncPhase = (checked) => {
+    playSfx('snap');
+    appState.diffeqLab.showPhaseWall = !!checked;
+    if (phToggle) phToggle.checked = appState.diffeqLab.showPhaseWall;
+    if (phToggleMob) phToggleMob.checked = appState.diffeqLab.showPhaseWall;
+    activeInstances.studio3D?.togglePhaseWall?.(appState.diffeqLab.showPhaseWall);
+  };
+  phToggle?.addEventListener('change', (e) => syncPhase(e.target.checked));
+  phToggleMob?.addEventListener('change', (e) => syncPhase(e.target.checked));
+
+  // Wire Mobile Laplace Formula Drawer Toggle
+  const deFormulaBtn = document.getElementById('de-btn-toggle-mobile-formula');
+  const deFormulaDrawer = document.getElementById('de-mobile-formula-drawer');
+  deFormulaBtn?.addEventListener('click', () => {
+    playSfx('tick');
+    if (!deFormulaDrawer) return;
+    const isHidden = deFormulaDrawer.classList.contains('hidden');
+    deFormulaDrawer.classList.toggle('hidden', !isHidden);
+    deFormulaBtn.setAttribute('aria-expanded', String(isHidden));
+    deFormulaBtn.textContent = isHidden ? 'ℒ ▴' : 'ℒ ▾';
+  });
+
+  // Wire Simulate Step Response Animation
+  document.getElementById('btn-animate-diffeq')?.addEventListener('click', () => {
+    playSfx('snap');
+    markStageDone('3d-lab');
+    stopSimAnim();
+    const studio = activeInstances.studio3D;
+    if (!studio || typeof studio.animateResponse !== 'function') return;
+
+    appState.diffeqLab.isAnimating = true;
+    const icon = document.getElementById('de-anim-icon');
+    const txt = document.getElementById('de-anim-text');
+    if (icon) icon.textContent = '◉';
+    if (txt) txt.textContent = 'Simulating t: 0 → 8s...';
+
+    cancelSimAnim = studio.animateResponse((m) => {
+      if (m && m.t >= 7.98) {
+        cancelSimAnim = null;
+        finishSimUI();
+      }
+    });
+  });
+
+  document.getElementById('btn-de-next-intuition')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('intuition');
+  });
+}
+
+function updateDiffEqStage1LensUI() {
+  const presets = normalizeDiffEqPresets();
+  const preset = getActiveDiffEqPreset(presets);
+  const on = isMechatronicsLens();
+
+  const label = document.getElementById('de-hud-curve-label');
+  if (label) {
+    label.textContent = on
+      ? preset?.mechatronicsLabel || 'Spring-Mass-Damper Dynamics'
+      : 'ODE Time–Phase Trajectory';
+  }
+
+  const mechInd = document.getElementById('de-hud-mech-indicator');
+  const mechText = document.getElementById('de-hud-mech-text');
+  if (mechInd && mechText) {
+    mechInd.className = `hidden sm:block pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
+      on
+        ? 'bg-amberGlow/15 border-amberGlow/45 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
+        : 'bg-[#0B0D12]/70 border-white/10 text-slate-400'
+    }`;
+    const dot = mechInd.querySelector('span');
+    if (dot) dot.className = `w-2 h-2 rounded-full ${on ? 'bg-amberGlow animate-pulse' : 'bg-slate-600'}`;
+    mechText.textContent = on ? '3D Spring-Mass Rig: SYNCED' : '3D Rig: Standby';
+  }
+}
+
+function updateDiffEqStage1TelemetryUI() {
+  const t = appState.diffeqTelemetry;
+
+  const rZ = document.getElementById('readout-de-zeta');
+  if (rZ) rZ.textContent = t.order === 1 ? '1st' : formatNum(t.zeta, 2);
+
+  const rO = document.getElementById('readout-de-omega');
+  if (rO) rO.textContent = formatNum(t.omega, 2);
+
+  const osStr = Number.isFinite(t.overshootPct) ? `${t.overshootPct.toFixed(1)}%` : '0.0%';
+  const tsStr = Number.isFinite(t.settlingTime) && t.settlingTime < 999 ? `${t.settlingTime.toFixed(2)}s` : '∞';
+
+  const vOs = document.getElementById('de-val-os');
+  if (vOs) vOs.textContent = osStr;
+  const vTs = document.getElementById('de-val-ts');
+  if (vTs) vTs.textContent = tsStr;
+  const vOsC = document.getElementById('de-val-os-compact');
+  if (vOsC) vOsC.textContent = osStr;
+  const vTsC = document.getElementById('de-val-ts-compact');
+  if (vTsC) vTsC.textContent = tsStr;
+
+  const badge = document.getElementById('de-badge-regime');
+  if (badge && t.regime) {
+    badge.textContent = t.regime;
+    const isCrit = String(t.regime).includes('CRITICAL') || String(t.regime).includes('1ST');
+    const isUnd = String(t.regime).includes('UNDAMPED');
+    badge.className = `px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 ${
+      isCrit
+        ? 'bg-emeraldGlow/20 border-emeraldGlow/60 text-emeraldGlow shadow-[0_0_16px_rgba(52,211,153,0.28)]'
+        : isUnd
+          ? 'bg-amberGlow/20 border-amberGlow/55 text-amberGlow'
+          : 'bg-cyanGlow/15 border-cyanGlow/40 text-cyan-200'
+    }`;
+  }
+
+  const odeEl = document.getElementById('de-hud-ode-math');
+  if (odeEl && t.odeLatex) typesetMath(odeEl, t.odeLatex, false);
+
+  const tfEl = document.getElementById('de-telemetry-transfer-katex');
+  if (tfEl && t.transferLatex) typesetMath(tfEl, t.transferLatex, false);
+
+  const polesEl = document.getElementById('de-telemetry-poles-katex');
+  if (polesEl && t.polesLatex) typesetMath(polesEl, t.polesLatex, false);
+}
+
+function mountDiffEqStage2Intuition(container) {
+  const on = isMechatronicsLens();
+  const s = getStoreState();
+  const solvedDEQuizzes = (s.solvedQuizzes || []).filter((id) =>
+    String(id).startsWith('de-quiz-')
+  ).length;
+  let activeSubTab = 'lab';
+
+  container.innerHTML = `
+    <section class="space-y-3 lg:space-y-6 view-enter">
+      <!-- Mobile Segmented Sub-Tab Switcher (<lg) -->
+      <div class="lg:hidden grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[#0E121C]/90 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+        <button
+          type="button"
+          data-stage2-subtab="lab"
+          class="py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer bg-cyanGlow/20 border border-cyanGlow/45 text-cyan-100 shadow-sm"
+        >
+          📈 s-Plane Lab
+        </button>
+        <button
+          type="button"
+          data-stage2-subtab="quiz"
+          class="py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer border border-transparent text-slate-300 hover:text-white"
+        >
+          🎯 Match Quiz (${solvedDEQuizzes}/6)
+        </button>
+      </div>
+
+      <!-- Interactive Complex Laplace s-Plane Lab -->
+      <div id="stage2-panel-lab" class="glass-panel p-2.5 sm:p-5 lg:p-6 space-y-2.5 sm:space-y-4">
+        <div class="hidden sm:flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-cyanGlow">Complex Frequency Intuition</div>
+            <h2 id="stage2-lab-title" class="font-display font-bold text-xl text-white mt-0.5">
+              ${on ? 'Control s-Plane Poles & Impulse Response x(t)' : 'Interactive Laplace s-Plane ↔ Time Response y(t)'}
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Drag the glowing pole × across the complex plane: move left for faster decay, up/down for faster oscillation, or right of zero to trigger instability.
+            </p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-[11px] font-mono bg-white/[0.04] border border-white/10 text-slate-300">
+            Drag × pole in s-Plane
+          </span>
+        </div>
+
+        <div id="laplace-splane-lab-host" class="w-full min-h-[300px] sm:min-h-[380px]"></div>
+
+        <div class="lg:hidden flex justify-end pt-0.5">
+          <button
+            type="button"
+            id="btn-mobile-jump-quiz"
+            class="btn-glow-cyan !py-2 !px-3.5 !text-xs !rounded-xl w-full"
+          >
+            Test Your Intuition: Match the Pole Quiz →
+          </button>
+        </div>
+      </div>
+
+      <!-- Visual "Match the Pole / ODE" Quiz Engine -->
+      <div id="stage2-panel-quiz" class="hidden lg:block glass-panel p-2.5 sm:p-5 lg:p-6 space-y-2.5 sm:space-y-4">
+        <div class="hidden sm:flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-amberGlow">Pole-Response Pattern Mastery</div>
+            <h2 class="font-display font-bold text-xl text-white mt-0.5">Match the Laplace Pole Challenges</h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Read the real decay rate σ and imaginary frequency ω directly from the s-plane map—then pick the matching time response.
+            </p>
+          </div>
+          <button
+            id="btn-next-solver"
+            type="button"
+            class="btn-glass !text-xs"
+          >
+            Next: ODE &amp; Laplace Solver →
+          </button>
+        </div>
+
+        <div id="diffeq-quiz-engine-host" class="w-full min-h-[280px] sm:min-h-[320px]"></div>
+      </div>
+    </section>
+  `;
+
+  const panelLab = document.getElementById('stage2-panel-lab');
+  const panelQuiz = document.getElementById('stage2-panel-quiz');
+  const setSubTab = (tab) => {
+    activeSubTab = tab;
+    if (panelLab && panelQuiz) {
+      panelLab.classList.toggle('hidden', tab !== 'lab');
+      panelLab.classList.add('lg:block');
+      panelQuiz.classList.toggle('hidden', tab !== 'quiz');
+      panelQuiz.classList.add('lg:block');
+    }
+    container.querySelectorAll('[data-stage2-subtab]').forEach((btn) => {
+      const isAct = btn.getAttribute('data-stage2-subtab') === tab;
+      btn.className = isAct
+        ? 'py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer bg-cyanGlow/20 border border-cyanGlow/45 text-cyan-100 shadow-sm'
+        : 'py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer border border-transparent text-slate-300 hover:text-white';
+    });
+    requestAnimationFrame(() => {
+      if (tab === 'lab') {
+        activeInstances.stackedLab?._resizeAll?.();
+        activeInstances.stackedLab?._drawAll?.();
+      } else {
+        activeInstances.quizEngine?._resizeCanvases?.();
+        activeInstances.quizEngine?._drawCanvases?.();
+      }
+      window.dispatchEvent(new Event('resize'));
+    });
+  };
+
+  container.querySelectorAll('[data-stage2-subtab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const next = btn.getAttribute('data-stage2-subtab');
+      if (next && next !== activeSubTab) {
+        playSfx('tick');
+        setSubTab(next);
+      }
+    });
+  });
+
+  document.getElementById('btn-mobile-jump-quiz')?.addEventListener('click', () => {
+    playSfx('tick');
+    setSubTab('quiz');
+  });
+
+  const labHost = document.getElementById('laplace-splane-lab-host');
+  if (labHost && typeof LaplaceSPlaneLab === 'function') {
+    try {
+      activeInstances.stackedLab = new LaplaceSPlaneLab(labHost, {
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onInteract: () => markStageDone('intuition'),
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] LaplaceSPlaneLab mount error:', err);
+    }
+  }
+
+  const quizHost = document.getElementById('diffeq-quiz-engine-host');
+  if (quizHost && typeof DiffEqVisualQuizEngine === 'function') {
+    try {
+      const updateTabCount = (payload) => {
+        const count =
+          payload?.solvedCount ??
+          (getStoreState().solvedQuizzes || []).filter((id) =>
+            String(id).startsWith('de-quiz-')
+          ).length;
+        const quizBtn = container.querySelector('[data-stage2-subtab="quiz"]');
+        if (quizBtn) quizBtn.textContent = `🎯 Match Quiz (${count}/6)`;
+      };
+      activeInstances.quizEngine = new DiffEqVisualQuizEngine(quizHost, {
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onAnswer: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+        onProgress: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+        onComplete: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] DiffEqVisualQuizEngine mount error:', err);
+    }
+  }
+
+  document.getElementById('btn-next-solver')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('solver');
+  });
+}
+
+function mountDiffEqStage3Solver(container) {
+  container.innerHTML = `
+    <section class="max-w-4xl mx-auto space-y-3 sm:space-y-5 view-enter">
+      <div class="hidden md:flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-amberGlow">Interactive ODE &amp; Laplace Drill</div>
+          <h2 class="font-display font-bold text-2xl text-white mt-0.5">Paperless ODE &amp; Laplace Step Solver</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+            Master Separable ODEs, Integrating Factors, 2nd-Order Characteristic Roots, Forward/Inverse Laplace Transforms, and Laplace IVPs across 14 step-by-step problems.
+          </p>
+        </div>
+
+        <button
+          id="btn-next-word-problems"
+          type="button"
+          class="btn-glass !text-xs"
+        >
+          Next: Word Problems →
+        </button>
+      </div>
+
+      <div id="paperless-solver-host" class="glass-panel p-2.5 sm:p-5 md:p-6 min-h-[420px]"></div>
+    </section>
+  `;
+
+  const host = document.getElementById('paperless-solver-host');
+  if (host && typeof PaperlessStepSolver === 'function') {
+    try {
+      activeInstances.stepSolver = new PaperlessStepSolver(host, {
+        mode: 'diffeq',
+        problems: DIFFEQ_PROBLEMS,
+        tiers: DIFFEQ_SOLVER_TIERS,
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onSolve: () => {
+          markStageDone('solver');
+          updateLessonStageDotsUI();
+        },
+        onProblemSolved: () => {
+          markStageDone('solver');
+          updateLessonStageDotsUI();
+        },
+        onProgress: (info) => {
+          if (!info || (info.solvedCount ?? 1) >= 1) {
+            markStageDone('solver');
+            updateLessonStageDotsUI();
+          }
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] DiffEq PaperlessStepSolver mount error:', err);
+    }
+  }
+
+  document.getElementById('btn-next-word-problems')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('word-problems');
+  });
+}
+
 function mountStage4WordProblems(container) {
   if (!container) return;
 
   const isInt = isIntegralLesson();
-  const fallbackData = isInt ? FALLBACK_INTEGRAL_WORD_PROBLEMS : FALLBACK_WORD_PROBLEMS;
+  const isDE = isDiffEqLesson();
+  const fallbackData = isDE
+    ? FALLBACK_DIFFEQ_WORD_PROBLEMS
+    : isInt
+      ? FALLBACK_INTEGRAL_WORD_PROBLEMS
+      : FALLBACK_WORD_PROBLEMS;
   const data = appState.wordProblemsByLesson?.[appState.lessonId] || fallbackData;
-  const jsonFilePath = isInt
-    ? 'data/lessons/integrals-word-problems.json'
-    : 'data/lessons/derivatives-word-problems.json';
+  const jsonFilePath = isDE
+    ? 'data/lessons/diffeq-word-problems.json'
+    : isInt
+      ? 'data/lessons/integrals-word-problems.json'
+      : 'data/lessons/derivatives-word-problems.json';
   const problems = Array.isArray(data.problems) ? data.problems : [];
   const rawPlanned =
     Array.isArray(data.plannedTopics) && data.plannedTopics.length
@@ -3434,17 +4456,21 @@ function mountStage4WordProblems(container) {
             <h2 class="font-display font-bold text-xl sm:text-3xl text-white">
               ${escapeHtml(
                 data.title ||
-                  (isInt
-                    ? 'Applied Integral Word Problems'
-                    : 'Applied Engineering Word Problems')
+                  (isDE
+                    ? 'Applied ODE & Laplace Engineering Problems'
+                    : isInt
+                      ? 'Applied Integral Word Problems'
+                      : 'Applied Engineering Word Problems')
               )}
             </h2>
             <p class="text-xs sm:text-sm text-slate-300/90 leading-relaxed">
               ${escapeHtml(
                 data.subtitle ||
-                  (isInt
-                    ? 'Translate velocity profiles, variable force paths, pulsed currents, and probability densities into definite integrals.'
-                    : 'Translate physical mechatronics, electronics, thermal, and machine learning narratives into differential models and solve them interactively.')
+                  (isDE
+                    ? 'Model RLC transients, closed-loop DC motor transfer functions, suspension damping, and continuous Neural ODEs.'
+                    : isInt
+                      ? 'Translate velocity profiles, variable force paths, pulsed currents, and probability densities into definite integrals.'
+                      : 'Translate physical mechatronics, electronics, thermal, and machine learning narratives into differential models and solve them interactively.')
               )}
             </p>
           </div>
@@ -3618,12 +4644,16 @@ function subscribeToStoreUpdates() {
 }
 
 async function boot() {
-  const [curriculum, derivWordProblems, intWordProblems] = await Promise.all([
+  const [curriculum, derivWordProblems, intWordProblems, deWordProblems] = await Promise.all([
     fetchJsonSafe('./data/curriculum.json', FALLBACK_CURRICULUM),
     fetchJsonSafe('./data/lessons/derivatives-word-problems.json', FALLBACK_WORD_PROBLEMS),
     fetchJsonSafe(
       './data/lessons/integrals-word-problems.json',
       FALLBACK_INTEGRAL_WORD_PROBLEMS
+    ),
+    fetchJsonSafe(
+      './data/lessons/diffeq-word-problems.json',
+      FALLBACK_DIFFEQ_WORD_PROBLEMS
     ),
     waitForKatex(),
   ]);
@@ -3637,6 +4667,9 @@ async function boot() {
   }
   if (intWordProblems && typeof intWordProblems === 'object') {
     appState.wordProblemsByLesson['calc-integrals'] = intWordProblems;
+  }
+  if (deWordProblems && typeof deWordProblems === 'object') {
+    appState.wordProblemsByLesson['math-diff-eq'] = deWordProblems;
   }
 
   subscribeToStoreUpdates();
