@@ -118,6 +118,7 @@ export class PaperlessStepSolver {
     this.activeMisconception = null;
     this.hintVisible = false;
     this.cheatSheetOpen = false;
+    this.mobilePickerOpen = false;
     this.isProblemCompleted = false;
     this.isAdvancing = false;
     this.newlyLockedIndex = -1;
@@ -291,13 +292,33 @@ export class PaperlessStepSolver {
     sound?.playTick?.();
     this.cheatSheetOpen = !this.cheatSheetOpen;
     const drawer = this.container?.querySelector('[data-cheat-drawer]');
-    const btn = this.container?.querySelector('[data-cheat-toggle]');
-    if (drawer && btn) {
+    const btns = this.container?.querySelectorAll('[data-cheat-toggle], [data-cheat-toggle-mobile]') || [];
+    if (drawer && btns.length) {
       drawer.classList.toggle('hidden', !this.cheatSheetOpen);
-      btn.setAttribute('aria-expanded', String(this.cheatSheetOpen));
-      btn.classList.toggle('border-cyanGlow/50', this.cheatSheetOpen);
-      btn.classList.toggle('bg-cyanGlow/15', this.cheatSheetOpen);
-      btn.classList.toggle('text-cyan-200', this.cheatSheetOpen);
+      btns.forEach((btn) => {
+        btn.setAttribute('aria-expanded', String(this.cheatSheetOpen));
+        btn.classList.toggle('border-cyanGlow/50', this.cheatSheetOpen);
+        btn.classList.toggle('bg-cyanGlow/15', this.cheatSheetOpen);
+        btn.classList.toggle('text-cyan-200', this.cheatSheetOpen);
+      });
+    } else {
+      this._render();
+    }
+  }
+
+  _toggleMobilePicker() {
+    sound?.playTick?.();
+    this.mobilePickerOpen = !this.mobilePickerOpen;
+    const drawer = this.container?.querySelector('[data-mobile-picker-drawer]');
+    const btn = this.container?.querySelector('[data-mobile-picker-toggle]');
+    if (drawer && btn) {
+      drawer.classList.toggle('hidden', !this.mobilePickerOpen);
+      drawer.classList.toggle('flex', this.mobilePickerOpen);
+      btn.setAttribute('aria-expanded', String(this.mobilePickerOpen));
+      btn.classList.toggle('border-cyanGlow/50', this.mobilePickerOpen);
+      btn.classList.toggle('border-white/10', !this.mobilePickerOpen);
+      const arrow = btn.querySelector('span:last-child span:last-child');
+      if (arrow) arrow.textContent = this.mobilePickerOpen ? '▲' : '▼';
     } else {
       this._render();
     }
@@ -583,132 +604,185 @@ export class PaperlessStepSolver {
       : this._buildActiveStepHtml(problem);
 
     this.container.innerHTML = `
-      <div class="flex flex-col gap-5">
+      <div class="flex flex-col gap-2.5 sm:gap-5">
         <!-- TOP PROBLEM HEADER -->
-        <div class="flex flex-col gap-3.5">
-          <!-- Tier Filters + Overall Progress -->
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex flex-wrap items-center gap-1 p-1 rounded-2xl bg-[#0E121C]/85 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]" role="tablist" aria-label="Mastery tier filter">
-              ${tierPillsHtml}
-            </div>
-            <div class="flex items-center gap-2.5">
-              <div
-                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emeraldGlow/10 border border-emeraldGlow/30 text-xs font-mono text-emerald-200"
-                data-overall-solved
-              >
-                <span class="w-2 h-2 rounded-full bg-emeraldGlow shadow-[0_0_8px_#34D399]"></span>
-                <span>Solved <strong class="text-white">${totalSolved}</strong> / ${totalProblems}</span>
+        <div class="flex flex-col gap-2 sm:gap-3.5">
+          <!-- Compact Mobile Problem Switcher Bar (md:hidden) -->
+          <div class="flex md:hidden items-center justify-between gap-1.5">
+            <button
+              type="button"
+              data-nav-prev-mobile
+              class="btn-glass !py-1.5 !px-2.5 !text-xs shrink-0"
+              aria-label="Previous problem"
+            >
+              ←
+            </button>
+            <button
+              type="button"
+              data-mobile-picker-toggle
+              aria-expanded="${this.mobilePickerOpen}"
+              class="flex-1 min-w-0 flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-slate-900/85 border ${
+                this.mobilePickerOpen ? 'border-cyanGlow/50 text-cyan-100' : 'border-white/10 text-slate-100'
+              } text-xs cursor-pointer"
+            >
+              <span class="flex items-center gap-1.5 min-w-0">
+                <span class="font-mono font-semibold text-cyanGlow shrink-0">#${globalIndex + 1}/${totalProblems}</span>
+                <span class="truncate font-medium">${escapeHtml(problem.title)}</span>
+              </span>
+              <span class="flex items-center gap-1.5 shrink-0">
+                ${problemIsSolved ? '<span class="text-emeraldGlow text-[11px]">✓</span>' : ''}
+                <span class="text-[10px] font-mono text-slate-400">${this.mobilePickerOpen ? '▲' : '▼'}</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              data-nav-next-mobile
+              class="btn-glass !py-1.5 !px-2.5 !text-xs shrink-0"
+              aria-label="Next problem"
+            >
+              →
+            </button>
+            <button
+              type="button"
+              data-cheat-toggle-mobile
+              aria-expanded="${this.cheatSheetOpen}"
+              title="Formula Cheat Sheet"
+              class="btn-glass !py-1.5 !px-2.5 !text-xs shrink-0 ${
+                this.cheatSheetOpen ? 'border-cyanGlow/50 bg-cyanGlow/15 text-cyan-200' : ''
+              }"
+            >
+              📘
+            </button>
+          </div>
+
+          <!-- Collapsible on Mobile / Always Visible on Desktop: Tier Filters + Problem Selector -->
+          <div
+            data-mobile-picker-drawer
+            class="${this.mobilePickerOpen ? 'flex' : 'hidden'} md:flex flex-col gap-2.5 sm:gap-3.5 p-2.5 md:p-0 rounded-2xl md:rounded-none bg-slate-950/75 md:bg-transparent border border-white/10 md:border-0"
+          >
+            <!-- Tier Filters + Overall Progress -->
+            <div class="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
+              <div class="flex flex-wrap items-center gap-1 p-1 rounded-2xl bg-[#0E121C]/85 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]" role="tablist" aria-label="Mastery tier filter">
+                ${tierPillsHtml}
               </div>
-              <button
-                type="button"
-                data-cheat-toggle
-                aria-expanded="${this.cheatSheetOpen}"
-                class="btn-glass text-xs py-1.5 px-3 ${
-                  this.cheatSheetOpen
-                    ? 'border-cyanGlow/50 bg-cyanGlow/15 text-cyan-200'
-                    : ''
-                }"
-              >
-                <span>📘</span>
-                <span>Formula Cheat Sheet</span>
-              </button>
+              <div class="flex items-center gap-2.5">
+                <div
+                  class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emeraldGlow/10 border border-emeraldGlow/30 text-xs font-mono text-emerald-200"
+                  data-overall-solved
+                >
+                  <span class="w-2 h-2 rounded-full bg-emeraldGlow shadow-[0_0_8px_#34D399]"></span>
+                  <span>Solved <strong class="text-white">${totalSolved}</strong> / ${totalProblems}</span>
+                </div>
+                <button
+                  type="button"
+                  data-cheat-toggle
+                  aria-expanded="${this.cheatSheetOpen}"
+                  class="hidden md:inline-flex btn-glass text-xs py-1.5 px-3 ${
+                    this.cheatSheetOpen
+                      ? 'border-cyanGlow/50 bg-cyanGlow/15 text-cyan-200'
+                      : ''
+                  }"
+                >
+                  <span>📘</span>
+                  <span>Formula Cheat Sheet</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Problem Navigation Row -->
+            <div class="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 pt-0.5">
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  data-nav-prev
+                  class="hidden md:inline-flex btn-glass text-xs py-1.5 px-3"
+                  title="Previous problem"
+                >
+                  ← Prev
+                </button>
+                <div class="flex flex-wrap items-center gap-1.5" role="navigation" aria-label="Problem selector">
+                  ${problemDotsHtml}
+                </div>
+                <button
+                  type="button"
+                  data-nav-next
+                  class="hidden md:inline-flex btn-glass text-xs py-1.5 px-3"
+                  title="Next problem"
+                >
+                  Next →
+                </button>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="chip-outer">${escapeHtml(problem.tierLabel)}</span>
+                <span class="font-display text-sm sm:text-base font-semibold text-white">
+                  ${globalIndex + 1}. ${escapeHtml(problem.title)}
+                </span>
+                ${
+                  problemIsSolved
+                    ? '<span class="status-live" data-problem-solved-badge>Mastered</span>'
+                    : '<span class="status-planned" data-problem-solved-badge>In Progress</span>'
+                }
+              </div>
             </div>
           </div>
 
           <!-- Collapsible Formula Cheat Sheet Drawer -->
           <div
             data-cheat-drawer
-            class="${this.cheatSheetOpen ? '' : 'hidden'} rounded-2xl p-4 bg-slate-950/85 border border-cyanGlow/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+            class="${this.cheatSheetOpen ? '' : 'hidden'} rounded-2xl p-3 sm:p-4 bg-slate-950/90 border border-cyanGlow/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
           >
-            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
               <div class="flex items-center gap-2">
-                <span class="font-display text-sm font-semibold text-cyan-200">Differentiation Formula Reference</span>
-                <span class="text-xs text-slate-400">Color-coded to match active micro-steps</span>
+                <span class="font-display text-xs sm:text-sm font-semibold text-cyan-200">Differentiation Formula Reference</span>
               </div>
-              <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+              <div class="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-[11px]">
                 <span class="chip-outer">Cyan: Outer / u</span>
                 <span class="chip-inner">Amber: Inner / v</span>
-                <span class="chip-deriv">Emerald: Derivative</span>
+                <span class="chip-deriv">Emerald: Deriv</span>
               </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[260px] md:max-h-none overflow-y-auto studio-scroll">
               ${cheatSheetCardsHtml}
-            </div>
-          </div>
-
-          <!-- Problem Navigation Row -->
-          <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <div class="flex items-center gap-2">
-              <button
-                type="button"
-                data-nav-prev
-                class="btn-glass text-xs py-1.5 px-3"
-                title="Previous problem"
-              >
-                ← Prev
-              </button>
-              <div class="flex flex-wrap items-center gap-1.5" role="navigation" aria-label="Problem selector">
-                ${problemDotsHtml}
-              </div>
-              <button
-                type="button"
-                data-nav-next
-                class="btn-glass text-xs py-1.5 px-3"
-                title="Next problem"
-              >
-                Next →
-              </button>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="chip-outer">${escapeHtml(problem.tierLabel)}</span>
-              <span class="font-display text-sm sm:text-base font-semibold text-white">
-                ${globalIndex + 1}. ${escapeHtml(problem.title)}
-              </span>
-              ${
-                problemIsSolved
-                  ? '<span class="status-live" data-problem-solved-badge>Mastered</span>'
-                  : '<span class="status-planned" data-problem-solved-badge>In Progress</span>'
-              }
             </div>
           </div>
 
           <!-- Optional Mechatronics Context Pill -->
           <div
             data-mechatronics-pill
-            class="${this.mechatronicsLens ? '' : 'hidden'} rounded-xl px-3.5 py-2.5 bg-amberGlow/10 border border-amberGlow/35 text-xs sm:text-sm text-amber-100 flex items-start gap-2.5"
+            class="${this.mechatronicsLens ? '' : 'hidden'} rounded-xl px-2.5 py-1.5 sm:px-3.5 sm:py-2.5 bg-amberGlow/10 border border-amberGlow/35 text-[11px] sm:text-sm text-amber-100 flex items-start gap-2"
           >
-            <span class="shrink-0 mt-0.5 text-amber-300 font-mono text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amberGlow/20 border border-amberGlow/40">
-              ⚙ Mechatronics
+            <span class="shrink-0 mt-0.5 text-amber-300 font-mono text-[10px] sm:text-xs font-semibold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-amberGlow/20 border border-amberGlow/40">
+              ⚙ Mech
             </span>
-            <span class="leading-relaxed" data-mechatronics-text>${renderInlineMathText(problem.mechatronicsContext)}</span>
+            <span class="leading-snug sm:leading-relaxed" data-mechatronics-text>${renderInlineMathText(problem.mechatronicsContext)}</span>
           </div>
 
           <!-- Target Expression Card -->
-          <div class="katex-card katex-hero flex-col gap-2">
-            <div class="w-full flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono uppercase tracking-wider text-slate-400">
-              <span>Target Function — Differentiate with respect to x</span>
-              <span class="text-cyan-300/90">Problem ${globalIndex + 1} of ${totalProblems}</span>
+          <div class="katex-card katex-hero flex-col gap-1 sm:gap-2">
+            <div class="w-full flex items-center justify-between gap-2 text-[10px] sm:text-[11px] font-mono uppercase tracking-wider text-slate-400">
+              <span class="truncate">Differentiate w.r.t. x</span>
+              <span class="text-cyan-300/90 shrink-0">${escapeHtml(problem.tierLabel)} • ${globalIndex + 1}/${totalProblems}</span>
             </div>
-            <div class="w-full flex items-center justify-center py-1" data-target-expression></div>
+            <div class="w-full flex items-center justify-center py-0.5 sm:py-1 overflow-x-auto" data-target-expression></div>
           </div>
         </div>
 
         <!-- LIVE WORKING STEP LEDGER -->
-        <div class="rounded-2xl p-4 bg-slate-950/55 border border-white/[0.08] flex flex-col gap-2.5">
+        <div class="rounded-2xl p-2.5 sm:p-4 bg-slate-950/55 border border-white/[0.08] flex flex-col gap-1.5 sm:gap-2.5">
           <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5 sm:gap-2">
               <span class="w-2 h-2 rounded-full bg-emeraldGlow"></span>
-              <h3 class="font-display text-xs sm:text-sm font-semibold uppercase tracking-wider text-slate-200">
+              <h3 class="font-display text-[11px] sm:text-sm font-semibold uppercase tracking-wider text-slate-200">
                 Working Step Ledger
               </h3>
               <span class="text-xs text-slate-400 hidden sm:inline">• Locked milestones stay pinned — no paper needed</span>
             </div>
-            <span class="font-mono text-xs text-emerald-300">
+            <span class="font-mono text-[11px] sm:text-xs text-emerald-300">
               ${this.completedSteps.length} / ${problem.steps.length} locked
             </span>
           </div>
-          <div class="flex flex-col gap-2">
+          <div data-ledger-scroll class="flex flex-col gap-1.5 sm:gap-2 max-h-[104px] sm:max-h-none overflow-y-auto studio-scroll">
             ${ledgerRowsHtml}
           </div>
         </div>
@@ -721,6 +795,12 @@ export class PaperlessStepSolver {
     // Render KaTeX equations cleanly after injecting structure
     this._hydrateKatex(problem);
     this._bindEvents();
+
+    // Auto-scroll ledger to the newest locked milestone on compact mobile screens
+    const ledgerScroll = this.container.querySelector('[data-ledger-scroll]');
+    if (ledgerScroll && this.completedSteps.length > 0) {
+      ledgerScroll.scrollTop = ledgerScroll.scrollHeight;
+    }
 
     if (this.isProblemCompleted) {
       this._initVerificationCanvas();
@@ -771,12 +851,12 @@ export class PaperlessStepSolver {
       .join('');
 
     return `
-      <div class="rounded-2xl p-4 sm:p-5 bg-slate-900/75 border border-cyanGlow/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] flex flex-col gap-4 view-enter">
+      <div class="rounded-2xl p-3 sm:p-5 bg-slate-900/75 border border-cyanGlow/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] flex flex-col gap-2.5 sm:gap-4 view-enter">
         <!-- Step Progress Bar & Header -->
-        <div class="flex flex-col gap-2">
+        <div class="flex flex-col gap-1.5 sm:gap-2">
           <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-center gap-2">
-              <span class="font-mono text-xs font-semibold text-cyan-300">Step ${stepNum} of ${totalSteps}</span>
+            <div class="flex items-center gap-1.5 sm:gap-2">
+              <span class="font-mono text-[11px] sm:text-xs font-semibold text-cyan-300">Step ${stepNum}/${totalSteps}</span>
               <span class="chip-outer">${escapeHtml(step.badge)}</span>
             </div>
             <div class="flex items-center gap-2">
@@ -785,7 +865,7 @@ export class PaperlessStepSolver {
                 type="button"
                 data-hint-btn
                 aria-expanded="${this.hintVisible}"
-                class="btn-glass text-xs py-1 px-2.5 text-amber-200 border-amberGlow/30 hover:border-amberGlow/60"
+                class="btn-glass text-[11px] sm:text-xs py-1 px-2 sm:px-2.5 text-amber-200 border-amberGlow/30 hover:border-amberGlow/60"
               >
                 <span>💡</span>
                 <span>Hint</span>
@@ -799,40 +879,40 @@ export class PaperlessStepSolver {
         </div>
 
         <!-- Prompt & Color-Coded Focus Strip -->
-        <div class="flex flex-col gap-2.5">
-          <p class="text-sm sm:text-base text-slate-100 font-medium leading-relaxed m-0">
+        <div class="flex flex-col gap-1.5 sm:gap-2.5">
+          <p class="text-xs sm:text-base text-slate-100 font-medium leading-snug sm:leading-relaxed m-0">
             ${renderInlineMathText(step.prompt)}
           </p>
-          <div class="katex-card flex items-center justify-center py-3 px-4 border-cyanGlow/20 bg-slate-950/75">
-            <div class="overflow-x-auto max-w-full text-base sm:text-lg" data-step-highlight></div>
+          <div class="katex-card flex items-center justify-center py-2 px-3 sm:py-3 sm:px-4 border-cyanGlow/20 bg-slate-950/75">
+            <div class="overflow-x-auto max-w-full text-sm sm:text-lg" data-step-highlight></div>
           </div>
         </div>
 
         <!-- Optional Hint Callout -->
         <div
           data-hint-box
-          class="${this.hintVisible ? '' : 'hidden'} rounded-xl px-4 py-3 bg-amberGlow/10 border border-amberGlow/35 text-xs sm:text-sm text-amber-100 flex items-start gap-2.5 fade-in"
+          class="${this.hintVisible ? '' : 'hidden'} rounded-xl px-3 py-2 sm:px-4 sm:py-3 bg-amberGlow/10 border border-amberGlow/35 text-xs sm:text-sm text-amber-100 flex items-start gap-2"
         >
           <span class="text-amber-300 shrink-0 mt-0.5">💡</span>
-          <div class="leading-relaxed">
+          <div class="leading-snug sm:leading-relaxed">
             <strong class="font-display text-amber-200 mr-1">Hint:</strong>
             ${renderInlineMathText(step.hint)}
           </div>
         </div>
 
-        <!-- 2x2 Tactile KaTeX Choice Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3" role="group" aria-label="Step answer choices">
+        <!-- Tactile KaTeX Choice Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3" role="group" aria-label="Step answer choices">
           ${optionsHtml}
         </div>
 
         <!-- Misconception Feedback Banner -->
         <div
           data-misconception-banner
-          class="${this.activeMisconception ? '' : 'hidden'} rounded-xl px-4 py-3 bg-rose-500/15 border border-rose-400/40 text-xs sm:text-sm text-rose-100 flex items-start gap-2.5"
+          class="${this.activeMisconception ? '' : 'hidden'} rounded-xl px-3 py-2 sm:px-4 sm:py-3 bg-rose-500/15 border border-rose-400/40 text-xs sm:text-sm text-rose-100 flex items-start gap-2"
           role="alert"
         >
           <span class="shrink-0 mt-0.5 text-rose-300 font-bold">✕</span>
-          <div class="leading-relaxed">
+          <div class="leading-snug sm:leading-relaxed">
             <strong class="font-display text-rose-200 mr-1">Check that step:</strong>
             <span data-misconception-text>${this.activeMisconception ? renderInlineMathText(this.activeMisconception) : ''}</span>
           </div>
@@ -843,18 +923,18 @@ export class PaperlessStepSolver {
 
   _buildVerificationCardHtml(problem) {
     return `
-      <div class="rounded-2xl p-4 sm:p-5 bg-gradient-to-b from-emeraldGlow/[0.11] to-slate-950/85 border border-emeraldGlow/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] flex flex-col gap-4 snap-in">
+      <div class="rounded-2xl p-3 sm:p-5 bg-gradient-to-b from-emeraldGlow/[0.11] to-slate-950/85 border border-emeraldGlow/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] flex flex-col gap-3 sm:gap-4 snap-in">
         <!-- Solved Banner -->
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div class="flex items-center gap-2.5">
-            <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emeraldGlow/20 border border-emeraldGlow/55 text-emerald-300 font-bold text-sm shadow-[0_0_16px_rgba(52,211,153,0.45)]">
+        <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+          <div class="flex items-center gap-2 sm:gap-2.5">
+            <span class="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emeraldGlow/20 border border-emeraldGlow/55 text-emerald-300 font-bold text-xs sm:text-sm shadow-[0_0_16px_rgba(52,211,153,0.45)]">
               ✓
             </span>
             <div>
-              <h3 class="font-display text-base sm:text-lg font-bold text-emerald-200 leading-tight m-0">
+              <h3 class="font-display text-sm sm:text-lg font-bold text-emerald-200 leading-tight m-0">
                 Derivative Verified Numerically
               </h3>
-              <p class="text-xs text-slate-300 m-0">
+              <p class="hidden sm:block text-xs text-slate-300 m-0">
                 ${renderInlineMathText("Hover or drag across the plot to compare your solved $f'(x)$ against the curve's true tangent slope.")}
               </p>
             </div>
@@ -862,40 +942,40 @@ export class PaperlessStepSolver {
 
           <div class="flex items-center gap-2">
             <button type="button" data-solve-again class="btn-glass text-xs sm:text-sm">
-              ↺ Solve Again
+              ↺ Again
             </button>
             <button type="button" data-next-problem class="btn-glow-cyan text-xs sm:text-sm">
-              Next Problem →
+              Next →
             </button>
           </div>
         </div>
 
         <!-- Final Solved Formula Card -->
-        <div class="katex-card border-emeraldGlow/35 bg-slate-950/80 flex items-center justify-center py-3">
-          <div class="overflow-x-auto max-w-full text-lg sm:text-xl" data-final-answer></div>
+        <div class="katex-card border-emeraldGlow/35 bg-slate-950/80 flex items-center justify-center py-2 sm:py-3">
+          <div class="overflow-x-auto max-w-full text-base sm:text-xl" data-final-answer></div>
         </div>
 
         <!-- Dual-Curve Interactive Verification Canvas -->
         <div class="rounded-xl overflow-hidden border border-white/10 bg-[#080A0F] relative">
-          <div class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 border-b border-white/[0.07] bg-slate-950/75 text-[11px] font-mono">
-            <div class="flex flex-wrap items-center gap-3">
-              <span class="inline-flex items-center gap-1.5 text-cyan-300">
-                <span class="w-3 h-0.5 rounded bg-cyanGlow inline-block"></span>
-                f(x) curve
+          <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 border-b border-white/[0.07] bg-slate-950/75 text-[10px] sm:text-[11px] font-mono">
+            <div class="flex flex-wrap items-center gap-2.5 sm:gap-3">
+              <span class="inline-flex items-center gap-1 text-cyan-300">
+                <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
+                f(x)
               </span>
-              <span class="inline-flex items-center gap-1.5 text-emerald-300">
-                <span class="w-3 h-0.5 rounded bg-emeraldGlow inline-block"></span>
-                f'(x) solved derivative
+              <span class="inline-flex items-center gap-1 text-emerald-300">
+                <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
+                f'(x)
               </span>
-              <span class="inline-flex items-center gap-1.5 text-amber-300">
-                <span class="w-3 h-0.5 rounded bg-amberGlow inline-block"></span>
-                tangent segment
+              <span class="inline-flex items-center gap-1 text-amber-300">
+                <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
+                tangent
               </span>
             </div>
-            <span class="text-slate-400">Domain [${problem.domain[0]}, ${problem.domain[1]}]</span>
+            <span class="text-slate-400">[${problem.domain[0]}, ${problem.domain[1]}]</span>
           </div>
 
-          <div class="relative w-full h-[250px] sm:h-[280px] select-none touch-none">
+          <div class="relative w-full h-[175px] sm:h-[260px] select-none touch-none">
             <canvas
               data-verify-canvas
               class="block w-full h-full cursor-crosshair"
@@ -987,20 +1067,31 @@ export class PaperlessStepSolver {
         const id = btn.getAttribute('data-problem-id');
         if (id && id !== this.activeProblemId) {
           sound?.playTick?.();
+          this.mobilePickerOpen = false;
           this.selectProblem(id);
         }
       });
     });
 
-    this.container.querySelector('[data-nav-prev]')?.addEventListener('click', () => {
-      this._navigateRelative(-1);
-    });
-    this.container.querySelector('[data-nav-next]')?.addEventListener('click', () => {
-      this._navigateRelative(1);
+    this.container.querySelector('[data-mobile-picker-toggle]')?.addEventListener('click', () => {
+      this._toggleMobilePicker();
     });
 
-    this.container.querySelector('[data-cheat-toggle]')?.addEventListener('click', () => {
-      this._toggleCheatSheet();
+    this.container.querySelectorAll('[data-nav-prev], [data-nav-prev-mobile]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this._navigateRelative(-1);
+      });
+    });
+    this.container.querySelectorAll('[data-nav-next], [data-nav-next-mobile]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this._navigateRelative(1);
+      });
+    });
+
+    this.container.querySelectorAll('[data-cheat-toggle], [data-cheat-toggle-mobile]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this._toggleCheatSheet();
+      });
     });
 
     this.container.querySelector('[data-hint-btn]')?.addEventListener('click', () => {

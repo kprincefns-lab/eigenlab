@@ -490,20 +490,20 @@ function renderLensToggleButton(id = 'btn-lens-toggle') {
       type="button"
       role="switch"
       aria-checked="${on ? 'true' : 'false'}"
-      class="group inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-200 cursor-pointer ${
+      class="group inline-flex items-center gap-1.5 sm:gap-2.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border text-[11px] sm:text-xs font-medium transition-all duration-200 cursor-pointer ${
         on
           ? 'bg-amberGlow/15 border-amberGlow/50 text-amber-200 shadow-[0_0_18px_rgba(245,158,11,0.22)]'
           : 'bg-white/[0.04] border-white/10 text-slate-300 hover:border-white/25 hover:text-white'
       }"
       title="Toggle Mechatronics Lens: switch between pure calculus f(x) and servo kinematics x(t), v(t)"
     >
-      <span class="text-sm leading-none" aria-hidden="true">⚙️</span>
+      <span class="text-xs sm:text-sm leading-none" aria-hidden="true">⚙️</span>
       <span class="hidden md:inline">Mechatronics Lens:</span>
-      <span class="md:hidden">Mech:</span>
+      <span class="md:hidden">Mech</span>
       <span class="font-mono font-semibold tracking-wider ${on ? 'text-amberGlow' : 'text-slate-400'}">${
         on ? 'ON' : 'OFF'
       }</span>
-      <span class="relative inline-flex w-8 h-4 rounded-full transition-colors duration-200 ${
+      <span class="hidden sm:inline-flex relative w-8 h-4 rounded-full transition-colors duration-200 ${
         on ? 'bg-amberGlow/45' : 'bg-slate-700/80'
       }">
         <span class="inline-block w-3 h-3 rounded-full shadow transition-transform duration-200 mt-0.5 ${
@@ -522,7 +522,7 @@ function renderAudioButton(id = 'btn-audio-toggle') {
       type="button"
       aria-label="${muted ? 'Unmute studio audio' : 'Mute studio audio'}"
       aria-pressed="${muted ? 'true' : 'false'}"
-      class="inline-flex items-center justify-center w-9 h-9 rounded-full border transition-all duration-200 cursor-pointer ${
+      class="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full border transition-all duration-200 cursor-pointer ${
         muted
           ? 'bg-white/[0.03] border-white/10 text-slate-500 hover:text-slate-300 hover:border-white/20'
           : 'bg-white/[0.05] border-white/15 text-slate-200 hover:border-cyanGlow/40 hover:text-cyanGlow'
@@ -694,10 +694,10 @@ function renderHubView() {
 
       <!-- Sticky Frosted Top Studio Header -->
       <header class="sticky top-0 z-40 border-b border-white/10 bg-[#0B0D12]/80 backdrop-blur-xl">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-13 sm:h-16 py-2 sm:py-0 flex items-center justify-between gap-2 sm:gap-3">
           ${renderBrandLogo()}
 
-          <div class="flex items-center gap-2 sm:gap-3">
+          <div class="flex items-center gap-1.5 sm:gap-3">
             <div class="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-xs font-mono">
               <span class="text-amberGlow" aria-hidden="true">🔥</span>
               <span class="text-slate-300">Streak:</span>
@@ -710,39 +710,39 @@ function renderHubView() {
       </header>
 
       <!-- Main Hub Content -->
-      <main class="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 space-y-10">
+      <main class="relative z-10 flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 lg:py-12 space-y-6 sm:space-y-10">
         <!-- Hero Grid -->
-        <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-stretch">
           <!-- Left Hero Column -->
-          <div class="lg:col-span-7 flex flex-col justify-between gap-6">
-            <div class="space-y-4">
-              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyanGlow/10 border border-cyanGlow/25 text-[11px] font-mono uppercase tracking-[0.14em] text-cyanGlow">
+          <div class="lg:col-span-7 flex flex-col justify-between gap-4 sm:gap-6">
+            <div class="space-y-3 sm:space-y-4">
+              <div class="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyanGlow/10 border border-cyanGlow/25 text-[11px] font-mono uppercase tracking-[0.14em] text-cyanGlow">
                 <span class="w-1.5 h-1.5 rounded-full bg-cyanGlow animate-pulse"></span>
                 Interactive 3D Engineering Studio
               </div>
 
-              <h1 class="font-display font-bold text-3xl sm:text-4xl lg:text-[2.85rem] text-white tracking-tight leading-[1.1]">
+              <h1 class="font-display font-bold text-2xl sm:text-4xl lg:text-[2.85rem] text-white tracking-tight leading-[1.12]">
                 Spatial Engineering Mastery for
                 <span class="bg-gradient-to-r from-cyanGlow via-sky-300 to-violetGlow bg-clip-text text-transparent">
                   Mechatronics, Physics &amp; AI
                 </span>
               </h1>
 
-              <p class="text-sm sm:text-base text-slate-300/90 max-w-2xl leading-relaxed">
+              <p class="text-xs sm:text-base text-slate-300/90 max-w-2xl leading-relaxed">
                 Manipulate live 3D WebGL curves, collapse secant chords into exact tangent vectors, and solve paperless symbolic derivations—with a global <span class="text-amberGlow font-medium">Mechatronics Lens</span> bridging calculus directly to actuators, velocity profiles, and feedback control.
               </p>
 
-              <div class="flex flex-wrap items-center gap-3 pt-1">
+              <div class="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-0.5 sm:pt-1">
                 <button
                   id="hub-hero-launch"
                   type="button"
-                  class="btn-glow-cyan !rounded-2xl !px-5 !py-3 !text-sm"
+                  class="btn-glow-cyan w-full sm:w-auto !rounded-2xl !px-5 !py-2.5 sm:!py-3 !text-sm"
                 >
                   <span>Launch Lesson 01: Derivatives 3D Lab</span>
                   <span aria-hidden="true" class="text-base">→</span>
                 </button>
 
-                <span class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-white/[0.03] border border-white/10 text-xs text-slate-300 font-mono">
+                <span class="hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-white/[0.03] border border-white/10 text-xs text-slate-300 font-mono">
                   <span class="w-2 h-2 rounded-full ${lensOn ? 'bg-amberGlow' : 'bg-cyanGlow'}"></span>
                   Lens: <strong class="text-white">${lensOn ? 'Mechatronics x(t), v(t)' : "Pure Math f(x), f'(x)"}</strong>
                 </span>
@@ -750,37 +750,37 @@ function renderHubView() {
             </div>
 
             <!-- Mastery Progress Ring Card -->
-            <div class="glass-panel p-5 flex flex-col sm:flex-row items-center gap-5">
-              ${renderMasteryRingSVG(stats.percent)}
+            <div class="glass-panel p-3.5 sm:p-5 flex flex-row items-center gap-3.5 sm:gap-5">
+              <div class="shrink-0 scale-90 sm:scale-100 -m-1 sm:m-0">${renderMasteryRingSVG(stats.percent)}</div>
 
-              <div class="flex-1 w-full">
-                <div class="flex items-center justify-between gap-2 mb-3">
-                  <div>
-                    <h2 class="font-display font-semibold text-sm text-white">Lesson 01 Mastery Telemetry</h2>
-                    <p class="text-xs text-slate-400">Progress saved locally across 3D Lab, Visual Quiz &amp; Step Solver</p>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between gap-2 mb-2 sm:mb-3">
+                  <div class="min-w-0">
+                    <h2 class="font-display font-semibold text-xs sm:text-sm text-white truncate">Lesson 01 Mastery</h2>
+                    <p class="hidden sm:block text-xs text-slate-400">Progress saved locally across 3D Lab, Visual Quiz &amp; Step Solver</p>
                   </div>
-                  <span class="px-2.5 py-1 rounded-full text-[11px] font-mono bg-emeraldGlow/10 text-emeraldGlow border border-emeraldGlow/25">
+                  <span class="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-mono bg-emeraldGlow/10 text-emeraldGlow border border-emeraldGlow/25 shrink-0">
                     ${stats.completedStages.length}/4 Stages
                   </span>
                 </div>
 
-                <div class="grid grid-cols-3 gap-2.5">
-                  <div class="rounded-2xl px-3 py-2.5 bg-white/[0.03] border border-white/[0.07]">
-                    <div class="text-[10px] font-mono uppercase tracking-wider text-slate-400">Step Solver</div>
-                    <div class="font-display font-bold text-lg text-white mt-0.5">
-                      ${stats.solvedProblems}<span class="text-slate-500 text-sm">/${stats.totalProblems}</span>
+                <div class="grid grid-cols-3 gap-1.5 sm:gap-2.5">
+                  <div class="rounded-xl sm:rounded-2xl px-2 py-1.5 sm:px-3 sm:py-2.5 bg-white/[0.03] border border-white/[0.07]">
+                    <div class="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-slate-400 truncate">Solver</div>
+                    <div class="font-display font-bold text-sm sm:text-lg text-white mt-0.5">
+                      ${stats.solvedProblems}<span class="text-slate-500 text-xs sm:text-sm">/${stats.totalProblems}</span>
                     </div>
                   </div>
-                  <div class="rounded-2xl px-3 py-2.5 bg-white/[0.03] border border-white/[0.07]">
-                    <div class="text-[10px] font-mono uppercase tracking-wider text-slate-400">Visual Quiz</div>
-                    <div class="font-display font-bold text-lg text-white mt-0.5">
-                      ${stats.solvedVisual}<span class="text-slate-500 text-sm">/${stats.totalVisual}</span>
+                  <div class="rounded-xl sm:rounded-2xl px-2 py-1.5 sm:px-3 sm:py-2.5 bg-white/[0.03] border border-white/[0.07]">
+                    <div class="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-slate-400 truncate">Quiz</div>
+                    <div class="font-display font-bold text-sm sm:text-lg text-white mt-0.5">
+                      ${stats.solvedVisual}<span class="text-slate-500 text-xs sm:text-sm">/${stats.totalVisual}</span>
                     </div>
                   </div>
-                  <div class="rounded-2xl px-3 py-2.5 bg-white/[0.03] border border-white/[0.07]">
-                    <div class="text-[10px] font-mono uppercase tracking-wider text-slate-400">Accuracy Streak</div>
-                    <div class="font-display font-bold text-lg text-amberGlow mt-0.5">
-                      ${stats.streak} <span class="text-xs font-mono text-slate-400">run</span>
+                  <div class="rounded-xl sm:rounded-2xl px-2 py-1.5 sm:px-3 sm:py-2.5 bg-white/[0.03] border border-white/[0.07]">
+                    <div class="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-slate-400 truncate">Streak</div>
+                    <div class="font-display font-bold text-sm sm:text-lg text-amberGlow mt-0.5">
+                      ${stats.streak} <span class="hidden sm:inline text-xs font-mono text-slate-400">run</span>
                     </div>
                   </div>
                 </div>
@@ -790,32 +790,32 @@ function renderHubView() {
 
           <!-- Right Hero Column: Interactive 3D Ambient Preview Card -->
           <div class="lg:col-span-5 flex flex-col">
-            <div class="canvas-stage relative flex-1 min-h-[340px] lg:min-h-[420px] flex flex-col">
+            <div class="canvas-stage relative flex-1 min-h-[190px] sm:min-h-[340px] lg:min-h-[420px] flex flex-col">
               <!-- Live Three.js Ambient Container -->
               <div id="hub-ambient-3d" class="absolute inset-0 w-full h-full"></div>
 
               <!-- HUD Overlays -->
-              <div class="pointer-events-none relative z-10 flex items-center justify-between p-4">
-                <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/15 text-[11px] font-mono text-cyanGlow">
+              <div class="pointer-events-none relative z-10 flex items-center justify-between p-3 sm:p-4">
+                <span class="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/15 text-[10px] sm:text-[11px] font-mono text-cyanGlow">
                   <span class="w-2 h-2 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE]"></span>
                   Live 3D Tangent Manifold
                 </span>
-                <span class="px-2.5 py-1 rounded-full bg-[#0B0D12]/70 backdrop-blur-md border border-white/10 text-[10px] font-mono text-slate-300">
+                <span class="hidden sm:inline-flex px-2.5 py-1 rounded-full bg-[#0B0D12]/70 backdrop-blur-md border border-white/10 text-[10px] font-mono text-slate-300">
                   Three.js 0.170
                 </span>
               </div>
 
-              <div class="pointer-events-none relative z-10 mt-auto p-4 bg-gradient-to-t from-[#0B0D12]/90 via-[#0B0D12]/45 to-transparent">
+              <div class="pointer-events-none relative z-10 mt-auto p-3 sm:p-4 bg-gradient-to-t from-[#0B0D12]/90 via-[#0B0D12]/45 to-transparent">
                 <div class="flex items-end justify-between gap-3">
                   <div>
-                    <div class="text-[10px] font-mono uppercase tracking-widest text-amberGlow/90">Interactive Preview</div>
-                    <div class="font-display font-semibold text-base text-white">Secant → Tangent Convergence</div>
-                    <div class="text-xs text-slate-400 mt-0.5">Orbit the curve, scrub Δx → 0, and inspect 3D derivative ribbons.</div>
+                    <div class="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-amberGlow/90">Interactive Preview</div>
+                    <div class="font-display font-semibold text-sm sm:text-base text-white">Secant → Tangent Convergence</div>
+                    <div class="hidden sm:block text-xs text-slate-400 mt-0.5">Orbit the curve, scrub Δx → 0, and inspect 3D derivative ribbons.</div>
                   </div>
                   <button
                     id="hub-preview-launch"
                     type="button"
-                    class="pointer-events-auto btn-glass !py-2 !px-3.5 !text-xs !font-mono shrink-0"
+                    class="pointer-events-auto btn-glass !py-1.5 sm:!py-2 !px-3 sm:!px-3.5 !text-xs !font-mono shrink-0"
                   >
                     Open Lab ↗
                   </button>
@@ -826,13 +826,13 @@ function renderHubView() {
         </section>
 
         <!-- 4-Domain Dynamic Navigation Grid -->
-        <section class="space-y-4">
-          <div class="flex flex-wrap items-end justify-between gap-3">
+        <section class="space-y-3 sm:space-y-4">
+          <div class="flex flex-wrap items-end justify-between gap-2 sm:gap-3">
             <div>
-              <div class="text-[11px] font-mono uppercase tracking-[0.16em] text-slate-400">Discipline Roadmap</div>
-              <h2 class="font-display font-bold text-2xl text-white mt-0.5">Engineering &amp; Science Tracks</h2>
+              <div class="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.16em] text-slate-400">Discipline Roadmap</div>
+              <h2 class="font-display font-bold text-xl sm:text-2xl text-white mt-0.5">Engineering &amp; Science Tracks</h2>
             </div>
-            <p class="text-xs text-slate-400 max-w-md">
+            <p class="hidden sm:block text-xs text-slate-400 max-w-md">
               A unified multi-discipline STEM studio—launch Lesson 01 Derivatives now while future tracks plug seamlessly into the same 3D &amp; symbolic core.
             </p>
           </div>
@@ -946,17 +946,24 @@ function updateLessonStageDotsUI() {
   }
 
   STAGES.forEach((stage) => {
-    const pill = document.querySelector(`[data-stage-pill="${stage.id}"]`);
-    if (!pill) return;
     const done = isStageDone(stage.id);
-    pill.classList.toggle('is-complete', done);
-    const badge = pill.querySelector('[data-stage-check]');
-    if (badge) {
-      badge.className = done
-        ? 'ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-emeraldGlow/20 text-emeraldGlow text-[10px]'
-        : 'hidden';
-      badge.textContent = done ? '✓' : '';
-    }
+    document.querySelectorAll(`[data-stage-pill="${stage.id}"]`).forEach((pill) => {
+      pill.classList.toggle('is-complete', done);
+      const badge = pill.querySelector('[data-stage-check]');
+      if (badge) {
+        if (pill.classList.contains('mobile-tab')) {
+          badge.className = done
+            ? 'absolute top-1 right-2 w-2 h-2 rounded-full bg-emeraldGlow shadow-[0_0_6px_#34D399]'
+            : 'hidden';
+          badge.textContent = '';
+        } else {
+          badge.className = done
+            ? 'ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-emeraldGlow/20 text-emeraldGlow text-[10px]'
+            : 'hidden';
+          badge.textContent = done ? '✓' : '';
+        }
+      }
+    });
   });
 }
 
@@ -965,19 +972,26 @@ function renderLessonShell() {
   const root = document.getElementById('app');
   if (!root) return;
 
+  const mobileLabels = {
+    '3d-lab': '3D Lab',
+    intuition: 'Graphs',
+    solver: 'Solver',
+    'word-problems': 'Applied',
+  };
+
   root.innerHTML = `
     <div class="min-h-screen flex flex-col relative view-enter">
       <div class="ambient-mesh" aria-hidden="true"></div>
 
-      <!-- Sticky Frosted Top Bar -->
-      <header class="sticky top-0 z-40 border-b border-white/10 bg-[#0B0D12]/85 backdrop-blur-xl">
-        <div class="max-w-[1440px] mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
+      <!-- Sticky Frosted Top Bar (Compact h-12 on Mobile, h-16 on Desktop) -->
+      <header class="sticky top-0 z-40 border-b border-white/10 bg-[#0B0D12]/88 backdrop-blur-xl">
+        <div class="max-w-[1440px] mx-auto px-2.5 sm:px-6 h-12 md:h-16 flex items-center justify-between gap-2 sm:gap-4">
           <!-- Back + Lesson Title + Completion Dots -->
-          <div class="flex items-center gap-2.5 sm:gap-4 min-w-0">
+          <div class="flex items-center gap-2 sm:gap-4 min-w-0">
             <button
               id="btn-back-hub"
               type="button"
-              class="btn-glass !py-1.5 !px-3 !text-xs shrink-0"
+              class="btn-glass !py-1 md:!py-1.5 !px-2.5 md:!px-3 !text-xs shrink-0"
             >
               <span aria-hidden="true">←</span>
               <span class="hidden sm:inline">All Disciplines</span>
@@ -987,11 +1001,11 @@ function renderLessonShell() {
             <div class="min-w-0">
               <div class="flex items-center gap-2">
                 <span class="text-[10px] font-mono uppercase tracking-wider text-cyanGlow hidden md:inline">Lesson 01</span>
-                <h1 class="font-display font-bold text-sm sm:text-base text-white truncate">
+                <h1 class="font-display font-bold text-xs sm:text-base text-white truncate">
                   Derivatives Studio
                 </h1>
               </div>
-              <div id="lesson-lens-subtitle" class="text-[11px] text-slate-400 truncate hidden sm:block">
+              <div id="lesson-lens-subtitle" class="text-[11px] text-slate-400 truncate hidden md:block">
                 ${
                   isMechatronicsLens()
                     ? 'Mechatronics Lens: Displacement x(t) → Velocity v(t) & Actuator Dynamics'
@@ -1006,15 +1020,15 @@ function renderLessonShell() {
           </div>
 
           <!-- Global Lens & Audio Controls -->
-          <div class="flex items-center gap-2 shrink-0">
+          <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <div id="lesson-lens-toggle-slot">${renderLensToggleButton('lesson-lens-toggle')}</div>
             <div id="lesson-audio-toggle-slot">${renderAudioButton('lesson-audio-toggle')}</div>
           </div>
         </div>
       </header>
 
-      <!-- Floating Pill Navigation Bar (4 Seamless Stages) -->
-      <nav aria-label="Lesson stages" class="sticky top-16 z-30 py-3 px-3 sm:px-6 bg-gradient-to-b from-[#0B0D12]/90 via-[#0B0D12]/65 to-transparent backdrop-blur-md">
+      <!-- Desktop/Tablet Floating Pill Navigation Bar (Hidden on Mobile in favor of Thumb Bottom Bar) -->
+      <nav aria-label="Lesson stages" class="hidden md:block sticky top-16 z-30 py-3 px-3 sm:px-6 bg-gradient-to-b from-[#0B0D12]/90 via-[#0B0D12]/65 to-transparent backdrop-blur-md">
         <div class="max-w-[1440px] mx-auto flex justify-center">
           <div class="stage-nav studio-scroll">
             ${STAGES.map((stage) => {
@@ -1028,8 +1042,7 @@ function renderLessonShell() {
                   class="stage-pill ${active ? 'active' : ''} ${done ? 'is-complete' : ''}"
                 >
                   <span aria-hidden="true">${stage.icon}</span>
-                  <span class="hidden md:inline">${escapeHtml(stage.label)}</span>
-                  <span class="md:hidden">${stage.number}. ${escapeHtml(stage.shortLabel)}</span>
+                  <span>${escapeHtml(stage.label)}</span>
                   <span data-stage-check class="${
                     done
                       ? 'ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-emeraldGlow/20 text-emeraldGlow text-[10px]'
@@ -1043,7 +1056,33 @@ function renderLessonShell() {
       </nav>
 
       <!-- Active Stage Mount Point -->
-      <main id="stage-container" class="relative z-10 flex-1 w-full max-w-[1440px] mx-auto px-3 sm:px-6 pb-10"></main>
+      <main id="stage-container" class="relative z-10 flex-1 w-full max-w-[1440px] mx-auto px-2.5 sm:px-6 pt-2 md:pt-0 pb-24 md:pb-10"></main>
+
+      <!-- Mobile Thumb-Friendly Floating Bottom Tab Bar (md:hidden) -->
+      <nav aria-label="Mobile lesson stages" class="mobile-bottom-nav md:hidden">
+        <div class="grid grid-cols-4 gap-1 max-w-md mx-auto">
+          ${STAGES.map((stage) => {
+            const active = appState.stage === stage.id;
+            const done = isStageDone(stage.id);
+            return `
+              <button
+                type="button"
+                data-stage-pill="${stage.id}"
+                aria-current="${active ? 'page' : 'false'}"
+                class="mobile-tab ${active ? 'active' : ''} ${done ? 'is-complete' : ''}"
+              >
+                <span aria-hidden="true" class="text-base leading-none">${stage.icon}</span>
+                <span>${escapeHtml(mobileLabels[stage.id] || stage.shortLabel)}</span>
+                <span data-stage-check class="${
+                  done
+                    ? 'absolute top-1 right-2 w-2 h-2 rounded-full bg-emeraldGlow shadow-[0_0_6px_#34D399]'
+                    : 'hidden'
+                }"></span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+      </nav>
     </div>
   `;
 
@@ -1222,10 +1261,10 @@ function mountStage1Lab3D(container) {
   }
 
   container.innerHTML = `
-    <section class="space-y-4 view-enter">
+    <section class="space-y-2 sm:space-y-4 view-enter">
       <!-- Top Preset Strip + Camera Angle Presets -->
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-1.5 flex-wrap" role="tablist" aria-label="Function presets">
+      <div class="flex items-center justify-between gap-2 sm:gap-3">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar xl:flex-wrap flex-1 min-w-0 py-0.5" role="tablist" aria-label="Function presets">
           ${presets
             .map((p) => {
               const isSelected = activePreset && p.id === activePreset.id;
@@ -1233,7 +1272,7 @@ function mountStage1Lab3D(container) {
                 <button
                   type="button"
                   data-preset-id="${escapeHtml(p.id)}"
-                  class="px-3.5 py-1.5 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
+                  class="shrink-0 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-medium border transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-cyanGlow/15 border-cyanGlow/50 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.2)]'
                       : 'bg-slate-900/60 border-white/10 text-slate-300 hover:border-white/25 hover:text-white'
@@ -1246,7 +1285,7 @@ function mountStage1Lab3D(container) {
             .join('')}
         </div>
 
-        <div class="flex items-center gap-1 bg-slate-900/75 p-1 rounded-xl border border-white/10">
+        <div class="hidden xl:flex items-center gap-1 bg-slate-900/75 p-1 rounded-xl border border-white/10 shrink-0">
           ${[
             { id: '3d', label: '3D Studio' },
             { id: 'front', label: 'Front 2D Graph' },
@@ -1273,30 +1312,30 @@ function mountStage1Lab3D(container) {
       </div>
 
       <!-- Main Full-Bleed Spline-Style 3D Studio Layout -->
-      <div class="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
-        <!-- 3D Viewport Canvas Container -->
-        <div class="xl:col-span-8 canvas-stage relative min-h-[540px] lg:h-[calc(100vh-210px)] flex flex-col">
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-2.5 sm:gap-4 items-stretch">
+        <!-- 3D Viewport Canvas Container (Compact Split-Screen on Mobile, Full-Bleed on Desktop) -->
+        <div class="xl:col-span-8 canvas-stage relative h-[37dvh] min-h-[215px] max-h-[300px] sm:h-[420px] sm:max-h-none xl:h-[calc(100vh-210px)] xl:min-h-[540px] flex flex-col">
           <!-- Three.js Mount -->
           <div id="derivative-3d-canvas" class="absolute inset-0 w-full h-full"></div>
 
           <!-- Top-Left Floating Equation HUD -->
-          <div class="pointer-events-none relative z-10 flex flex-wrap items-start justify-between gap-2 p-4">
-            <div class="pointer-events-auto rounded-2xl px-4 py-3 bg-[#0B0D12]/80 backdrop-blur-xl border border-white/15 shadow-lg max-w-full">
-              <div class="flex items-center gap-2 mb-1.5">
+          <div class="pointer-events-none relative z-10 flex items-start justify-between gap-2 p-2.5 sm:p-4">
+            <div class="pointer-events-auto rounded-xl sm:rounded-2xl px-2.5 py-1.5 sm:px-4 sm:py-3 bg-[#0B0D12]/80 backdrop-blur-xl border border-white/15 shadow-lg max-w-full">
+              <div class="hidden sm:flex items-center gap-2 mb-1.5">
                 <span class="w-2 h-2 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE]"></span>
                 <span id="hud-curve-label" class="text-[10px] font-mono uppercase tracking-widest text-slate-400">
                   ${lensOn ? 'Actuator Displacement & Velocity' : 'Active Curve & Exact Derivative'}
                 </span>
               </div>
-              <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white">
+              <div class="flex flex-wrap items-center gap-x-2.5 sm:gap-x-4 gap-y-0.5 text-xs sm:text-sm text-white">
                 <span id="hud-fx-math" class="text-cyan-200"></span>
-                <span class="text-slate-600">|</span>
-                <span id="hud-dfx-math" class="text-violet-300"></span>
+                <span class="hidden sm:inline text-slate-600">|</span>
+                <span id="hud-dfx-math" class="hidden sm:inline text-violet-300"></span>
               </div>
             </div>
 
-            <!-- Synced Mechatronics 3D Actuator Indicator -->
-            <div id="hud-mech-indicator" class="pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
+            <!-- Synced Mechatronics 3D Actuator Indicator (Desktop/Tablet) -->
+            <div id="hud-mech-indicator" class="hidden sm:block pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
               lensOn
                 ? 'bg-amberGlow/15 border-amberGlow/45 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
                 : 'bg-[#0B0D12]/70 border-white/10 text-slate-400'
@@ -1308,88 +1347,151 @@ function mountStage1Lab3D(container) {
             </div>
           </div>
 
-          <!-- Bottom Floating Canvas Legend -->
-          <div class="pointer-events-none relative z-10 mt-auto p-4 flex flex-wrap items-center justify-between gap-2">
-            <div class="inline-flex items-center gap-3 px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-300">
+          <!-- Bottom Floating Canvas Legend + Compact Mobile Camera Switcher -->
+          <div class="pointer-events-none relative z-10 mt-auto p-2 sm:p-4 flex items-center justify-between gap-2">
+            <div class="hidden sm:inline-flex items-center gap-3 px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-300">
               <span><span class="text-cyanGlow">●</span> Curve</span>
               <span><span class="text-amberGlow">●</span> Secant Δx</span>
               <span><span class="text-emeraldGlow">●</span> Tangent</span>
               <span><span class="text-violetGlow">●</span> f&apos;(x) Ribbon</span>
             </div>
-            <div class="hidden sm:inline-flex items-center px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-400">
+
+            <!-- Compact 1-tap Camera Presets inside Viewport on Mobile/Tablet -->
+            <div class="pointer-events-auto xl:hidden ml-auto flex items-center gap-0.5 bg-[#0B0D12]/80 backdrop-blur-md p-0.5 rounded-xl border border-white/15">
+              ${[
+                { id: '3d', label: '3D' },
+                { id: 'front', label: '2D' },
+                { id: 'iso', label: 'Iso' },
+              ]
+                .map((cam) => {
+                  const active = appState.lab.cameraPreset === cam.id;
+                  return `
+                    <button
+                      type="button"
+                      data-camera-preset="${cam.id}"
+                      class="px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all cursor-pointer ${
+                        active
+                          ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+                          : 'text-slate-400 border border-transparent hover:text-white'
+                      }"
+                    >
+                      ${cam.label}
+                    </button>
+                  `;
+                })
+                .join('')}
+            </div>
+
+            <div class="hidden xl:inline-flex items-center px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-400">
               Drag to orbit • Scroll to zoom
             </div>
           </div>
         </div>
 
         <!-- Tactile Control Deck & Live KaTeX Telemetry Card -->
-        <aside class="xl:col-span-4 flex flex-col gap-4 lg:h-[calc(100vh-210px)] lg:overflow-y-auto studio-scroll pr-0.5">
-          <!-- Live KaTeX Difference Quotient & Slope Telemetry Card -->
-          <div class="glass-panel p-5 space-y-4">
+        <aside class="xl:col-span-4 flex flex-col gap-2.5 sm:gap-4 xl:h-[calc(100vh-210px)] xl:overflow-y-auto studio-scroll pr-0.5">
+          <!-- Live Telemetry Card (Ultra-Compact 1-Row Strip on Mobile with Tap-to-Expand KaTeX; Always Expanded on xl) -->
+          <div class="glass-panel p-2.5 sm:p-5 space-y-2 sm:space-y-4">
+            <!-- Header + Mobile Compact Slope Strip -->
             <div class="flex items-center justify-between gap-2">
-              <div>
+              <div class="hidden xl:block">
                 <div class="text-[10px] font-mono uppercase tracking-[0.14em] text-slate-400">Live Limit Telemetry</div>
                 <h2 class="font-display font-semibold text-sm text-white mt-0.5">Difference Quotient</h2>
               </div>
-              <div
-                id="badge-tangent-locked"
-                class="px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold border transition-all duration-300 ${
-                  appState.telemetry.tangentLocked
-                    ? 'bg-emeraldGlow/20 border-emeraldGlow/60 text-emeraldGlow shadow-[0_0_18px_rgba(52,211,153,0.3)]'
-                    : 'bg-amberGlow/15 border-amberGlow/30 text-amberGlow'
-                }"
-              >
-                ${appState.telemetry.tangentLocked ? 'TANGENT LOCKED ✓' : 'SECANT APPROX'}
-              </div>
-            </div>
 
-            <!-- KaTeX Difference Quotient Formula -->
-            <div class="katex-card flex items-center justify-center min-h-[76px]">
-              <div id="telemetry-quotient-katex" class="text-slate-100 text-sm"></div>
-            </div>
-
-            <!-- Secant vs Exact Slope Comparison Grid -->
-            <div class="grid grid-cols-2 gap-3">
-              <div class="rounded-2xl p-3.5 bg-amberGlow/[0.06] border border-amberGlow/25">
-                <div id="label-secant-metric" class="text-[10px] font-mono uppercase tracking-wider text-amberGlow/90">
-                  ${lensOn ? 'Avg Velocity Δx/Δt' : 'Secant Slope Δy/Δx'}
+              <!-- Compact Inline Secant vs Exact Readout (always visible on mobile/tablet!) -->
+              <div class="flex xl:hidden items-center gap-2 min-w-0 flex-1">
+                <div class="flex-1 min-w-0 rounded-xl px-2.5 py-1.5 bg-amberGlow/[0.08] border border-amberGlow/25">
+                  <div class="text-[9px] font-mono uppercase tracking-wider text-amberGlow/90 truncate">
+                    ${lensOn ? 'Avg Δx/Δt' : 'Secant'}
+                  </div>
+                  <div id="val-secant-slope-compact" class="font-mono font-semibold text-sm text-white leading-tight">
+                    ${formatNum(appState.telemetry.secantSlope, 3)}
+                  </div>
                 </div>
-                <div id="val-secant-slope" class="font-mono font-semibold text-xl text-white mt-1">
-                  ${formatNum(appState.telemetry.secantSlope, 4)}
+                <div class="flex-1 min-w-0 rounded-xl px-2.5 py-1.5 bg-emeraldGlow/[0.08] border border-emeraldGlow/25">
+                  <div class="text-[9px] font-mono uppercase tracking-wider text-emeraldGlow/90 truncate">
+                    ${lensOn ? 'v(t₀)' : "Exact f'"}
+                  </div>
+                  <div id="val-exact-slope-compact" class="font-mono font-semibold text-sm text-emeraldGlow leading-tight">
+                    ${formatNum(appState.telemetry.exactSlope, 3)}
+                  </div>
                 </div>
               </div>
 
-              <div class="rounded-2xl p-3.5 bg-emeraldGlow/[0.06] border border-emeraldGlow/25">
-                <div id="label-exact-metric" class="text-[10px] font-mono uppercase tracking-wider text-emeraldGlow/90">
-                  ${lensOn ? 'Instant v(t₀)' : "Exact f'(x₀)"}
+              <div class="flex items-center gap-1.5 shrink-0">
+                <div
+                  id="badge-tangent-locked"
+                  class="px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 ${
+                    appState.telemetry.tangentLocked
+                      ? 'bg-emeraldGlow/20 border-emeraldGlow/60 text-emeraldGlow shadow-[0_0_18px_rgba(52,211,153,0.3)]'
+                      : 'bg-amberGlow/15 border-amberGlow/30 text-amberGlow'
+                  }"
+                >
+                  ${appState.telemetry.tangentLocked ? 'TANGENT ✓' : 'SECANT'}
                 </div>
-                <div id="val-exact-slope" class="font-mono font-semibold text-xl text-emeraldGlow mt-1">
-                  ${formatNum(appState.telemetry.exactSlope, 4)}
-                </div>
+                <button
+                  id="btn-toggle-mobile-formula"
+                  type="button"
+                  aria-expanded="false"
+                  title="Toggle KaTeX difference quotient formula"
+                  class="xl:hidden px-2 py-1 rounded-lg bg-white/[0.05] border border-white/15 text-[11px] font-mono text-cyan-200 cursor-pointer"
+                >
+                  ƒ ▾
+                </button>
               </div>
             </div>
 
-            <!-- Residual Error Readout -->
-            <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
-              <span>Approximation Error |m_sec − f&apos;|</span>
-              <span id="val-slope-error" class="text-slate-200">${formatNum(
-                Math.abs(appState.telemetry.secantSlope - appState.telemetry.exactSlope),
-                5
-              )}</span>
+            <!-- Collapsible on Mobile (<xl), Always Open on Desktop (xl:block): Full KaTeX Formula & Error Metrics -->
+            <div id="mobile-formula-drawer" class="hidden xl:block space-y-3 sm:space-y-4">
+              <!-- KaTeX Difference Quotient Formula -->
+              <div class="katex-card flex items-center justify-center min-h-[60px] sm:min-h-[76px]">
+                <div id="telemetry-quotient-katex" class="text-slate-100 text-xs sm:text-sm overflow-x-auto"></div>
+              </div>
+
+              <!-- Secant vs Exact Slope Comparison Grid (Desktop xl) -->
+              <div class="hidden xl:grid grid-cols-2 gap-3">
+                <div class="rounded-2xl p-3.5 bg-amberGlow/[0.06] border border-amberGlow/25">
+                  <div id="label-secant-metric" class="text-[10px] font-mono uppercase tracking-wider text-amberGlow/90">
+                    ${lensOn ? 'Avg Velocity Δx/Δt' : 'Secant Slope Δy/Δx'}
+                  </div>
+                  <div id="val-secant-slope" class="font-mono font-semibold text-xl text-white mt-1">
+                    ${formatNum(appState.telemetry.secantSlope, 4)}
+                  </div>
+                </div>
+
+                <div class="rounded-2xl p-3.5 bg-emeraldGlow/[0.06] border border-emeraldGlow/25">
+                  <div id="label-exact-metric" class="text-[10px] font-mono uppercase tracking-wider text-emeraldGlow/90">
+                    ${lensOn ? 'Instant v(t₀)' : "Exact f'(x₀)"}
+                  </div>
+                  <div id="val-exact-slope" class="font-mono font-semibold text-xl text-emeraldGlow mt-1">
+                    ${formatNum(appState.telemetry.exactSlope, 4)}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Residual Error Readout -->
+              <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
+                <span>Approximation Error |m_sec − f&apos;|</span>
+                <span id="val-slope-error" class="text-slate-200">${formatNum(
+                  Math.abs(appState.telemetry.secantSlope - appState.telemetry.exactSlope),
+                  5
+                )}</span>
+              </div>
             </div>
           </div>
 
-          <!-- Tactile Sliders & Limit Controls -->
-          <div class="glass-panel p-5 space-y-5 flex-1 flex flex-col justify-between">
-            <div class="space-y-5">
+          <!-- Tactile Sliders & Limit Controls (Always Immediately Visible Below Canvas on Mobile!) -->
+          <div class="glass-panel p-3 sm:p-5 space-y-3 sm:space-y-5 flex-1 flex flex-col justify-between">
+            <div class="space-y-2.5 sm:space-y-5">
               <!-- Probe Position x0 Slider (Cyan) -->
-              <div class="space-y-2">
+              <div class="space-y-1 sm:space-y-2">
                 <div class="flex items-center justify-between">
                   <label for="slider-x0" id="label-x0-slider" class="text-xs font-medium text-slate-200 flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE]"></span>
+                    <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE]"></span>
                     ${lensOn ? 'Time Probe t₀ (s)' : 'Probe Position x₀'}
                   </label>
-                  <span id="readout-x0" class="px-2.5 py-0.5 rounded-lg bg-cyanGlow/15 border border-cyanGlow/30 font-mono text-xs text-cyanGlow font-semibold">
+                  <span id="readout-x0" class="px-2 py-0.5 rounded-lg bg-cyanGlow/15 border border-cyanGlow/30 font-mono text-[11px] sm:text-xs text-cyanGlow font-semibold">
                     ${formatSigned(appState.lab.x0, 2)}
                   </span>
                 </div>
@@ -1405,13 +1507,13 @@ function mountStage1Lab3D(container) {
               </div>
 
               <!-- Step Size Δx Slider (Amber) -->
-              <div class="space-y-2">
+              <div class="space-y-1 sm:space-y-2">
                 <div class="flex items-center justify-between">
                   <label for="slider-dx" id="label-dx-slider" class="text-xs font-medium text-slate-200 flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B]"></span>
+                    <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B]"></span>
                     ${lensOn ? 'Time Window Δt (s)' : 'Step Size Δx'}
                   </label>
-                  <span id="readout-dx" class="px-2.5 py-0.5 rounded-lg bg-amberGlow/15 border border-amberGlow/30 font-mono text-xs text-amberGlow font-semibold">
+                  <span id="readout-dx" class="px-2 py-0.5 rounded-lg bg-amberGlow/15 border border-amberGlow/30 font-mono text-[11px] sm:text-xs text-amberGlow font-semibold">
                     ${formatNum(appState.lab.dx, 3)}
                   </span>
                 </div>
@@ -1424,27 +1526,39 @@ function mountStage1Lab3D(container) {
                   value="${appState.lab.dx}"
                   class="studio-slider-amber"
                 />
-                <div class="flex justify-between text-[10px] font-mono text-slate-500">
+                <div class="hidden sm:flex justify-between text-[10px] font-mono text-slate-500">
                   <span>0.001 (Tangent Limit)</span>
                   <span>2.200 (Wide Secant)</span>
                 </div>
               </div>
 
-              <!-- Prominent Animate Limit Button -->
-              <button
-                id="btn-animate-limit"
-                type="button"
-                class="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amberGlow via-amber-400 to-cyanGlow text-slate-950 font-display font-bold text-sm tracking-wide shadow-[0_0_28px_rgba(245,158,11,0.28)] hover:shadow-[0_0_38px_rgba(34,211,238,0.42)] hover:brightness-110 active:scale-[0.985] transition-all cursor-pointer flex items-center justify-center gap-2"
-              >
-                <span id="animate-btn-icon" aria-hidden="true">▶</span>
-                <span id="animate-btn-text">${
-                  lensOn ? 'Animate Limit Δt → 0' : 'Animate Limit Δx → 0'
-                }</span>
-              </button>
+              <!-- Action Row: Prominent Animate Limit Button + Compact Mobile Ribbon Toggle -->
+              <div class="flex items-center gap-2 pt-0.5">
+                <button
+                  id="btn-animate-limit"
+                  type="button"
+                  class="flex-1 py-2.5 sm:py-3.5 px-3 sm:px-4 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amberGlow via-amber-400 to-cyanGlow text-slate-950 font-display font-bold text-xs sm:text-sm tracking-wide shadow-[0_0_24px_rgba(245,158,11,0.28)] hover:shadow-[0_0_38px_rgba(34,211,238,0.42)] hover:brightness-110 active:scale-[0.985] transition-all cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2"
+                >
+                  <span id="animate-btn-icon" aria-hidden="true">▶</span>
+                  <span id="animate-btn-text">${
+                    lensOn ? 'Animate Δt → 0' : 'Animate Δx → 0'
+                  }</span>
+                </button>
+
+                <label class="xl:hidden shrink-0 inline-flex items-center gap-1.5 px-2.5 py-2.5 rounded-xl bg-violetGlow/10 border border-violetGlow/30 text-[11px] font-mono text-violet-200 cursor-pointer select-none">
+                  <input
+                    id="toggle-deriv-ribbon-mobile"
+                    type="checkbox"
+                    ${appState.lab.showDerivativeCurve ? 'checked' : ''}
+                    class="w-3.5 h-3.5 rounded accent-violet-400 cursor-pointer"
+                  />
+                  <span>${lensOn ? 'v(t)' : "f'(x)"}</span>
+                </label>
+              </div>
             </div>
 
-            <!-- Toggle Switches & Stage Forward Link -->
-            <div class="pt-4 border-t border-white/10 space-y-3">
+            <!-- Toggle Switches & Stage Forward Link (Desktop xl) -->
+            <div class="hidden xl:block pt-4 border-t border-white/10 space-y-3">
               <label class="flex items-center justify-between gap-3 cursor-pointer select-none group">
                 <div class="flex items-center gap-2.5">
                   <span class="w-2.5 h-2.5 rounded-full bg-violetGlow shadow-[0_0_8px_#A78BFA]"></span>
@@ -1673,12 +1787,29 @@ function mountStage1Lab3D(container) {
     if (!metrics) handleTelemetryUpdate({ x: appState.lab.x0, dx: val });
   });
 
-  // Wire Derivative 3D Ribbon Toggle
+  // Wire Derivative 3D Ribbon Toggle (Desktop + Mobile synced)
   const ribbonToggle = document.getElementById('toggle-deriv-ribbon');
-  ribbonToggle?.addEventListener('change', (e) => {
+  const ribbonToggleMobile = document.getElementById('toggle-deriv-ribbon-mobile');
+  const syncRibbon = (checked) => {
     playSfx('snap');
-    appState.lab.showDerivativeCurve = !!e.target.checked;
+    appState.lab.showDerivativeCurve = !!checked;
+    if (ribbonToggle) ribbonToggle.checked = appState.lab.showDerivativeCurve;
+    if (ribbonToggleMobile) ribbonToggleMobile.checked = appState.lab.showDerivativeCurve;
     activeInstances.studio3D?.toggleDerivativeCurve?.(appState.lab.showDerivativeCurve);
+  };
+  ribbonToggle?.addEventListener('change', (e) => syncRibbon(e.target.checked));
+  ribbonToggleMobile?.addEventListener('change', (e) => syncRibbon(e.target.checked));
+
+  // Wire Mobile KaTeX Difference Quotient Drawer Toggle
+  const formulaBtn = document.getElementById('btn-toggle-mobile-formula');
+  const formulaDrawer = document.getElementById('mobile-formula-drawer');
+  formulaBtn?.addEventListener('click', () => {
+    playSfx('tick');
+    if (!formulaDrawer) return;
+    const isHidden = formulaDrawer.classList.contains('hidden');
+    formulaDrawer.classList.toggle('hidden', !isHidden);
+    formulaBtn.setAttribute('aria-expanded', String(isHidden));
+    formulaBtn.textContent = isHidden ? 'ƒ ▴' : 'ƒ ▾';
   });
 
   // Wire Animate Limit Δx → 0 Button (synced live with studio.animateLimit(onFrame))
@@ -1741,7 +1872,7 @@ function updateStage1LensUI() {
   const mechInd = document.getElementById('hud-mech-indicator');
   const mechText = document.getElementById('hud-mech-text');
   if (mechInd && mechText) {
-    mechInd.className = `pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
+    mechInd.className = `hidden sm:block pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
       on
         ? 'bg-amberGlow/15 border-amberGlow/45 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
         : 'bg-[#0B0D12]/70 border-white/10 text-slate-400'
@@ -1755,13 +1886,13 @@ function updateStage1LensUI() {
 
   const x0Label = document.getElementById('label-x0-slider');
   if (x0Label) {
-    x0Label.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE]"></span>${
+    x0Label.innerHTML = `<span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE]"></span>${
       on ? 'Time Probe t₀ (s)' : 'Probe Position x₀'
     }`;
   }
   const dxLabel = document.getElementById('label-dx-slider');
   if (dxLabel) {
-    dxLabel.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B]"></span>${
+    dxLabel.innerHTML = `<span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B]"></span>${
       on ? 'Time Window Δt (s)' : 'Step Size Δx'
     }`;
   }
@@ -1779,7 +1910,7 @@ function updateStage1LensUI() {
 
   if (!appState.lab.isAnimating) {
     const btnText = document.getElementById('animate-btn-text');
-    if (btnText) btnText.textContent = on ? 'Animate Limit Δt → 0' : 'Animate Limit Δx → 0';
+    if (btnText) btnText.textContent = on ? 'Animate Δt → 0' : 'Animate Δx → 0';
   }
 }
 
@@ -1799,19 +1930,25 @@ function updateStage1TelemetryUI() {
   const exactVal = document.getElementById('val-exact-slope');
   if (exactVal) exactVal.textContent = formatNum(t.exactSlope, 4);
 
+  const secCompact = document.getElementById('val-secant-slope-compact');
+  if (secCompact) secCompact.textContent = formatNum(t.secantSlope, 3);
+
+  const exactCompact = document.getElementById('val-exact-slope-compact');
+  if (exactCompact) exactCompact.textContent = formatNum(t.exactSlope, 3);
+
   const errVal = document.getElementById('val-slope-error');
   if (errVal) errVal.textContent = formatNum(Math.abs(t.secantSlope - t.exactSlope), 5);
 
   const badge = document.getElementById('badge-tangent-locked');
   if (badge) {
     if (t.tangentLocked) {
-      badge.textContent = 'TANGENT LOCKED ✓';
+      badge.textContent = 'TANGENT ✓';
       badge.className =
-        'px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold border transition-all duration-300 bg-emeraldGlow/20 border-emeraldGlow/60 text-emeraldGlow shadow-[0_0_18px_rgba(52,211,153,0.3)]';
+        'px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-emeraldGlow/20 border-emeraldGlow/60 text-emeraldGlow shadow-[0_0_18px_rgba(52,211,153,0.3)]';
     } else {
-      badge.textContent = 'SECANT APPROX';
+      badge.textContent = 'SECANT';
       badge.className =
-        'px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold border transition-all duration-300 bg-amberGlow/15 border-amberGlow/30 text-amberGlow';
+        'px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-amberGlow/15 border-amberGlow/30 text-amberGlow';
     }
   }
 
@@ -1831,11 +1968,32 @@ function updateStage1TelemetryUI() {
 
 function mountStage2Intuition(container) {
   const on = isMechatronicsLens();
+  const stats = getMasterySnapshot();
+  let activeSubTab = 'lab'; // 'lab' | 'quiz' on mobile (<lg)
+
   container.innerHTML = `
-    <section class="space-y-6 view-enter">
+    <section class="space-y-3 lg:space-y-6 view-enter">
+      <!-- Mobile Segmented Sub-Tab Switcher (<lg) so Explorer & Visual Quiz never force long vertical scrolling -->
+      <div class="lg:hidden grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[#0E121C]/90 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+        <button
+          type="button"
+          data-stage2-subtab="lab"
+          class="py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer bg-cyanGlow/20 border border-cyanGlow/45 text-cyan-100 shadow-sm"
+        >
+          📈 3-Graph Explorer
+        </button>
+        <button
+          type="button"
+          data-stage2-subtab="quiz"
+          class="py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer border border-transparent text-slate-300 hover:text-white"
+        >
+          🎯 Match Quiz (${stats.solvedVisual}/${stats.totalVisual})
+        </button>
+      </div>
+
       <!-- Stacked Interactive Curve Lab -->
-      <div class="glass-panel p-5 sm:p-6 space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-3">
+      <div id="stage2-panel-lab" class="glass-panel p-2.5 sm:p-5 lg:p-6 space-y-2.5 sm:space-y-4">
+        <div class="hidden sm:flex flex-wrap items-center justify-between gap-3">
           <div>
             <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-cyanGlow">Interactive Dual-Graph Lab</div>
             <h2 id="stage2-lab-title" class="font-display font-bold text-xl text-white mt-0.5">
@@ -1850,12 +2008,22 @@ function mountStage2Intuition(container) {
           </span>
         </div>
 
-        <div id="stacked-derivative-lab-host" class="w-full min-h-[380px]"></div>
+        <div id="stacked-derivative-lab-host" class="w-full min-h-[300px] sm:min-h-[380px]"></div>
+
+        <div class="lg:hidden flex justify-end pt-0.5">
+          <button
+            type="button"
+            id="btn-mobile-jump-quiz"
+            class="btn-glow-cyan !py-2 !px-3.5 !text-xs !rounded-xl w-full"
+          >
+            Test Your Intuition: Match the Derivative Quiz →
+          </button>
+        </div>
       </div>
 
       <!-- Visual "Match the Derivative" Quiz Engine -->
-      <div class="glass-panel p-5 sm:p-6 space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-3">
+      <div id="stage2-panel-quiz" class="hidden lg:block glass-panel p-2.5 sm:p-5 lg:p-6 space-y-2.5 sm:space-y-4">
+        <div class="hidden sm:flex flex-wrap items-center justify-between gap-3">
           <div>
             <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-violetGlow">Visual Pattern Mastery</div>
             <h2 class="font-display font-bold text-xl text-white mt-0.5">Match the Derivative Challenges</h2>
@@ -1872,10 +2040,54 @@ function mountStage2Intuition(container) {
           </button>
         </div>
 
-        <div id="visual-quiz-engine-host" class="w-full min-h-[320px]"></div>
+        <div id="visual-quiz-engine-host" class="w-full min-h-[280px] sm:min-h-[320px]"></div>
       </div>
     </section>
   `;
+
+  const panelLab = document.getElementById('stage2-panel-lab');
+  const panelQuiz = document.getElementById('stage2-panel-quiz');
+  const setSubTab = (tab) => {
+    activeSubTab = tab;
+    if (panelLab && panelQuiz) {
+      panelLab.classList.toggle('hidden', tab !== 'lab');
+      panelLab.classList.add('lg:block');
+      panelQuiz.classList.toggle('hidden', tab !== 'quiz');
+      panelQuiz.classList.add('lg:block');
+    }
+    container.querySelectorAll('[data-stage2-subtab]').forEach((btn) => {
+      const isAct = btn.getAttribute('data-stage2-subtab') === tab;
+      btn.className = isAct
+        ? 'py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer bg-cyanGlow/20 border border-cyanGlow/45 text-cyan-100 shadow-sm'
+        : 'py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer border border-transparent text-slate-300 hover:text-white';
+    });
+    // Force crisp high-DPI canvas redraw immediately after un-hiding on mobile
+    requestAnimationFrame(() => {
+      if (tab === 'lab') {
+        activeInstances.stackedLab?._resizeAll?.();
+        activeInstances.stackedLab?._drawAll?.();
+      } else {
+        activeInstances.quizEngine?._resizeCanvases?.();
+        activeInstances.quizEngine?._drawCanvases?.();
+      }
+      window.dispatchEvent(new Event('resize'));
+    });
+  };
+
+  container.querySelectorAll('[data-stage2-subtab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const next = btn.getAttribute('data-stage2-subtab');
+      if (next && next !== activeSubTab) {
+        playSfx('tick');
+        setSubTab(next);
+      }
+    });
+  });
+
+  document.getElementById('btn-mobile-jump-quiz')?.addEventListener('click', () => {
+    playSfx('tick');
+    setSubTab('quiz');
+  });
 
   const labHost = document.getElementById('stacked-derivative-lab-host');
   if (labHost && typeof StackedDerivativeLab === 'function') {
@@ -1894,20 +2106,28 @@ function mountStage2Intuition(container) {
   const quizHost = document.getElementById('visual-quiz-engine-host');
   if (quizHost && typeof VisualQuizEngine === 'function') {
     try {
+      const updateQuizTabCount = () => {
+        const s = getMasterySnapshot();
+        const quizBtn = container.querySelector('[data-stage2-subtab="quiz"]');
+        if (quizBtn) quizBtn.textContent = `🎯 Match Quiz (${s.solvedVisual}/${s.totalVisual})`;
+      };
       activeInstances.quizEngine = new VisualQuizEngine(quizHost, {
         mechatronicsLens: isMechatronicsLens(),
         lens: isMechatronicsLens() ? 'mechatronics' : 'math',
         onAnswer: () => {
           markStageDone('intuition');
           updateLessonStageDotsUI();
+          updateQuizTabCount();
         },
         onProgress: () => {
           markStageDone('intuition');
           updateLessonStageDotsUI();
+          updateQuizTabCount();
         },
         onComplete: () => {
           markStageDone('intuition');
           updateLessonStageDotsUI();
+          updateQuizTabCount();
         },
       });
     } catch (err) {
@@ -1927,8 +2147,8 @@ function mountStage2Intuition(container) {
 
 function mountStage3Solver(container) {
   container.innerHTML = `
-    <section class="max-w-4xl mx-auto space-y-5 view-enter">
-      <div class="flex flex-wrap items-center justify-between gap-3">
+    <section class="max-w-4xl mx-auto space-y-3 sm:space-y-5 view-enter">
+      <div class="hidden md:flex flex-wrap items-center justify-between gap-3">
         <div>
           <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-emeraldGlow">Interactive Symbolic Drill</div>
           <h2 class="font-display font-bold text-2xl text-white mt-0.5">Paperless Step-by-Step Derivative Solver</h2>
@@ -1946,7 +2166,7 @@ function mountStage3Solver(container) {
         </button>
       </div>
 
-      <div id="paperless-solver-host" class="glass-panel p-4 sm:p-6 min-h-[460px]"></div>
+      <div id="paperless-solver-host" class="glass-panel p-2.5 sm:p-5 md:p-6 min-h-[420px]"></div>
     </section>
   `;
 

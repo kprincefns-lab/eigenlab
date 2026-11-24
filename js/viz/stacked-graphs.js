@@ -945,14 +945,14 @@ export class StackedDerivativeLab {
     // --- Top Control Strip ---
     const topBar = document.createElement('div');
     topBar.className =
-      'px-3.5 py-3 border-b border-slate-800/80 bg-[#0F131C]/90 flex flex-col gap-2.5';
+      'px-2.5 py-2 sm:px-3.5 sm:py-3 border-b border-slate-800/80 bg-[#0F131C]/90 flex flex-col gap-1.5 sm:gap-2.5';
 
     // Row 1: Function selector pills + live badges
     const row1 = document.createElement('div');
-    row1.className = 'flex flex-wrap items-center justify-between gap-2.5';
+    row1.className = 'flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-1.5 sm:gap-2.5';
 
     const pillGroup = document.createElement('div');
-    pillGroup.className = 'flex flex-wrap items-center gap-1.5';
+    pillGroup.className = 'flex items-center gap-1.5 overflow-x-auto no-scrollbar sm:flex-wrap pb-0.5 sm:pb-0';
     this._fnButtons.clear();
 
     for (const preset of this._presets) {
@@ -960,7 +960,7 @@ export class StackedDerivativeLab {
       btn.type = 'button';
       btn.dataset.fnKey = preset.key;
       btn.className =
-        'el-sg-pill px-2.5 py-1 rounded-full text-xs font-medium border cursor-pointer';
+        'el-sg-pill shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-medium border cursor-pointer';
       btn.textContent = preset.label;
       btn.addEventListener(
         'click',
@@ -975,19 +975,19 @@ export class StackedDerivativeLab {
     }
 
     const badgesWrap = document.createElement('div');
-    badgesWrap.className = 'flex flex-wrap items-center gap-1.5';
+    badgesWrap.className = 'flex flex-wrap items-center gap-1 sm:gap-1.5';
 
     const cursorBadge = document.createElement('span');
     cursorBadge.className =
-      'px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold bg-slate-900/90 border border-slate-700/80 text-slate-200';
+      'px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold bg-slate-900/90 border border-slate-700/80 text-slate-200';
 
     const slopeBadge = document.createElement('span');
     slopeBadge.className =
-      'px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors';
+      'px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-semibold border transition-colors';
 
     const curvBadge = document.createElement('span');
     curvBadge.className =
-      'px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors';
+      'px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-semibold border transition-colors';
 
     badgesWrap.append(cursorBadge, slopeBadge, curvBadge);
     this._badgeEls = { cursorBadge, slopeBadge, curvBadge };
@@ -996,7 +996,7 @@ export class StackedDerivativeLab {
 
     // Row 2: Active equation & interactive scrub hint
     const row2 = document.createElement('div');
-    row2.className = 'flex flex-wrap items-center justify-between gap-2 text-xs';
+    row2.className = 'hidden sm:flex flex-wrap items-center justify-between gap-2 text-xs';
 
     const formulaEl = document.createElement('div');
     formulaEl.className = 'text-cyan-200/95 font-medium flex items-center gap-2';
@@ -1016,7 +1016,11 @@ export class StackedDerivativeLab {
     stackWrap.tabIndex = 0;
     stackWrap.setAttribute('aria-label', 'Synchronized derivative graphs; drag or use arrow keys to scrub');
 
-    const panelHeights = [176, 158, 148];
+    const panelHeightClasses = [
+      'h-[104px] sm:h-[176px]',
+      'h-[96px] sm:h-[158px]',
+      'h-[92px] sm:h-[148px]',
+    ];
     const panelDots = [COLORS.cyan, COLORS.violet, COLORS.amber];
     this._canvases = [];
     this._ctxs = [];
@@ -1028,10 +1032,10 @@ export class StackedDerivativeLab {
 
       const header = document.createElement('div');
       header.className =
-        'px-3.5 py-1.5 flex items-center justify-between gap-2 bg-[#0E121B]/95 border-b border-slate-800/50';
+        'px-2.5 py-1 sm:px-3.5 sm:py-1.5 flex items-center justify-between gap-2 bg-[#0E121B]/95 border-b border-slate-800/50';
 
       const titleWrap = document.createElement('div');
-      titleWrap.className = 'flex items-center gap-2 min-w-0';
+      titleWrap.className = 'flex items-center gap-1.5 sm:gap-2 min-w-0';
 
       const dot = document.createElement('span');
       dot.className = 'w-2 h-2 rounded-full shrink-0';
@@ -1039,24 +1043,22 @@ export class StackedDerivativeLab {
       dot.style.boxShadow = `0 0 8px ${panelDots[i]}`;
 
       const titleEl = document.createElement('span');
-      titleEl.className = 'text-xs font-semibold tracking-tight text-slate-200 truncate';
+      titleEl.className = 'text-[11px] sm:text-xs font-semibold tracking-tight text-slate-200 truncate';
 
       titleWrap.append(dot, titleEl);
 
       const readoutEl = document.createElement('span');
       readoutEl.className =
-        'px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-slate-900/90 border border-slate-800 text-slate-100 shrink-0';
+        'px-1.5 py-0.5 sm:px-2 rounded-md text-[10px] sm:text-[11px] font-mono font-semibold bg-slate-900/90 border border-slate-800 text-slate-100 shrink-0';
 
       header.append(titleWrap, readoutEl);
       panel.appendChild(header);
 
       const canvasWrap = document.createElement('div');
-      canvasWrap.className = 'relative w-full cursor-ew-resize';
-      canvasWrap.style.height = `${panelHeights[i]}px`;
+      canvasWrap.className = `relative w-full cursor-ew-resize ${panelHeightClasses[i]}`;
 
       const canvas = document.createElement('canvas');
       canvas.className = 'el-sg-canvas h-full';
-      canvas.style.height = `${panelHeights[i]}px`;
       canvasWrap.appendChild(canvas);
       panel.appendChild(canvasWrap);
 
@@ -1064,7 +1066,7 @@ export class StackedDerivativeLab {
 
       this._canvases.push(canvas);
       this._ctxs.push(canvas.getContext('2d'));
-      this._sizes[i] = { w: 0, h: panelHeights[i] };
+      this._sizes[i] = { w: 0, h: 100 };
       this._panelMetaEls.push({ titleEl, readoutEl, canvasWrap });
 
       this._bindCanvasPointerEvents(canvas, signal);
@@ -2197,20 +2199,20 @@ export class VisualQuizEngine {
     // --- 1. Header & Challenge Stepper ---
     const header = document.createElement('div');
     header.className =
-      'px-4 py-3 border-b border-slate-800/80 bg-[#0F131C]/90 flex flex-wrap items-center justify-between gap-3';
+      'px-3 py-2 sm:px-4 sm:py-3 border-b border-slate-800/80 bg-[#0F131C]/90 flex flex-wrap items-center justify-between gap-2 sm:gap-3';
 
     const titleBlock = document.createElement('div');
-    titleBlock.className = 'flex items-center gap-2.5';
+    titleBlock.className = 'flex items-center gap-2 min-w-0';
     titleBlock.innerHTML = `
-      <span class="px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold uppercase tracking-wider bg-violet-500/15 border border-violet-400/35 text-violet-300">
+      <span class="hidden sm:inline-flex px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold uppercase tracking-wider bg-violet-500/15 border border-violet-400/35 text-violet-300">
         Match the Derivative
       </span>
-      <span class="text-sm font-semibold text-slate-100">${escapeHtml(ch.title)}</span>
+      <span class="text-xs sm:text-sm font-semibold text-slate-100 truncate">${escapeHtml(ch.title)}</span>
       <span class="hidden sm:inline text-xs font-mono text-slate-400">${this._currentIndex + 1} / ${this._challenges.length}</span>
     `;
 
     const stepper = document.createElement('div');
-    stepper.className = 'flex items-center gap-1.5';
+    stepper.className = 'flex items-center gap-1 sm:gap-1.5 shrink-0';
 
     this._challenges.forEach((item, idx) => {
       const isSolved = this._solvedIds.has(item.id);
@@ -2219,7 +2221,7 @@ export class VisualQuizEngine {
       stepBtn.type = 'button';
       stepBtn.title = `${idx + 1}. ${item.title}`;
       stepBtn.className =
-        'el-sg-pill w-7 h-7 rounded-full text-xs font-mono font-semibold flex items-center justify-center border cursor-pointer ' +
+        'el-sg-pill w-6 h-6 sm:w-7 sm:h-7 rounded-full text-[11px] sm:text-xs font-mono font-semibold flex items-center justify-center border cursor-pointer ' +
         (isActive
           ? isSolved
             ? 'bg-emerald-400/20 border-emerald-400 text-emerald-200 shadow-[0_0_12px_rgba(52,211,153,0.35)]'
@@ -2244,7 +2246,7 @@ export class VisualQuizEngine {
 
     const solvedPill = document.createElement('span');
     solvedPill.className =
-      'ml-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-slate-900 border border-slate-800 text-emerald-300';
+      'ml-0.5 sm:ml-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold bg-slate-900 border border-slate-800 text-emerald-300';
     solvedPill.textContent = `${this._solvedIds.size}/${this._challenges.length}`;
     stepper.appendChild(solvedPill);
 
@@ -2253,13 +2255,13 @@ export class VisualQuizEngine {
 
     // --- 2. Prompt & Target Curve Canvas ---
     const body = document.createElement('div');
-    body.className = 'p-4 flex flex-col gap-4';
+    body.className = 'p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-4';
 
     const promptBox = document.createElement('div');
-    promptBox.className = 'flex flex-col gap-2';
+    promptBox.className = 'flex flex-col gap-1.5 sm:gap-2';
 
     const promptText = document.createElement('p');
-    promptText.className = 'text-sm sm:text-[15px] leading-relaxed text-slate-200';
+    promptText.className = 'text-xs sm:text-[15px] leading-snug sm:leading-relaxed text-slate-200';
     promptText.innerHTML = formatInlineMath(this.mechatronicsLens ? ch.promptMech : ch.promptMath);
     promptBox.appendChild(promptText);
 
@@ -2270,25 +2272,23 @@ export class VisualQuizEngine {
 
     const targetTopBar = document.createElement('div');
     targetTopBar.className =
-      'px-3 py-1.5 bg-[#0E121B]/95 border-b border-slate-800/60 flex items-center justify-between gap-2';
+      'px-2.5 py-1 sm:px-3 sm:py-1.5 bg-[#0E121B]/95 border-b border-slate-800/60 flex items-center justify-between gap-2';
 
     const targetFormula = this.mechatronicsLens ? ch.targetFormulaMech : ch.targetFormulaMath;
     targetTopBar.innerHTML = `
-      <span class="inline-flex items-center gap-2 text-xs font-semibold text-cyan-200">
+      <span class="inline-flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-semibold text-cyan-200">
         <span class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22D3EE]"></span>
         ${this.mechatronicsLens ? 'Given Signal' : 'Given Function'}
       </span>
-      <span class="text-xs text-slate-200">${formatKatex(targetFormula, false)}</span>
+      <span class="text-[11px] sm:text-xs text-slate-200">${formatKatex(targetFormula, false)}</span>
     `;
     targetFrame.appendChild(targetTopBar);
 
     const targetCanvasWrap = document.createElement('div');
-    targetCanvasWrap.className = 'relative w-full';
-    targetCanvasWrap.style.height = '196px';
+    targetCanvasWrap.className = 'relative w-full h-[126px] sm:h-[196px]';
 
     const targetCanvas = document.createElement('canvas');
     targetCanvas.className = 'el-sg-canvas h-full';
-    targetCanvas.style.height = '196px';
     targetCanvasWrap.appendChild(targetCanvas);
     targetFrame.appendChild(targetCanvasWrap);
 
@@ -2299,9 +2299,9 @@ export class VisualQuizEngine {
     promptBox.appendChild(targetFrame);
     body.appendChild(promptBox);
 
-    // --- 3. Three Tactile Glass Option Cards (A, B, C) ---
+    // --- 3. Three Tactile Glass Option Cards (A, B, C) Side-by-Side Even on Mobile ---
     const optionsGrid = document.createElement('div');
-    optionsGrid.className = 'grid grid-cols-1 md:grid-cols-3 gap-3';
+    optionsGrid.className = 'grid grid-cols-3 gap-1.5 sm:gap-3';
 
     ch.options.forEach((opt, optIdx) => {
       const card = document.createElement('button');
@@ -2321,7 +2321,7 @@ export class VisualQuizEngine {
 
       const cardHeader = document.createElement('div');
       cardHeader.className =
-        'px-3 py-2 border-b border-slate-800/60 flex items-center justify-between gap-2 bg-[#0E121B]/90';
+        'px-2 py-1 sm:px-3 sm:py-2 border-b border-slate-800/60 flex items-center justify-between gap-1 bg-[#0E121B]/90';
 
       const badgeColor =
         solved && opt.isCorrect
@@ -2332,29 +2332,27 @@ export class VisualQuizEngine {
 
       const rightBadge =
         solved && opt.isCorrect
-          ? `<span class="text-[11px] font-semibold text-emerald-300">✓ Match</span>`
+          ? `<span class="text-[10px] sm:text-[11px] font-semibold text-emerald-300">✓<span class="hidden sm:inline"> Match</span></span>`
           : solved
-          ? `<span class="text-[10px] font-mono text-slate-500">Distractor</span>`
-          : `<span class="text-[10px] font-mono text-slate-400">Select</span>`;
+          ? `<span class="hidden sm:inline text-[10px] font-mono text-slate-500">Distractor</span>`
+          : `<span class="hidden sm:inline text-[10px] font-mono text-slate-400">Select</span>`;
 
       cardHeader.innerHTML = `
-        <span class="inline-flex items-center gap-2">
+        <span class="inline-flex items-center gap-1.5 sm:gap-2">
           <span class="w-5 h-5 rounded-md text-[11px] font-mono font-bold border flex items-center justify-center ${badgeColor}">
             ${opt.letter}
           </span>
-          <span class="text-xs font-medium text-slate-300">Candidate ${opt.letter}</span>
+          <span class="hidden sm:inline text-xs font-medium text-slate-300">Candidate ${opt.letter}</span>
         </span>
         ${rightBadge}
       `;
       card.appendChild(cardHeader);
 
       const canvasWrap = document.createElement('div');
-      canvasWrap.className = 'relative w-full bg-[#0B0D12]';
-      canvasWrap.style.height = '136px';
+      canvasWrap.className = 'relative w-full bg-[#0B0D12] h-[86px] sm:h-[136px]';
 
       const canvas = document.createElement('canvas');
       canvas.className = 'el-sg-canvas h-full';
-      canvas.style.height = '136px';
       canvasWrap.appendChild(canvas);
       card.appendChild(canvasWrap);
 
@@ -2629,11 +2627,13 @@ export class VisualQuizEngine {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       const [yMin, yMax] = computeYBounds(opt.fn, xMin, xMax, true);
-      const map = createPlotMapper(size.w, size.h, QUIZ_OPTION_PAD, xMin, xMax, yMin, yMax);
+      const isNarrow = size.w < 175;
+      const optPad = isNarrow ? { left: 8, right: 8, top: 8, bottom: 10 } : QUIZ_OPTION_PAD;
+      const map = createPlotMapper(size.w, size.h, optPad, xMin, xMax, yMin, yMax);
 
       drawEngineeringGrid(ctx, size.w, size.h, map, xMin, xMax, yMin, yMax, {
-        showXLabels: true,
-        showYLabels: true,
+        showXLabels: !isNarrow,
+        showYLabels: !isNarrow,
         compact: true,
       });
 
