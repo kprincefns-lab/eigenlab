@@ -1190,8 +1190,12 @@ code, pre, kbd, .font-mono {
   }
 
   .katex-hero {
-    padding: 0.7rem 0.85rem;
-    font-size: 0.96rem;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .katex-hero .katex {
+    font-size: 0.96em;
   }
 
   .math-tile {

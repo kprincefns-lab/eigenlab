@@ -5,9 +5,9 @@
 
 const STORAGE_KEY = 'eigenlab_state_v1';
 
-const TOTAL_STAGES = 16;
-const TARGET_PROBLEMS = 60;
-const TARGET_QUIZZES = 26;
+const TOTAL_STAGES = 20;
+const TARGET_PROBLEMS = 74;
+const TARGET_QUIZZES = 32;
 
 const DEFAULT_STATE = Object.freeze({
   completedStages: [],

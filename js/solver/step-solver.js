@@ -1,5 +1,5 @@
 /**
- * EIGENLAB — Paperless Multi-Step Symbolic Solver (Derivatives, Integrals, Diff Eq / Laplace & Linear Algebra)
+ * EIGENLAB — Paperless Multi-Step Symbolic Solver (Derivatives, Integrals, Diff Eq / Laplace, Linear Algebra & PID Control)
  * Zero scratch paper required: every completed micro-step locks into a persistent
  * Working Step Ledger directly above tactile KaTeX choice tiles, culminating in
  * a high-DPI interactive numerical or geometric verification plot.
@@ -18,6 +18,10 @@ import {
   LINALG_PROBLEMS,
   LINALG_SOLVER_TIERS,
 } from '../../data/lessons/linalg-problems.js';
+import {
+  PID_PROBLEMS,
+  PID_SOLVER_TIERS,
+} from '../../data/lessons/pid-problems.js';
 import { store, sound, renderKatex, renderInlineMathText } from '../store.js';
 
 const CHEAT_SHEET_RULES = [
@@ -200,6 +204,51 @@ const LINALG_CHEAT_SHEET_RULES = [
   },
 ];
 
+const PID_CHEAT_SHEET_RULES = [
+  {
+    name: 'Closed-Loop TF',
+    tag: 'Unity Feedback',
+    latex:
+      'T(s) = \\frac{\\textcolor{#22D3EE}{L(s)}}{1 + \\textcolor{#22D3EE}{L(s)}}, \\qquad S(s) = \\frac{E(s)}{R(s)} = \\textcolor{#34D399}{\\frac{1}{1 + \\textcolor{#22D3EE}{L(s)}}}',
+  },
+  {
+    name: 'Parallel PID Form',
+    tag: 'P + I + D',
+    latex:
+      'C(s) = \\textcolor{#22D3EE}{K_p} + \\frac{\\textcolor{#F59E0B}{K_i}}{s} + \\textcolor{#34D399}{K_d}\\,s = \\frac{\\textcolor{#34D399}{K_d}s^2 + \\textcolor{#22D3EE}{K_p}s + \\textcolor{#F59E0B}{K_i}}{s}',
+  },
+  {
+    name: 'Final Value Theorem',
+    tag: 'LHP Poles Only',
+    latex:
+      'e_{ss} = \\lim_{s\\to 0} s\\,E(s), \\;\; e_{\\text{step}} = \\textcolor{#34D399}{\\frac{1}{1+K_p^{\\text{pos}}}}, \\;\; e_{\\text{ramp}} = \\textcolor{#34D399}{\\frac{1}{K_v}}',
+  },
+  {
+    name: '2nd-Order Specs',
+    tag: 'ωn, ζ, ωd, Ts',
+    latex:
+      's^2 + 2\\textcolor{#F59E0B}{\\zeta}\\textcolor{#22D3EE}{\\omega_n}s + \\textcolor{#22D3EE}{\\omega_n}^2, \\;\; \\omega_d = \\textcolor{#34D399}{\\omega_n\\sqrt{1-\\zeta^2}}, \\;\; T_s \\approx \\textcolor{#34D399}{\\frac{4}{\\zeta\\omega_n}}',
+  },
+  {
+    name: 'Routh-Hurwitz 3rd-Order',
+    tag: 'All LHP Roots',
+    latex:
+      's^3 + \\textcolor{#22D3EE}{a_2}s^2 + \\textcolor{#22D3EE}{a_1}s + \\textcolor{#F59E0B}{a_0} = 0 \\iff a_i > 0,\\; \\textcolor{#34D399}{a_2 a_1 > a_0}',
+  },
+  {
+    name: 'Ziegler-Nichols PID',
+    tag: 'Ku & Tu Tuning',
+    latex:
+      '\\textcolor{#34D399}{K_p = 0.6K_u}, \\quad \\textcolor{#22D3EE}{T_i = 0.5T_u}, \\quad \\textcolor{#F59E0B}{T_d = 0.125T_u}',
+  },
+  {
+    name: 'Phase & Delay Margin',
+    tag: 'Bode Robustness',
+    latex:
+      '\\textcolor{#34D399}{\\text{PM}} = 180^\\circ + \\angle L(j\\textcolor{#22D3EE}{\\omega_{gc}}), \\qquad \\textcolor{#F59E0B}{\\tau_{\\max}} = \\frac{\\text{PM}_{\\text{rad}}}{\\textcolor{#22D3EE}{\\omega_{gc}}}',
+  },
+];
+
 function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
@@ -247,6 +296,37 @@ function numericalLaplace(fn, s) {
   return (h / 3) * sum;
 }
 
+function solveMonicCubicRoots(a2, a1, a0) {
+  // Solve s^3 + a2*s^2 + a1*s + a0 = 0 for a0 > 0 via guaranteed negative real root bisection + deflation
+  const evalPoly = (s) => ((s + a2) * s + a1) * s + a0;
+  let lo = -Math.max(Math.abs(a2) + 2, Math.cbrt(Math.abs(a0) + 1) + Math.abs(a2) + 2);
+  let hi = 0;
+  while (evalPoly(lo) > 0 && lo > -1e6) lo *= 2;
+  for (let i = 0; i < 52; i++) {
+    const mid = 0.5 * (lo + hi);
+    if (evalPoly(mid) > 0) hi = mid;
+    else lo = mid;
+  }
+  const r1 = 0.5 * (lo + hi);
+  const b = a2 + r1;
+  const c = a1 + b * r1;
+  const disc = b * b - 4 * c;
+  if (disc >= 0) {
+    const sq = Math.sqrt(disc);
+    return [
+      { re: r1, im: 0 },
+      { re: 0.5 * (-b + sq), im: 0 },
+      { re: 0.5 * (-b - sq), im: 0 },
+    ];
+  }
+  const im = 0.5 * Math.sqrt(-disc);
+  return [
+    { re: r1, im: 0 },
+    { re: -0.5 * b, im },
+    { re: -0.5 * b, im: -im },
+  ];
+}
+
 export class PaperlessStepSolver {
   /**
    * Supports both calling conventions:
@@ -268,7 +348,9 @@ export class PaperlessStepSolver {
           ? 'diffeq'
           : options.mode === 'linalg'
             ? 'linalg'
-            : 'derivatives';
+            : options.mode === 'pid'
+              ? 'pid'
+              : 'derivatives';
     this.problems =
       Array.isArray(options.problems) && options.problems.length
         ? options.problems
@@ -278,7 +360,9 @@ export class PaperlessStepSolver {
             ? DIFFEQ_PROBLEMS
             : this.mode === 'linalg'
               ? LINALG_PROBLEMS
-              : DERIVATIVE_PROBLEMS;
+              : this.mode === 'pid'
+                ? PID_PROBLEMS
+                : DERIVATIVE_PROBLEMS;
     this.tiers =
       Array.isArray(options.tiers) && options.tiers.length
         ? options.tiers
@@ -288,7 +372,9 @@ export class PaperlessStepSolver {
             ? DIFFEQ_SOLVER_TIERS
             : this.mode === 'linalg'
               ? LINALG_SOLVER_TIERS
-              : SOLVER_TIERS;
+              : this.mode === 'pid'
+                ? PID_SOLVER_TIERS
+                : SOLVER_TIERS;
     this.cheatSheetRules =
       this.mode === 'integrals'
         ? INTEGRAL_CHEAT_SHEET_RULES
@@ -296,7 +382,9 @@ export class PaperlessStepSolver {
           ? DIFFEQ_CHEAT_SHEET_RULES
           : this.mode === 'linalg'
             ? LINALG_CHEAT_SHEET_RULES
-            : CHEAT_SHEET_RULES;
+            : this.mode === 'pid'
+              ? PID_CHEAT_SHEET_RULES
+              : CHEAT_SHEET_RULES;
 
     this.mechatronicsLens = Boolean(
       options.mechatronicsLens ?? options.lens === 'mechatronics'
@@ -441,6 +529,10 @@ export class PaperlessStepSolver {
     return this.mode === 'linalg';
   }
 
+  _isPidMode() {
+    return this.mode === 'pid';
+  }
+
   _isLaplaceForward(problem) {
     return this._isDiffEqMode() && problem?.verifyKind === 'laplace-forward';
   }
@@ -450,6 +542,10 @@ export class PaperlessStepSolver {
   }
 
   _getDefaultVerifyCursorX(problem) {
+    if (this._isPidMode()) {
+      const def = problem?.verifyPlot?.defaultCursor;
+      return Number.isFinite(def) ? def : 0.56;
+    }
     if (this._isLinAlgMode() || !Array.isArray(problem?.domain)) {
       return 1;
     }
@@ -737,6 +833,7 @@ export class PaperlessStepSolver {
     const isIntegral = this._isIntegralMode();
     const isDiffEq = this._isDiffEqMode();
     const isLinAlg = this._isLinAlgMode();
+    const isPid = this._isPidMode();
     const solvedSet = this._getSolvedSet();
     const totalSolved = this.problems.filter((p) => solvedSet.has(p.id)).length;
     const totalProblems = this.problems.length;
@@ -745,41 +842,51 @@ export class PaperlessStepSolver {
     const globalIndex = this.problems.findIndex((p) => p.id === problem.id);
     const problemIsSolved = solvedSet.has(problem.id);
 
-    const cheatTitle = isLinAlg
-      ? 'Linear Algebra Reference'
-      : isDiffEq
-        ? 'ODE & Laplace Reference'
-        : isIntegral
-          ? 'Integration Formula Reference'
-          : 'Differentiation Formula Reference';
-    const targetHeaderLabel = isLinAlg
-      ? 'Solve Linear Algebra'
-      : isDiffEq
-        ? 'Solve the ODE / Laplace'
-        : isIntegral
-          ? 'Evaluate the Integral'
-          : 'Differentiate w.r.t. x';
-    const legendCyan = isLinAlg
-      ? 'Cyan: Primary / A / u'
-      : isDiffEq
-        ? 'Cyan: y / P(t) / f(t)'
-        : isIntegral
-          ? 'Cyan: u / Factor A'
-          : 'Cyan: Outer / u';
-    const legendAmber = isLinAlg
-      ? 'Amber: Secondary / λ / b'
-      : isDiffEq
-        ? 'Amber: t / Q(t) / IC'
-        : isIntegral
-          ? 'Amber: dv / Factor B'
-          : 'Amber: Inner / v';
-    const legendEmerald = isLinAlg
-      ? 'Emerald: Result / Eigen / Fit'
-      : isDiffEq
-        ? 'Emerald: Solution / F(s)'
-        : isIntegral
-          ? 'Emerald: Antideriv'
-          : 'Emerald: Deriv';
+    const cheatTitle = isPid
+      ? 'Control & PID Reference'
+      : isLinAlg
+        ? 'Linear Algebra Reference'
+        : isDiffEq
+          ? 'ODE & Laplace Reference'
+          : isIntegral
+            ? 'Integration Formula Reference'
+            : 'Differentiation Formula Reference';
+    const targetHeaderLabel = isPid
+      ? 'SOLVE CONTROL & PID'
+      : isLinAlg
+        ? 'Solve Linear Algebra'
+        : isDiffEq
+          ? 'Solve the ODE / Laplace'
+          : isIntegral
+            ? 'Evaluate the Integral'
+            : 'Differentiate w.r.t. x';
+    const legendCyan = isPid
+      ? 'Cyan: Plant G(s) / Loop L(s)'
+      : isLinAlg
+        ? 'Cyan: Primary / A / u'
+        : isDiffEq
+          ? 'Cyan: y / P(t) / f(t)'
+          : isIntegral
+            ? 'Cyan: u / Factor A'
+            : 'Cyan: Outer / u';
+    const legendAmber = isPid
+      ? 'Amber: Gain / Spec / Delay'
+      : isLinAlg
+        ? 'Amber: Secondary / λ / b'
+        : isDiffEq
+          ? 'Amber: t / Q(t) / IC'
+          : isIntegral
+            ? 'Amber: dv / Factor B'
+            : 'Amber: Inner / v';
+    const legendEmerald = isPid
+      ? 'Emerald: Closed-Loop / Margin'
+      : isLinAlg
+        ? 'Emerald: Result / Eigen / Fit'
+        : isDiffEq
+          ? 'Emerald: Solution / F(s)'
+          : isIntegral
+            ? 'Emerald: Antideriv'
+            : 'Emerald: Deriv';
 
     const tierPillsHtml = this.tiers.map((tier) => {
       const list =
@@ -1338,165 +1445,255 @@ export class PaperlessStepSolver {
     };
   }
 
+  _getPidVerifyMeta(problem) {
+    const vp = problem?.verifyPlot || {};
+    const kind = vp.kind || 'step-compare';
+    const dot = (cls, label, dashed = false) =>
+      dashed
+        ? `<span class="inline-flex items-center gap-1 ${cls}"><span class="w-3 h-0 border-t-2 border-dashed border-current inline-block"></span>${escapeHtml(label)}</span>`
+        : `<span class="inline-flex items-center gap-1 ${cls}"><span class="w-2.5 h-0.5 rounded bg-current inline-block"></span>${escapeHtml(label)}</span>`;
+
+    let legendHtml = '';
+    let defaultSubtitle = '';
+    let defaultDomain = '';
+    let canvasAria = '';
+
+    if (kind === 'step-compare') {
+      legendHtml =
+        dot('text-emerald-300', vp.primaryLabel || 'Closed-Loop y(t)') +
+        (vp.baselineLabel ? dot('text-cyan-300', vp.baselineLabel, true) : '') +
+        dot('text-amber-300', vp.setpointLabel || 'Setpoint r = 1', true);
+      defaultSubtitle =
+        'Hover or drag across time $t$ to inspect the closed-loop transient response and steady-state behavior.';
+      defaultDomain = 'Step Response · Time Domain';
+      canvasAria = 'Interactive closed-loop step response comparison plot';
+    } else if (kind === 'ramp-track') {
+      legendHtml =
+        dot('text-amber-300', 'Unit Ramp r(t) = t', true) +
+        dot('text-emerald-300', 'System Output y(t)') +
+        dot('text-cyan-300', 'Lag e(t) → 1/Kv', true);
+      defaultSubtitle =
+        'Hover or drag across time $t$ to verify the Type-1 servo tracking a unit ramp with constant steady-state lag $1/K_v$.';
+      defaultDomain = 'Ramp Tracking · Constant Lag = 1/Kv';
+      canvasAria = 'Interactive unit ramp tracking plot showing steady-state lag 1/Kv';
+    } else if (kind === 'pole-map') {
+      const hasZeros = Array.isArray(vp.zeros) && vp.zeros.length > 0;
+      legendHtml =
+        dot('text-emerald-300', hasZeros ? 'LHP Zeros (○)' : 'Stable LHP Poles (×)') +
+        dot('text-amber-300', 'jω Boundary (×)') +
+        (vp.gainSweep || !hasZeros ? dot('text-rose-300', 'Unstable RHP (σ > 0)') : '');
+      defaultSubtitle =
+        'Complex $s$-plane verification showing left half-plane stability, imaginary-axis boundaries, and unstable right half-plane modes.';
+      defaultDomain = 'Complex s-Plane · σ + jω';
+      canvasAria = 'Complex s-plane pole-zero and Routh stability verification map';
+    } else {
+      // 'bode-margin'
+      const hasDelay = typeof vp.delayedPhaseDegFn === 'function';
+      legendHtml =
+        dot('text-cyan-300', hasDelay ? 'Mag |L| & Nom ∠L' : 'Magnitude |L(jω)| dB') +
+        dot('text-emerald-300', hasDelay ? 'PM Reserve' : 'Phase ∠L(jω) & PM') +
+        (hasDelay ? dot('text-amber-300', 'Delayed ∠L − ωτ') : '') +
+        dot('text-rose-300', '−180° Limit', true);
+      defaultSubtitle =
+        'Hover or drag across frequency $\\omega$ to inspect the Bode magnitude crossover $\\omega_{gc}$ and phase margin above $-180^\\circ$.';
+      defaultDomain = 'Bode Magnitude & Phase · Log ω';
+      canvasAria = 'Interactive Bode magnitude and phase plot marking gain crossover and phase margin';
+    }
+
+    const metrics = Array.isArray(vp.metrics) ? vp.metrics : [];
+    return {
+      subtitleHtml: renderInlineMathText(vp.subtitle || defaultSubtitle),
+      legendHtml,
+      domainMeta: vp.domainMeta || defaultDomain,
+      canvasAria,
+      metrics: [
+        metrics[0] || { label: 'Metric 1', value: '—' },
+        metrics[1] || { label: 'Metric 2', value: '—' },
+        metrics[2] || { label: 'Metric 3', value: '—' },
+        metrics[3] || { label: 'Verification', value: 'VERIFIED ✓' },
+      ],
+    };
+  }
+
   _buildVerificationCardHtml(problem) {
     const isIntegral = this._isIntegralMode();
     const isDiffEq = this._isDiffEqMode();
     const isLinAlg = this._isLinAlgMode();
+    const isPid = this._isPidMode();
     const isLaplaceFwd = this._isLaplaceForward(problem);
     const isLaplaceInv = this._isLaplaceInverse(problem);
     const hasDiffEqDeriv = isDiffEq && typeof problem.verifyDerivFn === 'function';
     const linAlgMeta = isLinAlg ? this._getLinAlgVerifyMeta(problem) : null;
+    const pidMeta = isPid ? this._getPidVerifyMeta(problem) : null;
 
-    const heading = isLinAlg
-      ? 'Geometric Verification'
-      : isDiffEq
-        ? 'Solution Verified Numerically'
-        : isIntegral
-          ? 'Antiderivative Verified Numerically'
-          : 'Derivative Verified Numerically';
+    const heading = isPid
+      ? 'Closed-Loop Verification'
+      : isLinAlg
+        ? 'Geometric Verification'
+        : isDiffEq
+          ? 'Solution Verified Numerically'
+          : isIntegral
+            ? 'Antiderivative Verified Numerically'
+            : 'Derivative Verified Numerically';
 
-    const subtitle = isLinAlg
-      ? linAlgMeta.subtitleHtml
-      : isDiffEq
-        ? isLaplaceFwd
-          ? renderInlineMathText(
-              'Hover or drag across the plot to compare the time signal $f(t)$ against its Laplace transform $F(s) = \\int_0^\\infty e^{-st}f(t)\\,dt$.'
-            )
-          : isLaplaceInv
+    const subtitle = isPid
+      ? pidMeta.subtitleHtml
+      : isLinAlg
+        ? linAlgMeta.subtitleHtml
+        : isDiffEq
+          ? isLaplaceFwd
             ? renderInlineMathText(
-                "Hover or drag across the plot to inspect the inverted signal $y(t)$, its slope $y'(t)$, and the numerical Laplace check."
+                'Hover or drag across the plot to compare the time signal $f(t)$ against its Laplace transform $F(s) = \\int_0^\\infty e^{-st}f(t)\\,dt$.'
+              )
+            : isLaplaceInv
+              ? renderInlineMathText(
+                  "Hover or drag across the plot to inspect the inverted signal $y(t)$, its slope $y'(t)$, and the numerical Laplace check."
+                )
+              : renderInlineMathText(
+                  "Hover or drag across the plot to verify your solution $y(t)$, its slope $y'(t)$, and confirm the ODE residual vanishes everywhere."
+                )
+          : isIntegral
+            ? renderInlineMathText(
+                'Hover or drag across the plot to verify $\\frac{d}{dx}F(x) = f(x)$ and watch the shaded area under $f(x)$.'
               )
             : renderInlineMathText(
-                "Hover or drag across the plot to verify your solution $y(t)$, its slope $y'(t)$, and confirm the ODE residual vanishes everywhere."
-              )
-        : isIntegral
-          ? renderInlineMathText(
-              'Hover or drag across the plot to verify $\\frac{d}{dx}F(x) = f(x)$ and watch the shaded area under $f(x)$.'
-            )
-          : renderInlineMathText(
-              "Hover or drag across the plot to compare your solved $f'(x)$ against the curve's true tangent slope."
-            );
+                "Hover or drag across the plot to compare your solved $f'(x)$ against the curve's true tangent slope."
+              );
 
-    const legendHtml = isLinAlg
-      ? linAlgMeta.legendHtml
-      : isDiffEq
-        ? isLaplaceFwd
-          ? `
-              <span class="inline-flex items-center gap-1 text-cyan-300">
-                <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
-                f(t) signal
-              </span>
-              <span class="inline-flex items-center gap-1 text-emerald-300">
-                <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
-                F(s) transform
-              </span>
-            `
-          : `
-              <span class="inline-flex items-center gap-1 text-emerald-300">
-                <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
-                y(t) solution
-              </span>
-              ${
-                hasDiffEqDeriv
-                  ? `<span class="inline-flex items-center gap-1 text-cyan-300">
-                      <span class="w-3 h-0 border-t-2 border-dashed border-cyanGlow inline-block"></span>
-                      y'(t) rate
-                    </span>`
-                  : ''
-              }
-              <span class="inline-flex items-center gap-1 text-amber-300">
-                <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
-                tangent
-              </span>
-            `
-        : isIntegral
-          ? `
-              <span class="inline-flex items-center gap-1 text-cyan-300">
-                <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
-                f(x)
-              </span>
-              <span class="inline-flex items-center gap-1 text-emerald-300">
-                <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
-                F(x)
-              </span>
-              <span class="inline-flex items-center gap-1 text-emerald-200/90">
-                <span class="w-2.5 h-2 rounded-sm bg-emeraldGlow/35 border border-emeraldGlow/60 inline-block"></span>
-                area
-              </span>
-              <span class="inline-flex items-center gap-1 text-amber-300">
-                <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
-                F'(x) tangent
-              </span>
-            `
-          : `
-              <span class="inline-flex items-center gap-1 text-cyan-300">
-                <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
-                f(x)
-              </span>
-              <span class="inline-flex items-center gap-1 text-emerald-300">
-                <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
-                f'(x)
-              </span>
-              <span class="inline-flex items-center gap-1 text-amber-300">
-                <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
-                tangent
-              </span>
-            `;
+    const legendHtml = isPid
+      ? pidMeta.legendHtml
+      : isLinAlg
+        ? linAlgMeta.legendHtml
+        : isDiffEq
+          ? isLaplaceFwd
+            ? `
+                <span class="inline-flex items-center gap-1 text-cyan-300">
+                  <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
+                  f(t) signal
+                </span>
+                <span class="inline-flex items-center gap-1 text-emerald-300">
+                  <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
+                  F(s) transform
+                </span>
+              `
+            : `
+                <span class="inline-flex items-center gap-1 text-emerald-300">
+                  <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
+                  y(t) solution
+                </span>
+                ${
+                  hasDiffEqDeriv
+                    ? `<span class="inline-flex items-center gap-1 text-cyan-300">
+                        <span class="w-3 h-0 border-t-2 border-dashed border-cyanGlow inline-block"></span>
+                        y'(t) rate
+                      </span>`
+                    : ''
+                }
+                <span class="inline-flex items-center gap-1 text-amber-300">
+                  <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
+                  tangent
+                </span>
+              `
+          : isIntegral
+            ? `
+                <span class="inline-flex items-center gap-1 text-cyan-300">
+                  <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
+                  f(x)
+                </span>
+                <span class="inline-flex items-center gap-1 text-emerald-300">
+                  <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
+                  F(x)
+                </span>
+                <span class="inline-flex items-center gap-1 text-emerald-200/90">
+                  <span class="w-2.5 h-2 rounded-sm bg-emeraldGlow/35 border border-emeraldGlow/60 inline-block"></span>
+                  area
+                </span>
+                <span class="inline-flex items-center gap-1 text-amber-300">
+                  <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
+                  F'(x) tangent
+                </span>
+              `
+            : `
+                <span class="inline-flex items-center gap-1 text-cyan-300">
+                  <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
+                  f(x)
+                </span>
+                <span class="inline-flex items-center gap-1 text-emerald-300">
+                  <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
+                  f'(x)
+                </span>
+                <span class="inline-flex items-center gap-1 text-amber-300">
+                  <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
+                  tangent
+                </span>
+              `;
 
-    const domainMeta = isLinAlg
-      ? linAlgMeta.domainMeta
-      : isDiffEq
-        ? isLaplaceFwd && Array.isArray(problem.sDomain)
-          ? `t ∈ [${problem.domain[0]}, ${problem.domain[1]}] · s ∈ [${problem.sDomain[0]}, ${problem.sDomain[1]}]`
-          : `t ∈ [${problem.domain[0]}, ${problem.domain[1]}]`
-        : isIntegral && Array.isArray(problem.definiteBounds)
-          ? `∫[${problem.definiteBounds[0]}, ${problem.definiteBounds[1]}] = ${problem.definiteValue} · [${problem.domain[0]}, ${problem.domain[1]}]`
-          : `[${problem.domain[0]}, ${problem.domain[1]}]`;
+    const domainMeta = isPid
+      ? pidMeta.domainMeta
+      : isLinAlg
+        ? linAlgMeta.domainMeta
+        : isDiffEq
+          ? isLaplaceFwd && Array.isArray(problem.sDomain)
+            ? `t ∈ [${problem.domain[0]}, ${problem.domain[1]}] · s ∈ [${problem.sDomain[0]}, ${problem.sDomain[1]}]`
+            : `t ∈ [${problem.domain[0]}, ${problem.domain[1]}]`
+          : isIntegral && Array.isArray(problem.definiteBounds)
+            ? `∫[${problem.definiteBounds[0]}, ${problem.definiteBounds[1]}] = ${problem.definiteValue} · [${problem.domain[0]}, ${problem.domain[1]}]`
+            : `[${problem.domain[0]}, ${problem.domain[1]}]`;
 
-    const canvasAria = isLinAlg
-      ? linAlgMeta.canvasAria
-      : isDiffEq
-        ? isLaplaceFwd
-          ? 'Interactive dual curve graph comparing time-domain signal f(t) and Laplace transform F(s)'
-          : "Interactive dual curve graph verifying ODE solution y(t) and rate y'(t)"
-        : isIntegral
-          ? 'Interactive dual curve graph comparing integrand f(x) and antiderivative F(x)'
-          : "Interactive dual curve graph comparing f(x) and f'(x)";
+    const canvasAria = isPid
+      ? pidMeta.canvasAria
+      : isLinAlg
+        ? linAlgMeta.canvasAria
+        : isDiffEq
+          ? isLaplaceFwd
+            ? 'Interactive dual curve graph comparing time-domain signal f(t) and Laplace transform F(s)'
+            : "Interactive dual curve graph verifying ODE solution y(t) and rate y'(t)"
+          : isIntegral
+            ? 'Interactive dual curve graph comparing integrand f(x) and antiderivative F(x)'
+            : "Interactive dual curve graph comparing f(x) and f'(x)";
 
-    const col1Label = isLinAlg
-      ? linAlgMeta.metrics[0].label
-      : isDiffEq
-        ? isLaplaceFwd
-          ? 'Time t / s'
-          : 'Time t'
-        : 'Probe x';
-    const col2Label = isLinAlg
-      ? linAlgMeta.metrics[1].label
-      : isDiffEq
-        ? isLaplaceFwd
-          ? 'Signal f(t)'
-          : 'Solution y(t)'
-        : isIntegral
-          ? 'Integrand f(x)'
-          : 'f(x) Height';
-    const col3Label = isLinAlg
-      ? linAlgMeta.metrics[2].label
-      : isDiffEq
-        ? isLaplaceFwd
-          ? 'Transform F(s)'
-          : "Slope y'(t)"
-        : isIntegral
-          ? 'Antideriv F(x)'
-          : "Exact f'(x)";
-    const col4Label = isLinAlg
-      ? linAlgMeta.metrics[3].label
-      : isDiffEq
-        ? isLaplaceFwd || isLaplaceInv
-          ? 'Laplace Residual'
-          : 'ODE Residual'
-        : isIntegral
-          ? "Slope F'(x)"
-          : 'True Slope';
+    const col1Label = isPid
+      ? pidMeta.metrics[0].label
+      : isLinAlg
+        ? linAlgMeta.metrics[0].label
+        : isDiffEq
+          ? isLaplaceFwd
+            ? 'Time t / s'
+            : 'Time t'
+          : 'Probe x';
+    const col2Label = isPid
+      ? pidMeta.metrics[1].label
+      : isLinAlg
+        ? linAlgMeta.metrics[1].label
+        : isDiffEq
+          ? isLaplaceFwd
+            ? 'Signal f(t)'
+            : 'Solution y(t)'
+          : isIntegral
+            ? 'Integrand f(x)'
+            : 'f(x) Height';
+    const col3Label = isPid
+      ? pidMeta.metrics[2].label
+      : isLinAlg
+        ? linAlgMeta.metrics[2].label
+        : isDiffEq
+          ? isLaplaceFwd
+            ? 'Transform F(s)'
+            : "Slope y'(t)"
+          : isIntegral
+            ? 'Antideriv F(x)'
+            : "Exact f'(x)";
+    const col4Label = isPid
+      ? pidMeta.metrics[3].label
+      : isLinAlg
+        ? linAlgMeta.metrics[3].label
+        : isDiffEq
+          ? isLaplaceFwd || isLaplaceInv
+            ? 'Laplace Residual'
+            : 'ODE Residual'
+          : isIntegral
+            ? "Slope F'(x)"
+            : 'True Slope';
 
     const col2BoxClass =
       isDiffEq && !isLaplaceFwd
@@ -1768,7 +1965,7 @@ export class PaperlessStepSolver {
     const cssX = e.clientX - rect.left;
     const { padL, plotW, xMin, xMax } = this.verifyPlotGeom;
     const t = Math.max(0, Math.min(1, (cssX - padL) / plotW));
-    if (this._isLinAlgMode()) {
+    if (this._isLinAlgMode() || this._isPidMode()) {
       this.verifyCursorX = t;
       this._drawVerificationCanvas();
       return;
@@ -1872,6 +2069,10 @@ export class PaperlessStepSolver {
     if (!canvas || !canvas.isConnected) return;
 
     const problem = this._getActiveProblem();
+    if (this._isPidMode()) {
+      this._drawPidVerificationCanvas(canvas, problem);
+      return;
+    }
     if (this._isLinAlgMode()) {
       this._drawLinAlgVerificationCanvas(canvas, problem);
       return;
@@ -3821,5 +4022,908 @@ export class PaperlessStepSolver {
     if (exactEl) exactEl.textContent = metrics[2].value;
     if (numEl) numEl.textContent = metrics[3].value;
     if (matchEl) matchEl.textContent = 'EXACT ✓';
+  }
+
+  /* ========================================================================
+     PID Control & Stability High-DPI Verification Canvas
+     ======================================================================== */
+
+  _drawPidPoleX(ctx, px, py, color, size = 6) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.6;
+    ctx.lineCap = 'round';
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.moveTo(px - size, py - size);
+    ctx.lineTo(px + size, py + size);
+    ctx.moveTo(px - size, py + size);
+    ctx.lineTo(px + size, py - size);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  _drawPidZeroO(ctx, px, py, color, radius = 6) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = '#080B11';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(px, py, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  _drawPidVerificationCanvas(canvas, problem) {
+    const vp = problem?.verifyPlot;
+    if (!vp) return;
+
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width < 10 || rect.height < 10) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const width = rect.width;
+    const height = rect.height;
+
+    if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+
+    // Studio background fill
+    ctx.fillStyle = '#080B11';
+    ctx.fillRect(0, 0, width, height);
+
+    const uCursor = Math.max(0, Math.min(1, this.verifyCursorX ?? vp.defaultCursor ?? 0.56));
+
+    if (vp.kind === 'step-compare') {
+      const [tMin, tMax] = vp.domain || [0, 3];
+      const samples = 220;
+      const ts = [];
+      const pVals = [];
+      const bVals = [];
+      const hasBase = typeof vp.baselineFn === 'function';
+      const setpoint = Number.isFinite(vp.setpoint) ? vp.setpoint : 1;
+
+      let yMin = Math.min(0, setpoint);
+      let yMax = Math.max(0, setpoint);
+      for (let i = 0; i <= samples; i++) {
+        const t = tMin + (i / samples) * (tMax - tMin);
+        const py = vp.primaryFn(t);
+        const by = hasBase ? vp.baselineFn(t) : NaN;
+        ts.push(t);
+        pVals.push(py);
+        bVals.push(by);
+        if (Number.isFinite(py)) {
+          if (py < yMin) yMin = py;
+          if (py > yMax) yMax = py;
+        }
+        if (Number.isFinite(by)) {
+          if (by < yMin) yMin = by;
+          if (by > yMax) yMax = by;
+        }
+      }
+
+      const span = Math.max(0.05, yMax - yMin);
+      const fyMin = yMin - span * 0.14;
+      const fyMax = yMax + span * 0.18;
+
+      const padL = 46;
+      const padR = 20;
+      const padT = 18;
+      const padB = 28;
+      const plotW = Math.max(40, width - padL - padR);
+      const plotH = Math.max(40, height - padT - padB);
+      this.verifyPlotGeom = { padL, padR, padT, padB, plotW, plotH, xMin: 0, xMax: 1 };
+
+      const mapX = (t) => padL + ((t - tMin) / (tMax - tMin)) * plotW;
+      const mapY = (y) => padT + (1 - (y - fyMin) / (fyMax - fyMin)) * plotH;
+
+      // Grid & ticks
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.055)';
+      ctx.lineWidth = 1;
+      ctx.font = '10px "JetBrains Mono", monospace';
+      for (let r = 0; r <= 4; r++) {
+        const py = padT + (r / 4) * plotH;
+        ctx.beginPath();
+        ctx.moveTo(padL, py);
+        ctx.lineTo(padL + plotW, py);
+        ctx.stroke();
+        const tick = fyMax - (r / 4) * (fyMax - fyMin);
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.78)';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(formatAxisTick(tick), padL - 7, py);
+      }
+      for (let c = 0; c <= 5; c++) {
+        const px = padL + (c / 5) * plotW;
+        ctx.beginPath();
+        ctx.moveTo(px, padT);
+        ctx.lineTo(px, padT + plotH);
+        ctx.stroke();
+        const tTick = tMin + (c / 5) * (tMax - tMin);
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.75)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`${formatAxisTick(tTick)}s`, px, padT + plotH + 7);
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, padT, plotW, plotH);
+      ctx.clip();
+
+      // Optional ±2% settling band & vertical Ts marker
+      if (vp.tsMarker) {
+        const { t: tsVal, label: tsLbl, band = 0.02 } = vp.tsMarker;
+        const yTop = mapY(setpoint + band);
+        const yBot = mapY(setpoint - band);
+        ctx.save();
+        ctx.fillStyle = 'rgba(52, 211, 153, 0.12)';
+        ctx.fillRect(padL, yTop, plotW, Math.max(2, yBot - yTop));
+        const tsPx = mapX(tsVal);
+        ctx.strokeStyle = 'rgba(52, 211, 153, 0.55)';
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(tsPx, padT);
+        ctx.lineTo(tsPx, padT + plotH);
+        ctx.stroke();
+        ctx.restore();
+        this._drawLinAlgLabel(ctx, tsLbl || 'Ts', tsPx + 6, padT + plotH - 12, '#6EE7B7');
+      }
+
+      // Setpoint reference line
+      const ySp = mapY(setpoint);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.65)';
+      ctx.setLineDash([6, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(padL, ySp);
+      ctx.lineTo(padL + plotW, ySp);
+      ctx.stroke();
+      ctx.restore();
+
+      // Optional steady-state error droop bracket (e.g. Type-0)
+      if (vp.steadyErrorGap) {
+        const yFinPx = mapY(vp.steadyErrorGap.yFinal);
+        const bx = padL + plotW - 18;
+        ctx.save();
+        ctx.strokeStyle = '#F59E0B';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(bx, ySp + 2);
+        ctx.lineTo(bx, yFinPx - 2);
+        ctx.moveTo(bx - 4, ySp + 2);
+        ctx.lineTo(bx + 4, ySp + 2);
+        ctx.moveTo(bx - 4, yFinPx - 2);
+        ctx.lineTo(bx + 4, yFinPx - 2);
+        ctx.stroke();
+        ctx.restore();
+        this._drawLinAlgLabel(
+          ctx,
+          vp.steadyErrorGap.label || 'e_ss',
+          bx - 8,
+          0.5 * (ySp + yFinPx),
+          '#FCD34D',
+          'right'
+        );
+      }
+
+      // Baseline comparison curve (Cyan dashed)
+      if (hasBase) {
+        ctx.save();
+        ctx.strokeStyle = '#22D3EE';
+        ctx.lineWidth = 2.0;
+        ctx.setLineDash([6, 4]);
+        ctx.shadowColor = 'rgba(34, 211, 238, 0.45)';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        for (let i = 0; i <= samples; i++) {
+          const px = mapX(ts[i]);
+          const py = mapY(bVals[i]);
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Primary response curve (luminous Emerald solid)
+      ctx.save();
+      ctx.strokeStyle = '#34D399';
+      ctx.lineWidth = 2.6;
+      ctx.shadowColor = 'rgba(52, 211, 153, 0.65)';
+      ctx.shadowBlur = 11;
+      ctx.beginPath();
+      for (let i = 0; i <= samples; i++) {
+        const px = mapX(ts[i]);
+        const py = mapY(pVals[i]);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      // Interactive time cursor
+      const tCur = tMin + uCursor * (tMax - tMin);
+      const yCur = vp.primaryFn(tCur);
+      const bCur = hasBase ? vp.baselineFn(tCur) : NaN;
+      const cxPx = mapX(tCur);
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(cxPx, padT);
+      ctx.lineTo(cxPx, padT + plotH);
+      ctx.stroke();
+      ctx.restore();
+
+      if (hasBase && Number.isFinite(bCur)) {
+        ctx.save();
+        ctx.fillStyle = '#22D3EE';
+        ctx.shadowColor = 'rgba(34, 211, 238, 0.9)';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(cxPx, mapY(bCur), 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      if (Number.isFinite(yCur)) {
+        ctx.save();
+        ctx.fillStyle = '#34D399';
+        ctx.shadowColor = 'rgba(52, 211, 153, 0.95)';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(cxPx, mapY(yCur), 5.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      const errCur = setpoint - yCur;
+      const hudText = `t=${tCur.toFixed(2)}s · y=${yCur.toFixed(3)} · e=${errCur.toFixed(3)}`;
+      this._drawLinAlgHudTag(ctx, hudText, padL, padT, plotW);
+      ctx.restore();
+    } else if (vp.kind === 'ramp-track') {
+      const [tMin, tMax] = vp.domain || [0, 3.0];
+      const samples = 220;
+      const ts = [];
+      const rVals = [];
+      const yVals = [];
+      for (let i = 0; i <= samples; i++) {
+        const t = tMin + (i / samples) * (tMax - tMin);
+        ts.push(t);
+        rVals.push(vp.rampFn(t));
+        yVals.push(vp.outputFn(t));
+      }
+
+      const fyMin = -0.15;
+      const fyMax = Math.max(...rVals) * 1.12;
+      const padL = 44;
+      const padR = 20;
+      const padT = 18;
+      const padB = 28;
+      const plotW = Math.max(40, width - padL - padR);
+      const plotH = Math.max(40, height - padT - padB);
+      this.verifyPlotGeom = { padL, padR, padT, padB, plotW, plotH, xMin: 0, xMax: 1 };
+
+      const mapX = (t) => padL + ((t - tMin) / (tMax - tMin)) * plotW;
+      const mapY = (y) => padT + (1 - (y - fyMin) / (fyMax - fyMin)) * plotH;
+
+      // Grid & ticks
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.055)';
+      ctx.lineWidth = 1;
+      ctx.font = '10px "JetBrains Mono", monospace';
+      for (let r = 0; r <= 4; r++) {
+        const py = padT + (r / 4) * plotH;
+        ctx.beginPath();
+        ctx.moveTo(padL, py);
+        ctx.lineTo(padL + plotW, py);
+        ctx.stroke();
+        const tick = fyMax - (r / 4) * (fyMax - fyMin);
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.78)';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(formatAxisTick(tick), padL - 7, py);
+      }
+      for (let c = 0; c <= 5; c++) {
+        const px = padL + (c / 5) * plotW;
+        ctx.beginPath();
+        ctx.moveTo(px, padT);
+        ctx.lineTo(px, padT + plotH);
+        ctx.stroke();
+        const tTick = tMin + (c / 5) * (tMax - tMin);
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.75)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`${formatAxisTick(tTick)}s`, px, padT + plotH + 7);
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, padT, plotW, plotH);
+      ctx.clip();
+
+      // Shaded steady-state lag ribbon between r(t) and y(t)
+      ctx.save();
+      ctx.fillStyle = 'rgba(34, 211, 238, 0.14)';
+      ctx.beginPath();
+      for (let i = 0; i <= samples; i++) {
+        const px = mapX(ts[i]);
+        const py = mapY(rVals[i]);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      for (let i = samples; i >= 0; i--) {
+        ctx.lineTo(mapX(ts[i]), mapY(yVals[i]));
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // Ramp reference r(t) = t (Amber dashed)
+      ctx.save();
+      ctx.strokeStyle = '#F59E0B';
+      ctx.setLineDash([6, 4]);
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(mapX(tMin), mapY(vp.rampFn(tMin)));
+      ctx.lineTo(mapX(tMax), mapY(vp.rampFn(tMax)));
+      ctx.stroke();
+      ctx.restore();
+
+      // Output y(t) (luminous Emerald solid)
+      ctx.save();
+      ctx.strokeStyle = '#34D399';
+      ctx.lineWidth = 2.6;
+      ctx.shadowColor = 'rgba(52, 211, 153, 0.65)';
+      ctx.shadowBlur = 11;
+      ctx.beginPath();
+      for (let i = 0; i <= samples; i++) {
+        const px = mapX(ts[i]);
+        const py = mapY(yVals[i]);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      // Interactive cursor with vertical lag segment
+      const tCur = tMin + uCursor * (tMax - tMin);
+      const rCur = vp.rampFn(tCur);
+      const yCur = vp.outputFn(tCur);
+      const lag = rCur - yCur;
+      const cxPx = mapX(tCur);
+      const ryPx = mapY(rCur);
+      const yyPx = mapY(yCur);
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(cxPx, padT);
+      ctx.lineTo(cxPx, padT + plotH);
+      ctx.stroke();
+      ctx.restore();
+
+      // Highlighted lag gap bar
+      ctx.save();
+      ctx.strokeStyle = '#22D3EE';
+      ctx.lineWidth = 2.6;
+      ctx.shadowColor = 'rgba(34, 211, 238, 0.85)';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(cxPx, ryPx);
+      ctx.lineTo(cxPx, yyPx);
+      ctx.stroke();
+      ctx.restore();
+
+      // Glowing dots on r(t) and y(t)
+      [
+        { py: ryPx, color: '#F59E0B' },
+        { py: yyPx, color: '#34D399' },
+      ].forEach(({ py, color }) => {
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(cxPx, py, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      this._drawLinAlgHudTag(
+        ctx,
+        `t=${tCur.toFixed(2)}s · r=${rCur.toFixed(2)} · y=${yCur.toFixed(2)} · lag=${lag.toFixed(3)}`,
+        padL,
+        padT,
+        plotW
+      );
+      ctx.restore();
+    } else if (vp.kind === 'pole-map') {
+      const b = vp.bounds || { minRe: -6, maxRe: 2, minIm: -4, maxIm: 4 };
+      const padL = 40;
+      const padR = 20;
+      const padT = 18;
+      const padB = 26;
+      const plotW = Math.max(40, width - padL - padR);
+      const plotH = Math.max(40, height - padT - padB);
+      this.verifyPlotGeom = { padL, padR, padT, padB, plotW, plotH, xMin: 0, xMax: 1 };
+
+      const mapX = (re) => padL + ((re - b.minRe) / (b.maxRe - b.minRe)) * plotW;
+      const mapY = (im) => padT + (1 - (im - b.minIm) / (b.maxIm - b.minIm)) * plotH;
+      const xZero = mapX(0);
+      const yZero = mapY(0);
+
+      // Subtle grid
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.055)';
+      ctx.lineWidth = 1;
+      ctx.font = '10px "JetBrains Mono", monospace';
+      for (let re = Math.ceil(b.minRe); re <= Math.floor(b.maxRe); re++) {
+        const px = mapX(re);
+        ctx.beginPath();
+        ctx.moveTo(px, padT);
+        ctx.lineTo(px, padT + plotH);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.72)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(String(re), px, padT + plotH + 6);
+      }
+      const imStep = b.maxIm - b.minIm > 7 ? 2 : 1;
+      for (let im = Math.ceil(b.minIm / imStep) * imStep; im <= b.maxIm; im += imStep) {
+        const py = mapY(im);
+        ctx.beginPath();
+        ctx.moveTo(padL, py);
+        ctx.lineTo(padL + plotW, py);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.72)';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(im === 0 ? '0' : `${im}j`, padL - 6, py);
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, padT, plotW, plotH);
+      ctx.clip();
+
+      // Shade Unstable RHP (σ > 0)
+      if (b.maxRe > 0) {
+        ctx.fillStyle = 'rgba(244, 63, 94, 0.11)';
+        ctx.fillRect(xZero, padT, padL + plotW - xZero, plotH);
+        ctx.font = '600 9.5px "JetBrains Mono", monospace';
+        ctx.fillStyle = 'rgba(251, 113, 133, 0.75)';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('UNSTABLE RHP (σ > 0)', padL + plotW - 6, padT + plotH - 5);
+      }
+      ctx.font = '600 9.5px "JetBrains Mono", monospace';
+      ctx.fillStyle = 'rgba(110, 231, 183, 0.6)';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('STABLE LHP (σ < 0)', padL + 6, padT + plotH - 5);
+
+      // Emphasized real axis & jω imaginary axis
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(padL, yZero);
+      ctx.lineTo(padL + plotW, yZero);
+      ctx.stroke();
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.62)';
+      ctx.setLineDash([5, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(xZero, padT);
+      ctx.lineTo(xZero, padT + plotH);
+      ctx.stroke();
+      ctx.restore();
+
+      if (vp.gainSweep) {
+        const { a2, a1, kMin, kMax, ku } = vp.gainSweep;
+        // Trace smooth root-locus branches across [kMin, kMax]
+        const steps = 110;
+        const branchPts = [[], [], []];
+        for (let i = 0; i <= steps; i++) {
+          const kk = kMin + (i / steps) * (kMax - kMin);
+          const roots = solveMonicCubicRoots(a2, a1, kk);
+          // roots[0] is real negative; roots[1], roots[2] are complex conjugate or remaining real
+          branchPts[0].push(roots[0]);
+          branchPts[1].push(roots[1]);
+          branchPts[2].push(roots[2]);
+        }
+        branchPts.forEach((pts) => {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(34, 211, 238, 0.42)';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          pts.forEach((p, idx) => {
+            const px = mapX(p.re);
+            const py = mapY(p.im);
+            if (idx === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          });
+          ctx.stroke();
+          ctx.restore();
+        });
+
+        // Mark exact marginal crossing on jω-axis
+        const wu = Math.sqrt(a1);
+        [wu, -wu].forEach((imVal) => {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(245, 158, 11, 0.55)';
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.arc(xZero, mapY(imVal), 7.5, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        });
+
+        let kCur = kMin + uCursor * (kMax - kMin);
+        if (Math.abs(kCur - ku) < (kMax - kMin) * 0.025) {
+          kCur = ku;
+        }
+        const curRoots = solveMonicCubicRoots(a2, a1, kCur);
+        const isMarginal = Math.abs(kCur - ku) < 1e-4;
+        const isUnstable = kCur > ku + 1e-4;
+
+        curRoots.forEach((r, idx) => {
+          const px = mapX(r.re);
+          const py = mapY(r.im);
+          const color =
+            r.re > 0.03 ? '#FB7185' : Math.abs(r.re) <= 0.03 ? '#F59E0B' : '#34D399';
+          this._drawPidPoleX(ctx, px, py, color, 6.5);
+          if (idx === 1 && Math.abs(r.im) > 0.05) {
+            const lbl = `${r.re >= 0 ? '+' : ''}${r.re.toFixed(2)} ± ${r.im.toFixed(2)}j`;
+            this._drawLinAlgLabel(ctx, lbl, px + 10, py - 8, color);
+          } else if (idx === 0) {
+            this._drawLinAlgLabel(ctx, `${r.re.toFixed(2)}`, px, py - 12, '#6EE7B7', 'center');
+          }
+        });
+
+        const statusStr = isMarginal
+          ? `K=${ku} (Ku) · MARGINAL`
+          : isUnstable
+            ? `K=${kCur.toFixed(1)} > ${ku} · UNSTABLE`
+            : `K=${kCur.toFixed(1)} < ${ku} · STABLE`;
+        this._drawLinAlgHudTag(ctx, statusStr, padL, padT, plotW);
+      } else {
+        // Static poles & optional zeros
+        const poles = Array.isArray(vp.poles) ? vp.poles : [];
+        const zeros = Array.isArray(vp.zeros) ? vp.zeros : [];
+
+        poles.forEach((p) => {
+          const px = mapX(p.re);
+          const py = mapY(p.im);
+          const color =
+            p.status === 'rhp' ? '#FB7185' : p.status === 'marginal' ? '#F59E0B' : '#34D399';
+          this._drawPidPoleX(ctx, px, py, color, 6.5);
+          if (p.label) {
+            const dy = p.im > 0 ? -12 : p.im < 0 ? 14 : -13;
+            this._drawLinAlgLabel(
+              ctx,
+              p.label,
+              px + (p.re >= 0 ? 8 : 0),
+              py + dy,
+              color,
+              p.re >= 0 ? 'left' : 'center'
+            );
+          }
+        });
+
+        zeros.forEach((z) => {
+          const px = mapX(z.re);
+          const py = mapY(z.im);
+          this._drawPidZeroO(ctx, px, py, '#34D399', 6.5);
+          if (z.label) {
+            this._drawLinAlgLabel(ctx, z.label, px, py + 15, '#6EE7B7', 'center');
+          }
+        });
+
+        const rhpCount = poles.filter((p) => p.re > 1e-6).length;
+        const hud =
+          zeros.length > 0
+            ? `Pole s=0 (×) · Zeros s=−1, −4 (○)`
+            : rhpCount > 0
+              ? `${rhpCount} RHP Unstable · ${poles.length - rhpCount} LHP Stable`
+              : `All ${poles.length} Poles Stable`;
+        this._drawLinAlgHudTag(ctx, hud, padL, padT, plotW);
+      }
+
+      ctx.restore();
+    } else if (vp.kind === 'bode-margin') {
+      const wMin = vp.wMin || 0.1;
+      const wMax = vp.wMax || 10;
+      const logMin = Math.log10(wMin);
+      const logMax = Math.log10(wMax);
+      const hasDelay = typeof vp.delayedPhaseDegFn === 'function';
+
+      const padL = 48;
+      const padR = 18;
+      const padT = 14;
+      const padB = 24;
+      const gap = 14;
+      const plotW = Math.max(40, width - padL - padR);
+      const availH = Math.max(60, height - padT - padB - gap);
+      const magH = availH * 0.46;
+      const phH = availH * 0.54;
+      const magTop = padT;
+      const phTop = padT + magH + gap;
+
+      this.verifyPlotGeom = { padL, padR, padT, padB, plotW, plotH: availH + gap, xMin: 0, xMax: 1 };
+
+      const mapW = (w) => padL + ((Math.log10(w) - logMin) / (logMax - logMin)) * plotW;
+
+      const magMin = -32;
+      const magMax = 32;
+      const phMin = hasDelay ? -235 : -205;
+      const phMax = -80;
+      const mapMag = (db) => magTop + (1 - (db - magMin) / (magMax - magMin)) * magH;
+      const mapPh = (deg) => phTop + (1 - (deg - phMin) / (phMax - phMin)) * phH;
+
+      // Grid lines & ticks
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.055)';
+      ctx.lineWidth = 1;
+      ctx.font = '9.5px "JetBrains Mono", monospace';
+
+      // Panel borders
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.strokeRect(padL, magTop, plotW, magH);
+      ctx.strokeRect(padL, phTop, plotW, phH);
+
+      // Magnitude ticks
+      [-20, 0, 20].forEach((db) => {
+        const py = mapMag(db);
+        ctx.strokeStyle = db === 0 ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.05)';
+        ctx.beginPath();
+        ctx.moveTo(padL, py);
+        ctx.lineTo(padL + plotW, py);
+        ctx.stroke();
+        ctx.fillStyle = db === 0 ? '#E2E8F0' : 'rgba(148, 163, 184, 0.72)';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${db}dB`, padL - 6, py);
+      });
+
+      // Phase ticks
+      [-90, -135, -180].forEach((deg) => {
+        const py = mapPh(deg);
+        if (py < phTop || py > phTop + phH) return;
+        ctx.save();
+        if (deg === -180) {
+          ctx.strokeStyle = 'rgba(251, 113, 133, 0.65)';
+          ctx.setLineDash([5, 4]);
+          ctx.lineWidth = 1.4;
+        } else {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.055)';
+        }
+        ctx.beginPath();
+        ctx.moveTo(padL, py);
+        ctx.lineTo(padL + plotW, py);
+        ctx.stroke();
+        ctx.restore();
+        ctx.fillStyle = deg === -180 ? '#FDA4AF' : 'rgba(148, 163, 184, 0.72)';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${deg}°`, padL - 6, py);
+      });
+
+      // Frequency grid & labels
+      const freqTicks = hasDelay ? [0.5, 1, 2, 5, 10, 25] : [0.1, 0.3, 1, 3, 10];
+      freqTicks.forEach((wt) => {
+        if (wt < wMin - 1e-6 || wt > wMax + 1e-6) return;
+        const px = mapW(wt);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.055)';
+        ctx.beginPath();
+        ctx.moveTo(px, magTop);
+        ctx.lineTo(px, magTop + magH);
+        ctx.moveTo(px, phTop);
+        ctx.lineTo(px, phTop + phH);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.78)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(String(wt), px, phTop + phH + 5);
+      });
+
+      const samples = 200;
+      const ws = [];
+      for (let i = 0; i <= samples; i++) {
+        ws.push(Math.pow(10, logMin + (i / samples) * (logMax - logMin)));
+      }
+
+      // Vertical ω_gc crossover guide spanning both panels
+      const wgcPx = mapW(vp.wGc);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(52, 211, 153, 0.48)';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(wgcPx, magTop);
+      ctx.lineTo(wgcPx, phTop + phH);
+      ctx.stroke();
+      ctx.restore();
+
+      // Top panel: Magnitude curve (clipped)
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, magTop, plotW, magH);
+      ctx.clip();
+      ctx.strokeStyle = '#22D3EE';
+      ctx.lineWidth = 2.3;
+      ctx.shadowColor = 'rgba(34, 211, 238, 0.55)';
+      ctx.shadowBlur = 9;
+      ctx.beginPath();
+      ws.forEach((w, i) => {
+        const px = mapW(w);
+        const py = mapMag(vp.magDbFn(w));
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+
+      // Glowing dot at (ω_gc, 0 dB)
+      ctx.fillStyle = '#34D399';
+      ctx.shadowColor = 'rgba(52, 211, 153, 0.9)';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(wgcPx, mapMag(0), 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      this._drawLinAlgLabel(ctx, `ω_gc=${vp.wGc}`, wgcPx + 8, mapMag(0) - 8, '#6EE7B7');
+      ctx.restore();
+
+      // Bottom panel: Phase curve(s) & PM bracket (clipped)
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, phTop, plotW, phH);
+      ctx.clip();
+
+      // Nominal phase curve
+      ctx.save();
+      ctx.strokeStyle = hasDelay ? '#22D3EE' : '#34D399';
+      ctx.lineWidth = hasDelay ? 2.0 : 2.4;
+      if (hasDelay) ctx.setLineDash([5, 4]);
+      ctx.shadowColor = hasDelay ? 'rgba(34, 211, 238, 0.45)' : 'rgba(52, 211, 153, 0.55)';
+      ctx.shadowBlur = 9;
+      ctx.beginPath();
+      ws.forEach((w, i) => {
+        const px = mapW(w);
+        const py = mapPh(vp.phaseDegFn(w));
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+      ctx.restore();
+
+      // Optional delayed phase curve (Amber solid)
+      if (hasDelay) {
+        ctx.save();
+        ctx.strokeStyle = '#F59E0B';
+        ctx.lineWidth = 2.4;
+        ctx.shadowColor = 'rgba(245, 158, 11, 0.65)';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ws.forEach((w, i) => {
+          const px = mapW(w);
+          const py = mapPh(vp.delayedPhaseDegFn(w));
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Phase Margin vertical arrow at ω_gc between -180° and nominal ∠L(jω_gc)
+      const phGc = vp.phaseDegFn(vp.wGc);
+      const y180 = mapPh(-180);
+      const yPhGc = mapPh(phGc);
+      ctx.save();
+      ctx.strokeStyle = '#34D399';
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = 'rgba(52, 211, 153, 0.85)';
+      ctx.shadowBlur = 9;
+      ctx.beginPath();
+      ctx.moveTo(wgcPx, y180);
+      ctx.lineTo(wgcPx, yPhGc);
+      ctx.stroke();
+      ctx.restore();
+
+      this._drawLinAlgLabel(
+        ctx,
+        hasDelay ? `PM=60° → 0° at τ_max` : `PM = ${vp.pmDeg}°`,
+        wgcPx + 8,
+        0.5 * (y180 + yPhGc),
+        '#6EE7B7'
+      );
+      ctx.restore();
+
+      // Interactive frequency cursor spanning both panels
+      const wCur = Math.pow(10, logMin + uCursor * (logMax - logMin));
+      const curPx = mapW(wCur);
+      const curDb = vp.magDbFn(wCur);
+      const curPh = hasDelay ? vp.delayedPhaseDegFn(wCur) : vp.phaseDegFn(wCur);
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.setLineDash([3, 3]);
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(curPx, magTop);
+      ctx.lineTo(curPx, phTop + phH);
+      ctx.stroke();
+      ctx.restore();
+
+      const curMagY = mapMag(curDb);
+      if (curMagY >= magTop && curMagY <= magTop + magH) {
+        ctx.save();
+        ctx.fillStyle = '#22D3EE';
+        ctx.beginPath();
+        ctx.arc(curPx, curMagY, 4.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 1.3;
+        ctx.stroke();
+        ctx.restore();
+      }
+      const curPhY = mapPh(curPh);
+      if (curPhY >= phTop && curPhY <= phTop + phH) {
+        ctx.save();
+        ctx.fillStyle = hasDelay ? '#F59E0B' : '#34D399';
+        ctx.beginPath();
+        ctx.arc(curPx, curPhY, 4.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 1.3;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      const hud = `ω=${wCur.toFixed(2)} rad/s · |L|=${curDb.toFixed(1)} dB · ∠=${curPh.toFixed(1)}°`;
+      this._drawLinAlgHudTag(ctx, hud, padL, magTop, plotW);
+    }
+
+    ctx.restore();
+    this._updatePidVerificationReadout(problem);
+  }
+
+  _updatePidVerificationReadout(problem) {
+    if (!this.container) return;
+    const metrics = this._getPidVerifyMeta(problem).metrics;
+    const xEl = this.container.querySelector('[data-verify-x]');
+    const fxEl = this.container.querySelector('[data-verify-fx]');
+    const exactEl = this.container.querySelector('[data-verify-exact]');
+    const numEl = this.container.querySelector('[data-verify-numeric]');
+    const matchEl = this.container.querySelector('[data-verify-match]');
+
+    if (xEl) xEl.textContent = metrics[0].value;
+    if (fxEl) fxEl.textContent = metrics[1].value;
+    if (exactEl) exactEl.textContent = metrics[2].value;
+    if (numEl) numEl.textContent = metrics[3].value;
+    if (matchEl) matchEl.textContent = 'VERIFIED ✓';
   }
 }

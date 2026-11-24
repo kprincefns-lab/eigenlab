@@ -1,0 +1,11 @@
+{
+  "lessonId": "mech-pid",
+  "status": "coming_soon",
+  "plannedTopics": [
+    "Quadcopter Pitch & Attitude Cascade PID",
+    "CNC Ball-Screw Feedforward & Anti-Windup",
+    "Inverted Pendulum Stabilization & Lead Compensation",
+    "Thermal Reflow Oven Smith Predictor with Delay"
+  ],
+  "problems": []
+}

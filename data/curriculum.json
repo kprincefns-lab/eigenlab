@@ -81,11 +81,17 @@
       "lessons": [
         {
           "id": "mech-pid",
-          "status": "planned",
+          "status": "live",
           "title": "PID Control & Feedback Stability",
-          "tag": "Control Lab • Coming Next",
-          "description": "Tune proportional, integral, and derivative gains on live physical rigs to balance rise time, overshoot, and steady-state error.",
-          "estimatedMinutes": 30
+          "tag": "Mechatronics 01 • 3D PID Rig, Decomposition & Solver",
+          "description": "Tune live P, I, and D gains on a 3D servo & disturbance rig, dissect proportional/integral/derivative control effort waveforms, and master closed-loop transfer functions, Routh-Hurwitz stability, Ziegler-Nichols tuning, and phase margins step by step.",
+          "estimatedMinutes": 35,
+          "stages": [
+            "3d-lab",
+            "intuition",
+            "solver",
+            "word-problems"
+          ]
         },
         {
           "id": "mech-kinematics",

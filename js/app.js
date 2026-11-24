@@ -22,10 +22,13 @@ import { DiffEq3DStudio, DIFFEQ_PRESETS } from './viz/diffeq-3d.js';
 import { LaplaceSPlaneLab, DiffEqVisualQuizEngine } from './viz/diffeq-graphs.js';
 import { LinAlg3DStudio, LINALG_PRESETS } from './viz/linalg-3d.js';
 import { LinearTransform2DLab, LinAlgVisualQuizEngine } from './viz/linalg-graphs.js';
+import { Pid3DStudio, PID_PRESETS } from './viz/pid-3d.js';
+import { PidDecompositionLab, PidVisualQuizEngine } from './viz/pid-graphs.js';
 import { PaperlessStepSolver } from './solver/step-solver.js';
 import { INTEGRAL_PROBLEMS, INTEGRAL_SOLVER_TIERS } from '../data/lessons/integrals-problems.js';
 import { DIFFEQ_PROBLEMS, DIFFEQ_SOLVER_TIERS } from '../data/lessons/diffeq-problems.js';
 import { LINALG_PROBLEMS, LINALG_SOLVER_TIERS } from '../data/lessons/linalg-problems.js';
+import { PID_PROBLEMS, PID_SOLVER_TIERS } from '../data/lessons/pid-problems.js';
 
 // ---------------------------------------------------------------------------
 // Constants & Fallback Data
@@ -35,6 +38,7 @@ const LESSON_ID = 'calc-derivatives';
 const INTEGRAL_LESSON_ID = 'calc-integrals';
 const DIFFEQ_LESSON_ID = 'math-diff-eq';
 const LINALG_LESSON_ID = 'math-lin-alg';
+const PID_LESSON_ID = 'mech-pid';
 
 const STAGES = [
   {
@@ -176,6 +180,41 @@ const LINALG_STAGES = [
   },
 ];
 
+const PID_STAGES = [
+  {
+    id: '3d-lab',
+    number: 1,
+    icon: '🎛️',
+    shortLabel: '3D PID Rig',
+    mobileLabel: '3D PID',
+    label: '1. 3D PID & Disturbance Rig',
+  },
+  {
+    id: 'intuition',
+    number: 2,
+    icon: '📊',
+    shortLabel: 'P/I/D Lab',
+    mobileLabel: 'P/I/D',
+    label: '2. P/I/D Decomposition & Quiz',
+  },
+  {
+    id: 'solver',
+    number: 3,
+    icon: '🧮',
+    shortLabel: 'Control Solver',
+    mobileLabel: 'Solver',
+    label: '3. Paperless Control & PID Solver',
+  },
+  {
+    id: 'word-problems',
+    number: 4,
+    icon: '⚙️',
+    shortLabel: 'Word Problems',
+    mobileLabel: 'Applied',
+    label: '4. Applied Word Problems',
+  },
+];
+
 const PLANNED_TOPIC_METADATA = {
   'Servo Velocity & Acceleration Profiling': {
     domain: 'Mechatronics',
@@ -288,6 +327,34 @@ const PLANNED_TOPIC_METADATA = {
     equation: 'W \\approx U_r \\Sigma_r V_r^T = \\sum_{i=1}^{r} \\sigma_i \\mathbf{u}_i \\mathbf{v}_i^T',
     summary:
       'Compress high-dimensional weight matrices and extract dominant variance directions via truncated Singular Value Decomposition.',
+  },
+  'Quadcopter Pitch & Attitude Cascade PID': {
+    domain: 'Aerospace & Robotics',
+    accent: 'cyan',
+    equation: '\\tau_\\theta = K_{p,\\omega}\\big(K_{p,\\theta}(\\theta_{\\text{ref}}-\\theta) - \\dot{\\theta}\\big)',
+    summary:
+      'Nest an inner high-bandwidth gyro rate loop inside an outer attitude loop for crisp disturbance-resistant flight.',
+  },
+  'CNC Ball-Screw Feedforward & Anti-Windup': {
+    domain: 'Precision Motion',
+    accent: 'amber',
+    equation: 'u = K_p e + K_i\\int e\\,dt + K_d\\dot{e} + K_{ff}\\ddot{r}, \\quad |u| \\le u_{\\max}',
+    summary:
+      'Combine acceleration feedforward with back-calculation anti-windup to eliminate tracking lag without integrator saturation.',
+  },
+  'Inverted Pendulum Stabilization & Lead Compensation': {
+    domain: 'Unstable Control',
+    accent: 'violet',
+    equation: 'G(s) = \\frac{1}{s^2 - g/L}, \\quad C_{\\text{lead}}(s) = K\\frac{s+z}{s+p} \\;(z < p)',
+    summary:
+      'Stabilize an open-loop RHP pole by adding positive phase lead near crossover to achieve robust gain and phase margins.',
+  },
+  'Thermal Reflow Oven Smith Predictor with Delay': {
+    domain: 'Process Control',
+    accent: 'emerald',
+    equation: 'G(s) = \\frac{K e^{-\\tau s}}{T s + 1}, \\quad \\tau_{\\max} = \\frac{\\text{PM}}{\\omega_{gc}}',
+    summary:
+      'Compensate for pure transport lag in heated zones so thermal profiles track reflow curves without phase-lag ringing.',
   },
 };
 
@@ -418,6 +485,18 @@ const FALLBACK_LINALG_WORD_PROBLEMS = {
   problems: [],
 };
 
+const FALLBACK_PID_WORD_PROBLEMS = {
+  lessonId: 'mech-pid',
+  status: 'coming_soon',
+  plannedTopics: [
+    'Quadcopter Pitch & Attitude Cascade PID',
+    'CNC Ball-Screw Feedforward & Anti-Windup',
+    'Inverted Pendulum Stabilization & Lead Compensation',
+    'Thermal Reflow Oven Smith Predictor with Delay',
+  ],
+  problems: [],
+};
+
 // ---------------------------------------------------------------------------
 // Application Runtime State
 // ---------------------------------------------------------------------------
@@ -433,6 +512,7 @@ const appState = {
     'calc-integrals': FALLBACK_INTEGRAL_WORD_PROBLEMS,
     'math-diff-eq': FALLBACK_DIFFEQ_WORD_PROBLEMS,
     'math-lin-alg': FALLBACK_LINALG_WORD_PROBLEMS,
+    'mech-pid': FALLBACK_PID_WORD_PROBLEMS,
   },
   lab: {
     presetId: null,
@@ -529,6 +609,36 @@ const appState = {
     showEigen: true,
     mechatronicsLens: false,
   },
+  pidLab: {
+    presetId: 'dc-servo',
+    kp: 4.0,
+    ki: 0.8,
+    kd: 1.2,
+    disturbance: false,
+    showEffort: true,
+    cameraPreset: '3d',
+    isAnimating: false,
+  },
+  pidTelemetry: {
+    presetId: 'dc-servo',
+    label: 'DC Servo Position',
+    mechatronicsLabel: 'DC Servo Motor Loop',
+    kp: 4.0,
+    ki: 0.8,
+    kd: 1.2,
+    disturbance: false,
+    showEffort: true,
+    t: 8.0,
+    yt: 1.0,
+    ut: 0.0,
+    overshootPct: 10.0,
+    settlingTime: 3.2,
+    riseTime: 0.65,
+    steadyStateError: 0.004,
+    stability: 'STABLE',
+    controllerLatex: 'C(s) = 4.0 + \\frac{0.8}{s} + 1.2s',
+    plantLatex: 'G(s) = \\frac{1}{s(0.4s + 1)}',
+  },
 };
 
 const activeInstances = {
@@ -552,10 +662,15 @@ function isLinAlgLesson() {
   return appState.lessonId === LINALG_LESSON_ID;
 }
 
+function isPidLesson() {
+  return appState.lessonId === PID_LESSON_ID;
+}
+
 function getLessonStages() {
   if (isIntegralLesson()) return INTEGRAL_STAGES;
   if (isDiffEqLesson()) return DIFFEQ_STAGES;
   if (isLinAlgLesson()) return LINALG_STAGES;
+  if (isPidLesson()) return PID_STAGES;
   return STAGES;
 }
 
@@ -563,6 +678,7 @@ function stageStoreKey(stageId) {
   if (isIntegralLesson()) return `int:${stageId}`;
   if (isDiffEqLesson()) return `de:${stageId}`;
   if (isLinAlgLesson()) return `la:${stageId}`;
+  if (isPidLesson()) return `pid:${stageId}`;
   return stageId;
 }
 
@@ -662,6 +778,33 @@ function getActiveLinAlgPreset(presets) {
   return presets.find((p) => p.id === appState.linalgLab.presetId) || presets[0];
 }
 
+function normalizePidPresets() {
+  if (!PID_PRESETS) return [];
+  const list = Array.isArray(PID_PRESETS)
+    ? PID_PRESETS
+    : Object.entries(PID_PRESETS).map(([id, v]) => ({ id, ...v }));
+
+  return list.map((p, idx) => ({
+    id: p.id ?? p.key ?? `pid-preset-${idx}`,
+    name: p.label ?? p.name ?? `Plant ${idx + 1}`,
+    mechatronicsLabel: p.mechatronicsLabel ?? null,
+    defaultKp: p.defaultKp ?? 4.0,
+    defaultKi: p.defaultKi ?? 0.8,
+    defaultKd: p.defaultKd ?? 1.2,
+    defaultDisturbance: Boolean(p.defaultDisturbance),
+    plantLatex: p.plantLatex ?? '',
+    raw: p,
+  }));
+}
+
+function getActivePidPreset(presets) {
+  if (!presets.length) return null;
+  if (!appState.pidLab.presetId) {
+    appState.pidLab.presetId = presets[0].id;
+  }
+  return presets.find((p) => p.id === appState.pidLab.presetId) || presets[0];
+}
+
 function getActiveDiffEqPreset(presets) {
   if (!presets.length) return null;
   if (!appState.diffeqLab.presetId) {
@@ -740,10 +883,10 @@ function getMasterySnapshot() {
   return {
     percent,
     solvedProblems,
-    totalProblems: 60,
+    totalProblems: 74,
     solvedVisual,
-    totalVisual: 26,
-    totalStages: 16,
+    totalVisual: 32,
+    totalStages: 20,
     streak,
     accuracyPct: stats.accuracyPct ?? 100,
     completedStages,
@@ -1208,6 +1351,15 @@ function renderHubView() {
                   <span>04 · Linear Algebra</span>
                   <span aria-hidden="true" class="text-sm sm:text-base text-emeraldGlow">→</span>
                 </button>
+
+                <button
+                  id="hub-hero-launch-pid"
+                  type="button"
+                  class="col-span-2 sm:col-span-1 btn-glass w-full sm:w-auto !rounded-2xl !px-3.5 sm:!px-4 !py-2.5 !text-xs sm:!text-sm !border-amberGlow/55 !bg-amberGlow/[0.08] !text-amber-200 hover:!border-amberGlow/85 hover:!bg-amberGlow/15"
+                >
+                  <span>⚙ Mechatronics 01 · PID Control &amp; Stability</span>
+                  <span aria-hidden="true" class="text-sm sm:text-base text-amberGlow">→</span>
+                </button>
               </div>
             </div>
 
@@ -1219,7 +1371,7 @@ function renderHubView() {
                 <div class="flex items-center justify-between gap-2 mb-2 sm:mb-3">
                   <div class="min-w-0">
                     <h2 class="font-display font-semibold text-xs sm:text-sm text-white truncate">Studio Mastery Telemetry</h2>
-                    <p class="hidden sm:block text-xs text-slate-400">Progress saved locally across all 4 Engineering Math studios</p>
+                    <p class="hidden sm:block text-xs text-slate-400">Progress saved locally across Engineering Math &amp; Mechatronics studios</p>
                   </div>
                   <span class="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-mono bg-emeraldGlow/10 text-emeraldGlow border border-emeraldGlow/25 shrink-0">
                     ${stats.completedStages.length}/${stats.totalStages} Stages
@@ -1338,6 +1490,11 @@ function renderHubView() {
     openLesson(LINALG_LESSON_ID, '3d-lab');
   });
 
+  document.getElementById('hub-hero-launch-pid')?.addEventListener('click', () => {
+    playSfx('tick');
+    openLesson(PID_LESSON_ID, '3d-lab');
+  });
+
   document.getElementById('hub-preview-launch')?.addEventListener('click', () => {
     playSfx('tick');
     openLesson(LESSON_ID, '3d-lab');
@@ -1371,7 +1528,7 @@ function bindHubAudioToggle() {
 }
 
 // ---------------------------------------------------------------------------
-// VIEW 2 — Interactive Lesson Studio (`calc-derivatives`, `calc-integrals`, `math-diff-eq`, `math-lin-alg`)
+// VIEW 2 — Interactive Lesson Studio (`calc-derivatives`, `calc-integrals`, `math-diff-eq`, `math-lin-alg`, `mech-pid`)
 // ---------------------------------------------------------------------------
 
 function openLesson(lessonId = LESSON_ID, stageId = '3d-lab') {
@@ -1379,6 +1536,7 @@ function openLesson(lessonId = LESSON_ID, stageId = '3d-lab') {
   if (lessonId === INTEGRAL_LESSON_ID) appState.lessonId = INTEGRAL_LESSON_ID;
   else if (lessonId === DIFFEQ_LESSON_ID) appState.lessonId = DIFFEQ_LESSON_ID;
   else if (lessonId === LINALG_LESSON_ID) appState.lessonId = LINALG_LESSON_ID;
+  else if (lessonId === PID_LESSON_ID) appState.lessonId = PID_LESSON_ID;
   else appState.lessonId = LESSON_ID;
   appState.stage = stageId;
   renderLessonShell();
@@ -1400,6 +1558,11 @@ function getLessonSubtitleText(on) {
     return on
       ? 'Mechatronics Lens: Rigid-Body Frames SO(3), Jacobians & Principal Inertia Axes'
       : 'Linear Geometry Lens: 3D Matrix Warps, Eigenvector Spans, Determinants & SVD';
+  }
+  if (isPidLesson()) {
+    return on
+      ? 'Hardware Rig Lens: Actuator Torque Saturation, Load Disturbance Rejection & Servo Tracking'
+      : 'Control Theory Lens: Closed-Loop Transfer Functions, Routh-Hurwitz & Phase Margin';
   }
   return on
     ? 'Mechatronics Lens: Displacement x(t) → Velocity v(t) & Actuator Dynamics'
@@ -1479,21 +1642,34 @@ function renderLessonShell() {
   const isInt = isIntegralLesson();
   const isDE = isDiffEqLesson();
   const isLA = isLinAlgLesson();
-  const lessonBadge = isLA ? 'Lesson 04' : isDE ? 'Lesson 03' : isInt ? 'Lesson 02' : 'Lesson 01';
-  const lessonBadgeColor = isLA
-    ? 'text-emeraldGlow'
-    : isDE
-      ? 'text-amberGlow'
-      : isInt
-        ? 'text-violetGlow'
-        : 'text-cyanGlow';
-  const lessonTitle = isLA
-    ? 'Linear Algebra Studio'
-    : isDE
-      ? 'ODE & Laplace Studio'
-      : isInt
-        ? 'Integrals Studio'
-        : 'Derivatives Studio';
+  const isPid = isPidLesson();
+  const lessonBadge = isPid
+    ? 'Mechatronics 01'
+    : isLA
+      ? 'Lesson 04'
+      : isDE
+        ? 'Lesson 03'
+        : isInt
+          ? 'Lesson 02'
+          : 'Lesson 01';
+  const lessonBadgeColor = isPid
+    ? 'text-amberGlow'
+    : isLA
+      ? 'text-emeraldGlow'
+      : isDE
+        ? 'text-amberGlow'
+        : isInt
+          ? 'text-violetGlow'
+          : 'text-cyanGlow';
+  const lessonTitle = isPid
+    ? 'PID Control Studio'
+    : isLA
+      ? 'Linear Algebra Studio'
+      : isDE
+        ? 'ODE & Laplace Studio'
+        : isInt
+          ? 'Integrals Studio'
+          : 'Derivatives Studio';
 
   root.innerHTML = `
     <div class="min-h-screen flex flex-col relative view-enter">
@@ -1669,6 +1845,9 @@ function propagateLensToActiveStage() {
     } else if (isLinAlgLesson()) {
       updateLinAlgStage1LensUI();
       updateLinAlgStage1TelemetryUI();
+    } else if (isPidLesson()) {
+      updatePidStage1LensUI();
+      updatePidStage1TelemetryUI();
     } else {
       updateStage1LensUI();
       updateStage1TelemetryUI();
@@ -1691,6 +1870,10 @@ function propagateLensToActiveStage() {
         titleEl.textContent = on
           ? '2-DOF Robot Jacobian J & Manipulability Ellipse'
           : "Interactive 2D Linear Map A = [î'  ĵ'] & SVD Ellipse";
+      } else if (isPidLesson()) {
+        titleEl.textContent = on
+          ? 'Servo Position θ(t) & Motor Torque τ(t) (P/I/D Channels)'
+          : 'Closed-Loop Output y(t) & P/I/D Effort Decomposition u(t)';
       } else {
         titleEl.textContent = on
           ? 'Synchronized Position x(t) & Velocity v(t)'
@@ -1786,6 +1969,26 @@ function mountActiveStage() {
         break;
       default:
         mountLinAlgStage1Lab3D(container);
+    }
+    return;
+  }
+
+  if (isPidLesson()) {
+    switch (appState.stage) {
+      case '3d-lab':
+        mountPidStage1Lab3D(container);
+        break;
+      case 'intuition':
+        mountPidStage2Intuition(container);
+        break;
+      case 'solver':
+        mountPidStage3Solver(container);
+        break;
+      case 'word-problems':
+        mountStage4WordProblems(container);
+        break;
+      default:
+        mountPidStage1Lab3D(container);
     }
     return;
   }
@@ -2569,7 +2772,7 @@ function mountStage2Intuition(container) {
   const on = isMechatronicsLens();
   const s = getStoreState();
   const solvedDerivQuizzes = (s.solvedQuizzes || []).filter(
-    (id) => !String(id).startsWith('int-quiz-') && !String(id).startsWith('de-quiz-') && !String(id).startsWith('la-quiz-')
+    (id) => !String(id).startsWith('int-quiz-') && !String(id).startsWith('de-quiz-') && !String(id).startsWith('la-quiz-') && !String(id).startsWith('pid-quiz-')
   ).length;
   let activeSubTab = 'lab'; // 'lab' | 'quiz' on mobile (<lg)
 
@@ -2710,7 +2913,7 @@ function mountStage2Intuition(container) {
     try {
       const updateQuizTabCount = () => {
         const solvedDeriv = (getStoreState().solvedQuizzes || []).filter(
-          (id) => !String(id).startsWith('int-quiz-') && !String(id).startsWith('de-quiz-') && !String(id).startsWith('la-quiz-')
+          (id) => !String(id).startsWith('int-quiz-') && !String(id).startsWith('de-quiz-') && !String(id).startsWith('la-quiz-') && !String(id).startsWith('pid-quiz-')
         ).length;
         const quizBtn = container.querySelector('[data-stage2-subtab="quiz"]');
         if (quizBtn) quizBtn.textContent = `🎯 Match Quiz (${solvedDeriv}/8)`;
@@ -5409,27 +5612,900 @@ function mountLinAlgStage3Solver(container) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// MECHATRONICS 01 — PID CONTROL & FEEDBACK STABILITY (`mech-pid`) STAGES 1–3
+// ---------------------------------------------------------------------------
+
+function mountPidStage1Lab3D(container) {
+  const presets = normalizePidPresets();
+  const activePreset = getActivePidPreset(presets);
+  const lensOn = isMechatronicsLens();
+
+  container.innerHTML = `
+    <section class="space-y-1.5 sm:space-y-4 view-enter">
+      <!-- Top Plant Preset Strip + Desktop Camera Presets -->
+      <div class="flex items-center justify-between gap-2 sm:gap-3">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar xl:flex-wrap flex-1 min-w-0 py-0.5" role="tablist" aria-label="Closed-loop plant presets">
+          ${presets
+            .map((p) => {
+              const isSelected = activePreset && p.id === activePreset.id;
+              return `
+                <button
+                  type="button"
+                  data-pid-preset-id="${escapeHtml(p.id)}"
+                  class="shrink-0 whitespace-nowrap px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-medium border transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-amberGlow/15 border-amberGlow/50 text-amber-200 shadow-[0_0_16px_rgba(245,158,11,0.2)]'
+                      : 'bg-slate-900/60 border-white/10 text-slate-300 hover:border-white/25 hover:text-white'
+                  }"
+                >
+                  ${escapeHtml(p.name)}
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+
+        <div class="hidden xl:flex items-center gap-1 bg-slate-900/75 p-1 rounded-xl border border-white/10 shrink-0">
+          ${[
+            { id: '3d', label: '3D Studio' },
+            { id: 'front', label: 'Front 2D Graph' },
+            { id: 'iso', label: 'Isometric' },
+          ]
+            .map((cam) => {
+              const active = appState.pidLab.cameraPreset === cam.id;
+              return `
+                <button
+                  type="button"
+                  data-pid-camera-preset="${cam.id}"
+                  class="px-3 py-1.5 rounded-lg text-[11px] font-mono transition-all cursor-pointer ${
+                    active
+                      ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+                      : 'text-slate-400 border border-transparent hover:text-white'
+                  }"
+                >
+                  ${cam.label}
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+      </div>
+
+      <!-- Main Split-Screen Mobile / Full-Bleed Desktop 3D PID Studio -->
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-2 sm:gap-4 items-stretch">
+        <!-- 3D Viewport Canvas Container (Slightly trimmer on mobile so all 3 Kp/Ki/Kd sliders stay above the fold) -->
+        <div class="xl:col-span-8 canvas-stage relative h-[30dvh] min-h-[190px] max-h-[248px] sm:h-[420px] sm:max-h-none xl:h-[calc(100vh-210px)] xl:min-h-[540px] flex flex-col">
+          <div id="pid-3d-canvas" class="absolute inset-0 w-full h-full"></div>
+
+          <!-- Top-Left Floating Plant & Controller HUD -->
+          <div class="pointer-events-none relative z-10 flex items-start justify-between gap-2 p-2 sm:p-4">
+            <div class="pointer-events-auto rounded-xl sm:rounded-2xl px-2.5 py-1 sm:px-4 sm:py-2.5 bg-[#0B0D12]/80 backdrop-blur-xl border border-white/15 shadow-lg max-w-full">
+              <div class="hidden sm:flex items-center gap-2 mb-1">
+                <span class="w-2 h-2 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B]"></span>
+                <span id="pid-hud-title" class="text-[10px] font-mono uppercase tracking-widest text-slate-400">
+                  ${lensOn ? 'Closed-Loop Servo Rig & Torque Effort' : 'Unity-Feedback Plant Transfer G(s)'}
+                </span>
+              </div>
+              <div class="flex flex-wrap items-center gap-x-2.5 sm:gap-x-4 gap-y-0.5 text-[10px] sm:text-xs text-white">
+                <span id="pid-hud-plant-math" class="text-cyan-200"></span>
+              </div>
+            </div>
+
+            <!-- Mechatronics Torque/Rig Indicator -->
+            <div id="pid-hud-mech-indicator" class="hidden sm:block pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
+              lensOn
+                ? 'bg-amberGlow/15 border-amberGlow/45 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
+                : 'bg-[#0B0D12]/70 border-white/10 text-slate-400'
+            }">
+              <div class="flex items-center gap-2 text-[11px] font-mono">
+                <span class="w-2 h-2 rounded-full ${lensOn ? 'bg-amberGlow animate-pulse' : 'bg-slate-600'}"></span>
+                <span id="pid-hud-mech-text">${lensOn ? 'Actuator Saturation & Caliper: ON' : 'Hardware Rig: Standard'}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Legend + Compact Mobile Camera Switcher -->
+          <div class="pointer-events-none relative z-10 mt-auto p-1.5 sm:p-4 flex items-center justify-between gap-2">
+            <div class="hidden sm:inline-flex items-center gap-3 px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-300">
+              <span><span class="text-cyanGlow">●</span> Output y(t)</span>
+              <span><span class="text-emeraldGlow">—</span> Setpoint r=1</span>
+              <span><span class="text-amberGlow">●</span> Effort u(t)</span>
+            </div>
+
+            <div class="pointer-events-auto xl:hidden ml-auto flex items-center gap-0.5 bg-[#0B0D12]/80 backdrop-blur-md p-0.5 rounded-xl border border-white/15">
+              ${[
+                { id: '3d', label: '3D' },
+                { id: 'front', label: '2D' },
+                { id: 'iso', label: 'Iso' },
+              ]
+                .map((cam) => {
+                  const active = appState.pidLab.cameraPreset === cam.id;
+                  return `
+                    <button
+                      type="button"
+                      data-pid-camera-preset="${cam.id}"
+                      class="px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all cursor-pointer ${
+                        active
+                          ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+                          : 'text-slate-400 border border-transparent hover:text-white'
+                      }"
+                    >
+                      ${cam.label}
+                    </button>
+                  `;
+                })
+                .join('')}
+            </div>
+
+            <div class="hidden xl:inline-flex items-center px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-400">
+              Drag to orbit • Scroll to zoom
+            </div>
+          </div>
+        </div>
+
+        <!-- Tactile PID Telemetry + 3-Channel Kp / Ki / Kd Sliders -->
+        <aside class="xl:col-span-4 flex flex-col gap-1.5 sm:gap-4 xl:h-[calc(100vh-210px)] xl:overflow-y-auto studio-scroll pr-0.5">
+          <!-- Compact 1-Row Mobile Telemetry / Expanded Desktop Spec Card -->
+          <div class="glass-panel p-2 sm:p-5 space-y-1.5 sm:space-y-4">
+            <div class="flex items-center justify-between gap-2">
+              <div class="hidden xl:block">
+                <div class="text-[10px] font-mono uppercase tracking-[0.14em] text-slate-400">Closed-Loop Performance</div>
+                <h2 class="font-display font-semibold text-sm text-white mt-0.5">Overshoot, Error &amp; Stability</h2>
+              </div>
+
+              <!-- Mobile Compact Inline Readout -->
+              <div class="flex xl:hidden items-center gap-1.5 min-w-0 flex-1">
+                <div class="flex-1 min-w-0 rounded-xl px-2 py-1 bg-cyanGlow/[0.08] border border-cyanGlow/25">
+                  <div class="text-[8.5px] font-mono uppercase tracking-wider text-cyanGlow/90 truncate">Overshoot</div>
+                  <div id="pid-val-os-compact" class="font-mono font-semibold text-xs text-white leading-tight">10.0%</div>
+                </div>
+                <div class="flex-1 min-w-0 rounded-xl px-2 py-1 bg-violetGlow/[0.08] border border-violetGlow/25">
+                  <div class="text-[8.5px] font-mono uppercase tracking-wider text-violetGlow/90 truncate">SS Error eₛₛ</div>
+                  <div id="pid-val-ess-compact" class="font-mono font-semibold text-xs text-violet-200 leading-tight">0.004</div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1 shrink-0">
+                <div
+                  id="pid-badge-stability"
+                  class="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-emeraldGlow/15 border-emeraldGlow/40 text-emerald-200"
+                >
+                  STABLE
+                </div>
+                <button
+                  id="pid-btn-toggle-mobile-formula"
+                  type="button"
+                  aria-expanded="false"
+                  title="Toggle PID controller C(s) formula"
+                  class="xl:hidden px-2 py-0.5 rounded-lg bg-white/[0.05] border border-white/15 text-[10px] font-mono text-amber-200 cursor-pointer"
+                >
+                  C(s) ▾
+                </button>
+              </div>
+            </div>
+
+            <!-- Collapsible on Mobile (<xl), Always Open on Desktop (xl:block) -->
+            <div id="pid-mobile-formula-drawer" class="hidden xl:block space-y-2.5 sm:space-y-3.5">
+              <div class="katex-card flex flex-col items-center justify-center gap-1.5 min-h-[58px] sm:min-h-[72px]">
+                <div id="pid-telemetry-controller-katex" class="text-amber-200 text-xs sm:text-sm overflow-x-auto"></div>
+              </div>
+
+              <div class="hidden xl:grid grid-cols-3 gap-2">
+                <div class="rounded-2xl p-3 bg-cyanGlow/[0.06] border border-cyanGlow/25">
+                  <div class="text-[10px] font-mono uppercase tracking-wider text-cyanGlow/90">Overshoot</div>
+                  <div id="pid-val-os" class="font-mono font-semibold text-base text-white mt-0.5">10.0%</div>
+                </div>
+                <div class="rounded-2xl p-3 bg-violetGlow/[0.06] border border-violetGlow/25">
+                  <div class="text-[10px] font-mono uppercase tracking-wider text-violetGlow/90">SS Error</div>
+                  <div id="pid-val-ess" class="font-mono font-semibold text-base text-violet-200 mt-0.5">0.004</div>
+                </div>
+                <div class="rounded-2xl p-3 bg-emeraldGlow/[0.06] border border-emeraldGlow/25">
+                  <div class="text-[10px] font-mono uppercase tracking-wider text-emeraldGlow/90">Settling Ts</div>
+                  <div id="pid-val-ts" class="font-mono font-semibold text-base text-emerald-200 mt-0.5">3.20s</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Compact 3-Slider PID Gain Deck (Kp Cyan, Ki Violet, Kd Amber) -->
+          <div class="glass-panel p-2.5 sm:p-5 space-y-2 sm:space-y-3.5 flex-1 flex flex-col justify-between">
+            <div class="space-y-1.5 sm:space-y-3">
+              <!-- Proportional Gain Kp (Cyan) -->
+              <div class="space-y-0.5 sm:space-y-1">
+                <div class="flex items-center justify-between">
+                  <label for="slider-pid-kp" class="text-[11px] sm:text-xs font-medium text-slate-200 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE]"></span>
+                    <span>Proportional Gain K<sub>p</sub></span>
+                  </label>
+                  <span id="readout-pid-kp" class="px-1.5 py-0.5 rounded-lg bg-cyanGlow/15 border border-cyanGlow/30 font-mono text-[10px] sm:text-xs text-cyanGlow font-semibold">
+                    ${formatNum(appState.pidLab.kp, 1)}
+                  </span>
+                </div>
+                <input
+                  id="slider-pid-kp"
+                  type="range"
+                  min="0"
+                  max="12"
+                  step="0.2"
+                  value="${appState.pidLab.kp}"
+                  class="studio-slider-cyan"
+                />
+              </div>
+
+              <!-- Integral Gain Ki (Violet/Emerald) -->
+              <div class="space-y-0.5 sm:space-y-1">
+                <div class="flex items-center justify-between">
+                  <label for="slider-pid-ki" class="text-[11px] sm:text-xs font-medium text-slate-200 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-violetGlow shadow-[0_0_8px_#A78BFA]"></span>
+                    <span>Integral Gain K<sub>i</sub> (Zero Droop)</span>
+                  </label>
+                  <span id="readout-pid-ki" class="px-1.5 py-0.5 rounded-lg bg-violetGlow/15 border border-violetGlow/30 font-mono text-[10px] sm:text-xs text-violet-200 font-semibold">
+                    ${formatNum(appState.pidLab.ki, 1)}
+                  </span>
+                </div>
+                <input
+                  id="slider-pid-ki"
+                  type="range"
+                  min="0"
+                  max="6"
+                  step="0.1"
+                  value="${appState.pidLab.ki}"
+                  class="studio-slider-cyan"
+                />
+              </div>
+
+              <!-- Derivative Gain Kd (Amber) -->
+              <div class="space-y-0.5 sm:space-y-1">
+                <div class="flex items-center justify-between">
+                  <label for="slider-pid-kd" class="text-[11px] sm:text-xs font-medium text-slate-200 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B]"></span>
+                    <span>Derivative Gain K<sub>d</sub> (Damping)</span>
+                  </label>
+                  <span id="readout-pid-kd" class="px-1.5 py-0.5 rounded-lg bg-amberGlow/15 border border-amberGlow/30 font-mono text-[10px] sm:text-xs text-amberGlow font-semibold">
+                    ${formatNum(appState.pidLab.kd, 1)}
+                  </span>
+                </div>
+                <input
+                  id="slider-pid-kd"
+                  type="range"
+                  min="0"
+                  max="4"
+                  step="0.1"
+                  value="${appState.pidLab.kd}"
+                  class="studio-slider-amber"
+                />
+              </div>
+
+              <!-- Action Row: Run Step Response + Load Disturbance Toggle + Effort Toggle -->
+              <div class="flex items-center gap-1.5 pt-0.5">
+                <button
+                  id="btn-animate-pid"
+                  type="button"
+                  class="flex-1 py-2 sm:py-3 px-2.5 sm:px-4 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amberGlow via-cyanGlow to-emeraldGlow text-slate-950 font-display font-bold text-[11px] sm:text-sm tracking-wide shadow-[0_0_22px_rgba(245,158,11,0.28)] hover:brightness-110 active:scale-[0.985] transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <span id="pid-anim-icon" aria-hidden="true">▶</span>
+                  <span id="pid-anim-text">Run Step</span>
+                </button>
+
+                <button
+                  id="btn-toggle-pid-disturbance"
+                  type="button"
+                  aria-pressed="${appState.pidLab.disturbance ? 'true' : 'false'}"
+                  class="shrink-0 py-2 sm:py-3 px-2.5 sm:px-3 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-mono font-semibold border transition-all cursor-pointer ${
+                    appState.pidLab.disturbance
+                      ? 'bg-rose-500/20 border-rose-400/55 text-rose-200 shadow-[0_0_16px_rgba(251,113,133,0.25)]'
+                      : 'bg-slate-900/70 border-white/15 text-slate-300 hover:border-white/30'
+                  }"
+                >
+                  ⚡ Load ${appState.pidLab.disturbance ? 'ON' : 'OFF'}
+                </button>
+
+                <label class="xl:hidden shrink-0 inline-flex items-center gap-1 px-2 py-2 rounded-xl bg-amberGlow/10 border border-amberGlow/30 text-[10px] font-mono text-amber-200 cursor-pointer select-none">
+                  <input
+                    id="toggle-pid-effort-mobile"
+                    type="checkbox"
+                    ${appState.pidLab.showEffort ? 'checked' : ''}
+                    class="w-3.5 h-3.5 rounded accent-amber-400 cursor-pointer"
+                  />
+                  <span>u(t)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Desktop Effort Ribbon Toggle + Stage 2 Forward Link -->
+            <div class="hidden xl:block pt-3 border-t border-white/10 space-y-2.5">
+              <label class="flex items-center justify-between gap-3 cursor-pointer select-none group">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-2.5 h-2.5 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B]"></span>
+                  <div>
+                    <div class="text-xs font-medium text-slate-200 group-hover:text-white">
+                      Show 3D Control Effort Ribbon u(t)
+                    </div>
+                    <div class="text-[11px] text-slate-400">Visualize actuator torque demand &amp; saturation rails</div>
+                  </div>
+                </div>
+                <input
+                  id="toggle-pid-effort"
+                  type="checkbox"
+                  ${appState.pidLab.showEffort ? 'checked' : ''}
+                  class="w-4 h-4 rounded accent-amber-400 cursor-pointer"
+                />
+              </label>
+
+              <button
+                id="btn-pid-next-intuition"
+                type="button"
+                class="btn-glass w-full !justify-between !text-xs"
+              >
+                <span>Continue to Stage 2: P/I/D Effort Decomposition Lab</span>
+                <span class="text-amberGlow" aria-hidden="true">→</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  `;
+
+  const sliderKp = document.getElementById('slider-pid-kp');
+  const sliderKi = document.getElementById('slider-pid-ki');
+  const sliderKd = document.getElementById('slider-pid-kd');
+  syncSliderTrackFill(sliderKp);
+  syncSliderTrackFill(sliderKi);
+  syncSliderTrackFill(sliderKd);
+
+  const canvasHost = document.getElementById('pid-3d-canvas');
+
+  const handlePidTelemetry = (m = {}) => {
+    appState.pidTelemetry = {
+      ...appState.pidTelemetry,
+      ...m,
+    };
+    updatePidStage1TelemetryUI();
+  };
+
+  if (canvasHost && typeof Pid3DStudio === 'function') {
+    try {
+      const studio = new Pid3DStudio();
+      studio.init(canvasHost, {
+        presetId: activePreset?.id || 'dc-servo',
+        kp: appState.pidLab.kp,
+        ki: appState.pidLab.ki,
+        kd: appState.pidLab.kd,
+        disturbance: appState.pidLab.disturbance,
+        showEffort: appState.pidLab.showEffort,
+        mechatronicsLens: isMechatronicsLens(),
+        onTelemetry: handlePidTelemetry,
+      });
+      studio.setCameraPreset?.(appState.pidLab.cameraPreset);
+      activeInstances.studio3D = studio;
+      if (typeof studio.getTelemetry === 'function') {
+        handlePidTelemetry(studio.getTelemetry());
+      }
+    } catch (err) {
+      console.error('[EIGENLAB] Pid3DStudio init error:', err);
+      canvasHost.innerHTML = `
+        <div class="w-full h-full flex items-center justify-center p-6 text-center text-sm text-slate-400">
+          3D WebGL PID Control viewport could not initialize on this device.
+        </div>
+      `;
+    }
+  }
+
+  updatePidStage1LensUI();
+  updatePidStage1TelemetryUI();
+
+  // Mobile C(s) Formula Drawer Toggle
+  const mobBtn = document.getElementById('pid-btn-toggle-mobile-formula');
+  const mobDrawer = document.getElementById('pid-mobile-formula-drawer');
+  mobBtn?.addEventListener('click', () => {
+    playSfx('tick');
+    const isHidden = mobDrawer?.classList.toggle('hidden');
+    mobBtn.setAttribute('aria-expanded', String(!isHidden));
+    mobBtn.textContent = isHidden ? 'C(s) ▾' : 'C(s) ▴';
+  });
+
+  // Helper to sync disturbance button styling
+  const syncDistBtn = () => {
+    const btn = document.getElementById('btn-toggle-pid-disturbance');
+    if (!btn) return;
+    const active = appState.pidLab.disturbance;
+    btn.setAttribute('aria-pressed', String(active));
+    btn.textContent = `⚡ Load ${active ? 'ON' : 'OFF'}`;
+    btn.className = `shrink-0 py-2 sm:py-3 px-2.5 sm:px-3 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-mono font-semibold border transition-all cursor-pointer ${
+      active
+        ? 'bg-rose-500/20 border-rose-400/55 text-rose-200 shadow-[0_0_16px_rgba(251,113,133,0.25)]'
+        : 'bg-slate-900/70 border-white/15 text-slate-300 hover:border-white/30'
+    }`;
+  };
+
+  // Plant Preset Selection
+  container.querySelectorAll('[data-pid-preset-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-pid-preset-id');
+      if (!id || id === appState.pidLab.presetId) return;
+      playSfx('tick');
+      appState.pidLab.presetId = id;
+      const preset = getActivePidPreset(presets);
+      if (preset) {
+        appState.pidLab.kp = preset.defaultKp;
+        appState.pidLab.ki = preset.defaultKi;
+        appState.pidLab.kd = preset.defaultKd;
+        appState.pidLab.disturbance = preset.defaultDisturbance;
+
+        if (sliderKp) {
+          sliderKp.value = String(preset.defaultKp);
+          syncSliderTrackFill(sliderKp);
+        }
+        if (sliderKi) {
+          sliderKi.value = String(preset.defaultKi);
+          syncSliderTrackFill(sliderKi);
+        }
+        if (sliderKd) {
+          sliderKd.value = String(preset.defaultKd);
+          syncSliderTrackFill(sliderKd);
+        }
+        const rKp = document.getElementById('readout-pid-kp');
+        const rKi = document.getElementById('readout-pid-ki');
+        const rKd = document.getElementById('readout-pid-kd');
+        if (rKp) rKp.textContent = formatNum(preset.defaultKp, 1);
+        if (rKi) rKi.textContent = formatNum(preset.defaultKi, 1);
+        if (rKd) rKd.textContent = formatNum(preset.defaultKd, 1);
+        syncDistBtn();
+      }
+
+      container.querySelectorAll('[data-pid-preset-id]').forEach((b) => {
+        const sel = b.getAttribute('data-pid-preset-id') === id;
+        b.className = `shrink-0 whitespace-nowrap px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-medium border transition-all cursor-pointer ${
+          sel
+            ? 'bg-amberGlow/15 border-amberGlow/50 text-amber-200 shadow-[0_0_16px_rgba(245,158,11,0.2)]'
+            : 'bg-slate-900/60 border-white/10 text-slate-300 hover:border-white/25 hover:text-white'
+        }`;
+      });
+
+      activeInstances.studio3D?.setPreset?.(id);
+      if (typeof activeInstances.studio3D?.getTelemetry === 'function') {
+        handlePidTelemetry(activeInstances.studio3D.getTelemetry());
+      }
+      markStageDone('3d-lab');
+    });
+  });
+
+  // Camera Presets
+  container.querySelectorAll('[data-pid-camera-preset]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const camId = btn.getAttribute('data-pid-camera-preset');
+      if (!camId) return;
+      playSfx('tick');
+      appState.pidLab.cameraPreset = camId;
+      container.querySelectorAll('[data-pid-camera-preset]').forEach((b) => {
+        const act = b.getAttribute('data-pid-camera-preset') === camId;
+        const isCompact = b.textContent.trim().length <= 3;
+        b.className = `${isCompact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'} rounded-lg font-mono transition-all cursor-pointer ${
+          act
+            ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+            : 'text-slate-400 border border-transparent hover:text-white'
+        }`;
+      });
+      activeInstances.studio3D?.setCameraPreset?.(camId);
+    });
+  });
+
+  // Gain Sliders (Kp, Ki, Kd)
+  const applyGains = () => {
+    activeInstances.studio3D?.setGains?.({
+      kp: appState.pidLab.kp,
+      ki: appState.pidLab.ki,
+      kd: appState.pidLab.kd,
+    });
+    markStageDone('3d-lab');
+  };
+
+  sliderKp?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    appState.pidLab.kp = val;
+    syncSliderTrackFill(sliderKp);
+    const r = document.getElementById('readout-pid-kp');
+    if (r) r.textContent = formatNum(val, 1);
+    applyGains();
+  });
+
+  sliderKi?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    appState.pidLab.ki = val;
+    syncSliderTrackFill(sliderKi);
+    const r = document.getElementById('readout-pid-ki');
+    if (r) r.textContent = formatNum(val, 1);
+    applyGains();
+  });
+
+  sliderKd?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    appState.pidLab.kd = val;
+    syncSliderTrackFill(sliderKd);
+    const r = document.getElementById('readout-pid-kd');
+    if (r) r.textContent = formatNum(val, 1);
+    applyGains();
+  });
+
+  // Disturbance Toggle Button
+  document.getElementById('btn-toggle-pid-disturbance')?.addEventListener('click', () => {
+    playSfx('snap');
+    appState.pidLab.disturbance = !appState.pidLab.disturbance;
+    syncDistBtn();
+    activeInstances.studio3D?.setDisturbance?.(appState.pidLab.disturbance);
+    markStageDone('3d-lab');
+  });
+
+  // Effort Ribbon Toggles (Desktop + Mobile synced)
+  const effToggle = document.getElementById('toggle-pid-effort');
+  const effToggleMob = document.getElementById('toggle-pid-effort-mobile');
+  const handleEffortToggle = (checked) => {
+    playSfx('tick');
+    appState.pidLab.showEffort = !!checked;
+    if (effToggle) effToggle.checked = appState.pidLab.showEffort;
+    if (effToggleMob) effToggleMob.checked = appState.pidLab.showEffort;
+    activeInstances.studio3D?.toggleEffort?.(appState.pidLab.showEffort);
+  };
+  effToggle?.addEventListener('change', (e) => handleEffortToggle(e.target.checked));
+  effToggleMob?.addEventListener('change', (e) => handleEffortToggle(e.target.checked));
+
+  // Run Step Response Button
+  document.getElementById('btn-animate-pid')?.addEventListener('click', () => {
+    if (appState.pidLab.isAnimating) return;
+    playSfx('snap');
+    appState.pidLab.isAnimating = true;
+    const icon = document.getElementById('pid-anim-icon');
+    const txt = document.getElementById('pid-anim-text');
+    if (icon) icon.textContent = '◌';
+    if (txt) txt.textContent = 'Simulating...';
+
+    const finishAnim = () => {
+      appState.pidLab.isAnimating = false;
+      if (icon) icon.textContent = '▶';
+      if (txt) txt.textContent = 'Run Step';
+      playSfx('success');
+      markStageDone('3d-lab');
+    };
+
+    if (typeof activeInstances.studio3D?.animateResponse === 'function') {
+      activeInstances.studio3D.animateResponse(finishAnim);
+    } else {
+      finishAnim();
+    }
+  });
+
+  document.getElementById('btn-pid-next-intuition')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('intuition');
+  });
+}
+
+function updatePidStage1LensUI() {
+  const on = isMechatronicsLens();
+  const titleEl = document.getElementById('pid-hud-title');
+  if (titleEl) {
+    titleEl.textContent = on
+      ? 'Closed-Loop Servo Rig & Torque Effort'
+      : 'Unity-Feedback Plant Transfer G(s)';
+  }
+  const mechBox = document.getElementById('pid-hud-mech-indicator');
+  const mechTxt = document.getElementById('pid-hud-mech-text');
+  if (mechBox) {
+    mechBox.className = `hidden sm:block pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
+      on
+        ? 'bg-amberGlow/15 border-amberGlow/45 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
+        : 'bg-[#0B0D12]/70 border-white/10 text-slate-400'
+    }`;
+    const dot = mechBox.querySelector('span.rounded-full');
+    if (dot) dot.className = `w-2 h-2 rounded-full ${on ? 'bg-amberGlow animate-pulse' : 'bg-slate-600'}`;
+  }
+  if (mechTxt) {
+    mechTxt.textContent = on ? 'Actuator Saturation & Caliper: ON' : 'Hardware Rig: Standard';
+  }
+}
+
+function updatePidStage1TelemetryUI() {
+  const t = appState.pidTelemetry;
+  const osStr = Number.isFinite(t.overshootPct) ? `${formatNum(t.overshootPct, 1)}%` : '—';
+  const essStr = Number.isFinite(t.steadyStateError) ? formatNum(t.steadyStateError, 3) : '—';
+  const tsStr =
+    Number.isFinite(t.settlingTime) && t.settlingTime <= 8.0
+      ? `${formatNum(t.settlingTime, 2)}s`
+      : '>8s';
+
+  const osEl = document.getElementById('pid-val-os');
+  const osMobEl = document.getElementById('pid-val-os-compact');
+  if (osEl) osEl.textContent = osStr;
+  if (osMobEl) osMobEl.textContent = osStr;
+
+  const essEl = document.getElementById('pid-val-ess');
+  const essMobEl = document.getElementById('pid-val-ess-compact');
+  if (essEl) essEl.textContent = essStr;
+  if (essMobEl) essMobEl.textContent = essStr;
+
+  const tsEl = document.getElementById('pid-val-ts');
+  if (tsEl) tsEl.textContent = tsStr;
+
+  const badge = document.getElementById('pid-badge-stability');
+  if (badge) {
+    const st = t.stability || 'STABLE';
+    badge.textContent = st;
+    if (st === 'UNSTABLE') {
+      badge.className =
+        'px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-rose-500/20 border-rose-400/50 text-rose-200';
+    } else if (st === 'OSCILLATORY') {
+      badge.className =
+        'px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-amberGlow/15 border-amberGlow/45 text-amber-200';
+    } else {
+      badge.className =
+        'px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-emeraldGlow/15 border-emeraldGlow/40 text-emerald-200';
+    }
+  }
+
+  const plantEl = document.getElementById('pid-hud-plant-math');
+  if (plantEl && t.plantLatex) typesetMath(plantEl, t.plantLatex, false);
+
+  const ctrlEl = document.getElementById('pid-telemetry-controller-katex');
+  if (ctrlEl && t.controllerLatex) typesetMath(ctrlEl, t.controllerLatex, false);
+}
+
+function mountPidStage2Intuition(container) {
+  const on = isMechatronicsLens();
+  const s = getStoreState();
+  const solvedPidQuizzes = (s.solvedQuizzes || []).filter((id) =>
+    String(id).startsWith('pid-quiz-')
+  ).length;
+  let activeSubTab = 'lab';
+
+  container.innerHTML = `
+    <section class="space-y-3 lg:space-y-6 view-enter">
+      <!-- Mobile Segmented Sub-Tab Switcher (<lg) -->
+      <div class="lg:hidden grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[#0E121C]/90 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+        <button
+          type="button"
+          data-stage2-subtab="lab"
+          class="py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer bg-amberGlow/20 border border-amberGlow/45 text-amber-100 shadow-sm"
+        >
+          📊 P/I/D Lab
+        </button>
+        <button
+          type="button"
+          data-stage2-subtab="quiz"
+          class="py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer border border-transparent text-slate-300 hover:text-white"
+        >
+          🎯 Tuning Quiz (${solvedPidQuizzes}/6)
+        </button>
+      </div>
+
+      <!-- Interactive P / I / D Control Effort Decomposition Lab -->
+      <div id="stage2-panel-lab" class="glass-panel p-2.5 sm:p-5 lg:p-6 space-y-2.5 sm:space-y-4">
+        <div class="hidden sm:flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-amberGlow">Controller Anatomy &amp; Effort Channels</div>
+            <h2 id="stage2-lab-title" class="font-display font-bold text-xl text-white mt-0.5">
+              ${on ? 'Servo Position θ(t) & Motor Torque τ(t) (P/I/D Channels)' : 'Closed-Loop Output y(t) & P/I/D Effort Decomposition u(t)'}
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Scrub the synchronized time cursor to dissect how Proportional kick, Integral lift, and Derivative braking combine into total actuator effort.
+            </p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-[11px] font-mono bg-white/[0.04] border border-white/10 text-slate-300">
+            Scrub time t ∈ [0, 8s]
+          </span>
+        </div>
+
+        <div id="pid-decomp-lab-host" class="w-full min-h-[300px] sm:min-h-[380px]"></div>
+      </div>
+
+      <!-- Visual PID Tuning & Stability Quiz Engine -->
+      <div id="stage2-panel-quiz" class="hidden lg:block glass-panel p-2.5 sm:p-5 lg:p-6 space-y-2.5 sm:space-y-4">
+        <div class="hidden sm:flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-cyanGlow">Feedback Diagnostics Mastery</div>
+            <h2 class="font-display font-bold text-xl text-white mt-0.5">PID Tuning &amp; Stability Visual Challenges</h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Diagnose P-only droop, derivative braking, load disturbance recovery, RHP instability, and Ziegler-Nichols ultimate oscillations by eye.
+            </p>
+          </div>
+          <button
+            id="btn-next-solver"
+            type="button"
+            class="btn-glass !text-xs"
+          >
+            Next: Control &amp; PID Solver →
+          </button>
+        </div>
+
+        <div id="pid-quiz-engine-host" class="w-full min-h-[280px] sm:min-h-[320px]"></div>
+      </div>
+    </section>
+  `;
+
+  const panelLab = document.getElementById('stage2-panel-lab');
+  const panelQuiz = document.getElementById('stage2-panel-quiz');
+  const setSubTab = (tab) => {
+    activeSubTab = tab;
+    if (panelLab && panelQuiz) {
+      panelLab.classList.toggle('hidden', tab !== 'lab');
+      panelLab.classList.add('lg:block');
+      panelQuiz.classList.toggle('hidden', tab !== 'quiz');
+      panelQuiz.classList.add('lg:block');
+    }
+    container.querySelectorAll('[data-stage2-subtab]').forEach((btn) => {
+      const isAct = btn.getAttribute('data-stage2-subtab') === tab;
+      btn.className = isAct
+        ? 'py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer bg-amberGlow/20 border border-amberGlow/45 text-amber-100 shadow-sm'
+        : 'py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer border border-transparent text-slate-300 hover:text-white';
+    });
+    requestAnimationFrame(() => {
+      if (tab === 'lab') {
+        activeInstances.stackedLab?._resizeAll?.();
+        activeInstances.stackedLab?._drawAll?.();
+      } else {
+        activeInstances.quizEngine?._resizeCanvases?.();
+        activeInstances.quizEngine?._drawCanvases?.();
+      }
+      window.dispatchEvent(new Event('resize'));
+    });
+  };
+
+  container.querySelectorAll('[data-stage2-subtab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const next = btn.getAttribute('data-stage2-subtab');
+      if (next && next !== activeSubTab) {
+        playSfx('tick');
+        setSubTab(next);
+      }
+    });
+  });
+
+  const labHost = document.getElementById('pid-decomp-lab-host');
+  if (labHost && typeof PidDecompositionLab === 'function') {
+    try {
+      activeInstances.stackedLab = new PidDecompositionLab(labHost, {
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onInteract: () => markStageDone('intuition'),
+        onOpenQuiz: () => {
+          playSfx('tick');
+          setSubTab('quiz');
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] PidDecompositionLab mount error:', err);
+    }
+  }
+
+  const quizHost = document.getElementById('pid-quiz-engine-host');
+  if (quizHost && typeof PidVisualQuizEngine === 'function') {
+    try {
+      const updateTabCount = (payload) => {
+        const count =
+          payload?.solvedCount ??
+          (getStoreState().solvedQuizzes || []).filter((id) =>
+            String(id).startsWith('pid-quiz-')
+          ).length;
+        const quizBtn = container.querySelector('[data-stage2-subtab="quiz"]');
+        if (quizBtn) quizBtn.textContent = `🎯 Tuning Quiz (${count}/6)`;
+      };
+      activeInstances.quizEngine = new PidVisualQuizEngine(quizHost, {
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onAnswer: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+        onProgress: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+        onComplete: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] PidVisualQuizEngine mount error:', err);
+    }
+  }
+
+  document.getElementById('btn-next-solver')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('solver');
+  });
+}
+
+function mountPidStage3Solver(container) {
+  container.innerHTML = `
+    <section class="max-w-4xl mx-auto space-y-3 sm:space-y-5 view-enter">
+      <div class="hidden md:flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-amberGlow">Interactive Control Engineering Drill</div>
+          <h2 class="font-display font-bold text-2xl text-white mt-0.5">Paperless Control &amp; PID Step Solver</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+            Master Closed-Loop Transfer Functions, Final Value Theorem, Routh-Hurwitz Stability Bounds, Ziegler-Nichols PID Tuning, and Phase/Delay Margins across 14 step-by-step problems.
+          </p>
+        </div>
+
+        <button
+          id="btn-next-word-problems"
+          type="button"
+          class="btn-glass !text-xs"
+        >
+          Next: Word Problems →
+        </button>
+      </div>
+
+      <div id="paperless-solver-host" class="glass-panel p-2.5 sm:p-5 md:p-6 min-h-[420px]"></div>
+    </section>
+  `;
+
+  const host = document.getElementById('paperless-solver-host');
+  if (host && typeof PaperlessStepSolver === 'function') {
+    try {
+      activeInstances.stepSolver = new PaperlessStepSolver(host, {
+        mode: 'pid',
+        problems: PID_PROBLEMS,
+        tiers: PID_SOLVER_TIERS,
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onSolve: () => {
+          markStageDone('solver');
+          updateLessonStageDotsUI();
+        },
+        onProblemSolved: () => {
+          markStageDone('solver');
+          updateLessonStageDotsUI();
+        },
+        onProgress: (info) => {
+          if (!info || (info.solvedCount ?? 1) >= 1) {
+            markStageDone('solver');
+            updateLessonStageDotsUI();
+          }
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] PID PaperlessStepSolver mount error:', err);
+    }
+  }
+
+  document.getElementById('btn-next-word-problems')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('word-problems');
+  });
+}
+
 function mountStage4WordProblems(container) {
   if (!container) return;
 
   const isInt = isIntegralLesson();
   const isDE = isDiffEqLesson();
   const isLA = isLinAlgLesson();
-  const fallbackData = isLA
-    ? FALLBACK_LINALG_WORD_PROBLEMS
-    : isDE
-      ? FALLBACK_DIFFEQ_WORD_PROBLEMS
-      : isInt
-        ? FALLBACK_INTEGRAL_WORD_PROBLEMS
-        : FALLBACK_WORD_PROBLEMS;
+  const isPid = isPidLesson();
+  const fallbackData = isPid
+    ? FALLBACK_PID_WORD_PROBLEMS
+    : isLA
+      ? FALLBACK_LINALG_WORD_PROBLEMS
+      : isDE
+        ? FALLBACK_DIFFEQ_WORD_PROBLEMS
+        : isInt
+          ? FALLBACK_INTEGRAL_WORD_PROBLEMS
+          : FALLBACK_WORD_PROBLEMS;
   const data = appState.wordProblemsByLesson?.[appState.lessonId] || fallbackData;
-  const jsonFilePath = isLA
-    ? 'data/lessons/linalg-word-problems.json'
-    : isDE
-      ? 'data/lessons/diffeq-word-problems.json'
-      : isInt
-        ? 'data/lessons/integrals-word-problems.json'
-        : 'data/lessons/derivatives-word-problems.json';
+  const jsonFilePath = isPid
+    ? 'data/lessons/pid-word-problems.json'
+    : isLA
+      ? 'data/lessons/linalg-word-problems.json'
+      : isDE
+        ? 'data/lessons/diffeq-word-problems.json'
+        : isInt
+          ? 'data/lessons/integrals-word-problems.json'
+          : 'data/lessons/derivatives-word-problems.json';
   const problems = Array.isArray(data.problems) ? data.problems : [];
   const rawPlanned =
     Array.isArray(data.plannedTopics) && data.plannedTopics.length
@@ -5467,25 +6543,29 @@ function mountStage4WordProblems(container) {
             <h2 class="font-display font-bold text-xl sm:text-3xl text-white">
               ${escapeHtml(
                 data.title ||
-                  (isLA
-                    ? 'Applied Linear Algebra & Eigen-Engineering Problems'
-                    : isDE
-                      ? 'Applied ODE & Laplace Engineering Problems'
-                      : isInt
-                        ? 'Applied Integral Word Problems'
-                        : 'Applied Engineering Word Problems')
+                  (isPid
+                    ? 'Applied PID Control & Mechatronics Stabilization Problems'
+                    : isLA
+                      ? 'Applied Linear Algebra & Eigen-Engineering Problems'
+                      : isDE
+                        ? 'Applied ODE & Laplace Engineering Problems'
+                        : isInt
+                          ? 'Applied Integral Word Problems'
+                          : 'Applied Engineering Word Problems')
               )}
             </h2>
             <p class="text-xs sm:text-sm text-slate-300/90 leading-relaxed">
               ${escapeHtml(
                 data.subtitle ||
-                  (isLA
-                    ? 'Apply Jacobians, rigid-body inertia tensors, Kalman covariance propagation, and low-rank SVD compression to real robotics and AI pipelines.'
-                    : isDE
-                      ? 'Model RLC transients, closed-loop DC motor transfer functions, suspension damping, and continuous Neural ODEs.'
-                      : isInt
-                        ? 'Translate velocity profiles, variable force paths, pulsed currents, and probability densities into definite integrals.'
-                        : 'Translate physical mechatronics, electronics, thermal, and machine learning narratives into differential models and solve them interactively.')
+                  (isPid
+                    ? 'Design cascaded drone attitude controllers, anti-windup CNC servos, lead-compensated inverted pendulums, and Smith predictors for delayed thermal plants.'
+                    : isLA
+                      ? 'Apply Jacobians, rigid-body inertia tensors, Kalman covariance propagation, and low-rank SVD compression to real robotics and AI pipelines.'
+                      : isDE
+                        ? 'Model RLC transients, closed-loop DC motor transfer functions, suspension damping, and continuous Neural ODEs.'
+                        : isInt
+                          ? 'Translate velocity profiles, variable force paths, pulsed currents, and probability densities into definite integrals.'
+                          : 'Translate physical mechatronics, electronics, thermal, and machine learning narratives into differential models and solve them interactively.')
               )}
             </p>
           </div>
@@ -5659,24 +6739,31 @@ function subscribeToStoreUpdates() {
 }
 
 async function boot() {
-  const [curriculum, derivWordProblems, intWordProblems, deWordProblems, laWordProblems] =
-    await Promise.all([
-      fetchJsonSafe('./data/curriculum.json', FALLBACK_CURRICULUM),
-      fetchJsonSafe('./data/lessons/derivatives-word-problems.json', FALLBACK_WORD_PROBLEMS),
-      fetchJsonSafe(
-        './data/lessons/integrals-word-problems.json',
-        FALLBACK_INTEGRAL_WORD_PROBLEMS
-      ),
-      fetchJsonSafe(
-        './data/lessons/diffeq-word-problems.json',
-        FALLBACK_DIFFEQ_WORD_PROBLEMS
-      ),
-      fetchJsonSafe(
-        './data/lessons/linalg-word-problems.json',
-        FALLBACK_LINALG_WORD_PROBLEMS
-      ),
-      waitForKatex(),
-    ]);
+  const [
+    curriculum,
+    derivWordProblems,
+    intWordProblems,
+    deWordProblems,
+    laWordProblems,
+    pidWordProblems,
+  ] = await Promise.all([
+    fetchJsonSafe('./data/curriculum.json', FALLBACK_CURRICULUM),
+    fetchJsonSafe('./data/lessons/derivatives-word-problems.json', FALLBACK_WORD_PROBLEMS),
+    fetchJsonSafe(
+      './data/lessons/integrals-word-problems.json',
+      FALLBACK_INTEGRAL_WORD_PROBLEMS
+    ),
+    fetchJsonSafe(
+      './data/lessons/diffeq-word-problems.json',
+      FALLBACK_DIFFEQ_WORD_PROBLEMS
+    ),
+    fetchJsonSafe(
+      './data/lessons/linalg-word-problems.json',
+      FALLBACK_LINALG_WORD_PROBLEMS
+    ),
+    fetchJsonSafe('./data/lessons/pid-word-problems.json', FALLBACK_PID_WORD_PROBLEMS),
+    waitForKatex(),
+  ]);
 
   if (curriculum && Array.isArray(curriculum.domains)) {
     appState.curriculum = curriculum;
@@ -5693,6 +6780,9 @@ async function boot() {
   }
   if (laWordProblems && typeof laWordProblems === 'object') {
     appState.wordProblemsByLesson['math-lin-alg'] = laWordProblems;
+  }
+  if (pidWordProblems && typeof pidWordProblems === 'object') {
+    appState.wordProblemsByLesson['mech-pid'] = pidWordProblems;
   }
 
   subscribeToStoreUpdates();
