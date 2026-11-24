@@ -1,11 +1,15 @@
 /**
- * EIGENLAB — Paperless Multi-Step Symbolic Derivative Solver
+ * EIGENLAB — Paperless Multi-Step Symbolic Calculus Solver (Derivatives & Integrals)
  * Zero scratch paper required: every completed micro-step locks into a persistent
  * Working Step Ledger directly above tactile KaTeX choice tiles, culminating in
- * a high-DPI interactive dual-curve numerical slope verification plot.
+ * a high-DPI interactive dual-curve numerical verification plot.
  */
 
 import { DERIVATIVE_PROBLEMS, SOLVER_TIERS } from '../../data/lessons/derivatives-problems.js';
+import {
+  INTEGRAL_PROBLEMS,
+  INTEGRAL_SOLVER_TIERS,
+} from '../../data/lessons/integrals-problems.js';
 import { store, sound, renderKatex, renderInlineMathText } from '../store.js';
 
 const CHEAT_SHEET_RULES = [
@@ -53,6 +57,51 @@ const CHEAT_SHEET_RULES = [
   },
 ];
 
+const INTEGRAL_CHEAT_SHEET_RULES = [
+  {
+    name: 'Reverse Power Rule',
+    tag: 'n ≠ -1',
+    latex:
+      '\\int \\textcolor{#22D3EE}{x}^{\\textcolor{#F59E0B}{n}}\\,dx = \\textcolor{#34D399}{\\frac{\\textcolor{#22D3EE}{x}^{\\textcolor{#F59E0B}{n}+1}}{\\textcolor{#F59E0B}{n}+1}} + C',
+  },
+  {
+    name: 'Log & Exponential',
+    tag: '1/x & e^x',
+    latex:
+      '\\int \\frac{1}{\\textcolor{#22D3EE}{x}}\\,dx = \\textcolor{#34D399}{\\ln|\\textcolor{#22D3EE}{x}|} + C, \\quad \\int e^{\\textcolor{#22D3EE}{x}}\\,dx = \\textcolor{#34D399}{e^{\\textcolor{#22D3EE}{x}}} + C',
+  },
+  {
+    name: 'u-Substitution',
+    tag: 'Chain Reverse',
+    latex:
+      '\\int f(\\textcolor{#22D3EE}{u})\\,\\textcolor{#F59E0B}{u\'(x)\\,dx} = \\int f(\\textcolor{#22D3EE}{u})\\,\\textcolor{#F59E0B}{du} = \\textcolor{#34D399}{F(\\textcolor{#22D3EE}{u})} + C',
+  },
+  {
+    name: 'Trig & Half-Angle',
+    tag: 'sin / cos / sin²',
+    latex:
+      '\\int \\cos(kx)\\,dx = \\textcolor{#34D399}{\\frac{\\sin(kx)}{k}}, \\;\; \\sin^2 x = \\textcolor{#34D399}{\\frac{1 - \\cos(2x)}{2}}',
+  },
+  {
+    name: 'Integration by Parts',
+    tag: 'LIATE',
+    latex:
+      '\\int \\textcolor{#22D3EE}{u}\\,\\textcolor{#F59E0B}{dv} = \\textcolor{#22D3EE}{u}\\textcolor{#34D399}{v} - \\int \\textcolor{#34D399}{v}\\,\\textcolor{#F59E0B}{du} \\;\;(\\text{LIATE})',
+  },
+  {
+    name: 'Partial Fractions',
+    tag: 'Linear Poles',
+    latex:
+      '\\frac{P(x)}{(\\textcolor{#22D3EE}{x-a})(\\textcolor{#F59E0B}{x-b})} = \\frac{\\textcolor{#22D3EE}{A}}{x-a} + \\frac{\\textcolor{#F59E0B}{B}}{x-b}',
+  },
+  {
+    name: 'Fundamental Theorem',
+    tag: 'FTC Definite',
+    latex:
+      '\\int_{\\textcolor{#22D3EE}{a}}^{\\textcolor{#F59E0B}{b}} f(x)\\,dx = \\textcolor{#34D399}{F(\\textcolor{#F59E0B}{b}) - F(\\textcolor{#22D3EE}{a})}',
+  },
+];
+
 function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
@@ -88,8 +137,8 @@ function centralDiff(fn, x, h = 1e-5) {
 export class PaperlessStepSolver {
   /**
    * Supports both calling conventions:
-   *  - new PaperlessStepSolver({ mechatronicsLens, onProblemSolved }) + solver.mount(el)
-   *  - new PaperlessStepSolver(containerEl, { mechatronicsLens, onProblemSolved })
+   *  - new PaperlessStepSolver({ mode, problems, tiers, mechatronicsLens, onProblemSolved }) + solver.mount(el)
+   *  - new PaperlessStepSolver(containerEl, { mode, problems, tiers, mechatronicsLens, onProblemSolved })
    */
   constructor(containerOrOptions = {}, maybeOptions = {}) {
     const isElement =
@@ -98,6 +147,22 @@ export class PaperlessStepSolver {
       typeof containerOrOptions.appendChild === 'function';
 
     const options = isElement ? maybeOptions || {} : containerOrOptions || {};
+
+    this.mode = options.mode === 'integrals' ? 'integrals' : 'derivatives';
+    this.problems =
+      Array.isArray(options.problems) && options.problems.length
+        ? options.problems
+        : this.mode === 'integrals'
+          ? INTEGRAL_PROBLEMS
+          : DERIVATIVE_PROBLEMS;
+    this.tiers =
+      Array.isArray(options.tiers) && options.tiers.length
+        ? options.tiers
+        : this.mode === 'integrals'
+          ? INTEGRAL_SOLVER_TIERS
+          : SOLVER_TIERS;
+    this.cheatSheetRules =
+      this.mode === 'integrals' ? INTEGRAL_CHEAT_SHEET_RULES : CHEAT_SHEET_RULES;
 
     this.mechatronicsLens = Boolean(
       options.mechatronicsLens ?? options.lens === 'mechatronics'
@@ -109,7 +174,7 @@ export class PaperlessStepSolver {
 
     this.container = null;
     this.activeTier = 'all';
-    this.activeProblemId = DERIVATIVE_PROBLEMS[0]?.id ?? null;
+    this.activeProblemId = this.problems[0]?.id ?? null;
 
     // Step progression state for the currently active problem
     this.currentStepIndex = 0;
@@ -191,7 +256,7 @@ export class PaperlessStepSolver {
   }
 
   selectProblem(problemId) {
-    const target = DERIVATIVE_PROBLEMS.find((p) => p.id === problemId);
+    const target = this.problems.find((p) => p.id === problemId);
     if (!target) return;
 
     if (this.activeTier !== 'all' && target.tier !== this.activeTier) {
@@ -230,6 +295,22 @@ export class PaperlessStepSolver {
      Internal Data Helpers
      ======================================================================== */
 
+  _isIntegralMode() {
+    return this.mode === 'integrals';
+  }
+
+  _getDefaultVerifyCursorX(problem) {
+    const [xMin, xMax] = problem.domain;
+    const margin = (xMax - xMin) * 0.015;
+    if (this._isIntegralMode() && Array.isArray(problem.definiteBounds)) {
+      const upper = problem.definiteBounds[1];
+      if (Number.isFinite(upper)) {
+        return Math.max(xMin + margin, Math.min(xMax - margin, upper));
+      }
+    }
+    return xMin + (xMax - xMin) * 0.56;
+  }
+
   _getSolvedSet() {
     const st = store?.getState?.();
     const list = Array.isArray(st?.solvedProblems) ? st.solvedProblems : [];
@@ -237,14 +318,14 @@ export class PaperlessStepSolver {
   }
 
   _getFilteredProblems() {
-    if (this.activeTier === 'all') return DERIVATIVE_PROBLEMS;
-    return DERIVATIVE_PROBLEMS.filter((p) => p.tier === this.activeTier);
+    if (this.activeTier === 'all') return this.problems;
+    return this.problems.filter((p) => p.tier === this.activeTier);
   }
 
   _getActiveProblem() {
     return (
-      DERIVATIVE_PROBLEMS.find((p) => p.id === this.activeProblemId) ||
-      DERIVATIVE_PROBLEMS[0]
+      this.problems.find((p) => p.id === this.activeProblemId) ||
+      this.problems[0]
     );
   }
 
@@ -396,16 +477,16 @@ export class PaperlessStepSolver {
         if (isFinalStep) {
           this.isProblemCompleted = true;
           this.currentStepIndex = problem.steps.length;
-          const [xMin, xMax] = problem.domain;
-          this.verifyCursorX = xMin + (xMax - xMin) * 0.56;
+          this.verifyCursorX = this._getDefaultVerifyCursorX(problem);
 
           store.markProblemSolved(problem.id);
-          const solvedCount = this._getSolvedSet().size;
+          const solvedSet = this._getSolvedSet();
+          const solvedCount = this.problems.filter((p) => solvedSet.has(p.id)).length;
           const payload = {
             problemId: problem.id,
             problem,
             solvedCount,
-            totalProblems: DERIVATIVE_PROBLEMS.length,
+            totalProblems: this.problems.length,
           };
 
           try {
@@ -500,19 +581,30 @@ export class PaperlessStepSolver {
     if (!this.container) return;
     this._detachCanvasListeners();
 
+    const isIntegral = this._isIntegralMode();
     const solvedSet = this._getSolvedSet();
-    const totalSolved = DERIVATIVE_PROBLEMS.filter((p) => solvedSet.has(p.id)).length;
-    const totalProblems = DERIVATIVE_PROBLEMS.length;
+    const totalSolved = this.problems.filter((p) => solvedSet.has(p.id)).length;
+    const totalProblems = this.problems.length;
     const filteredProblems = this._getFilteredProblems();
     const problem = this._getActiveProblem();
-    const globalIndex = DERIVATIVE_PROBLEMS.findIndex((p) => p.id === problem.id);
+    const globalIndex = this.problems.findIndex((p) => p.id === problem.id);
     const problemIsSolved = solvedSet.has(problem.id);
 
-    const tierPillsHtml = SOLVER_TIERS.map((tier) => {
+    const cheatTitle = isIntegral
+      ? 'Integration Formula Reference'
+      : 'Differentiation Formula Reference';
+    const targetHeaderLabel = isIntegral
+      ? 'Evaluate the Integral'
+      : 'Differentiate w.r.t. x';
+    const legendCyan = isIntegral ? 'Cyan: u / Factor A' : 'Cyan: Outer / u';
+    const legendAmber = isIntegral ? 'Amber: dv / Factor B' : 'Amber: Inner / v';
+    const legendEmerald = isIntegral ? 'Emerald: Antideriv' : 'Emerald: Deriv';
+
+    const tierPillsHtml = this.tiers.map((tier) => {
       const list =
         tier.id === 'all'
-          ? DERIVATIVE_PROBLEMS
-          : DERIVATIVE_PROBLEMS.filter((p) => p.tier === tier.id);
+          ? this.problems
+          : this.problems.filter((p) => p.tier === tier.id);
       const tierSolved = list.filter((p) => solvedSet.has(p.id)).length;
       const isActive = this.activeTier === tier.id;
       const allDone = list.length > 0 && tierSolved === list.length;
@@ -538,7 +630,7 @@ export class PaperlessStepSolver {
 
     const problemDotsHtml = filteredProblems
       .map((p) => {
-        const num = DERIVATIVE_PROBLEMS.findIndex((item) => item.id === p.id) + 1;
+        const num = this.problems.findIndex((item) => item.id === p.id) + 1;
         const active = p.id === problem.id;
         const solved = solvedSet.has(p.id);
         return `
@@ -563,7 +655,7 @@ export class PaperlessStepSolver {
       })
       .join('');
 
-    const cheatSheetCardsHtml = CHEAT_SHEET_RULES.map(
+    const cheatSheetCardsHtml = this.cheatSheetRules.map(
       (rule, i) => `
         <div class="rounded-xl p-3 bg-slate-950/75 border border-white/[0.08] flex flex-col gap-1.5">
           <div class="flex items-center justify-between gap-2">
@@ -734,12 +826,12 @@ export class PaperlessStepSolver {
           >
             <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
               <div class="flex items-center gap-2">
-                <span class="font-display text-xs sm:text-sm font-semibold text-cyan-200">Differentiation Formula Reference</span>
+                <span class="font-display text-xs sm:text-sm font-semibold text-cyan-200">${escapeHtml(cheatTitle)}</span>
               </div>
               <div class="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-[11px]">
-                <span class="chip-outer">Cyan: Outer / u</span>
-                <span class="chip-inner">Amber: Inner / v</span>
-                <span class="chip-deriv">Emerald: Deriv</span>
+                <span class="chip-outer">${escapeHtml(legendCyan)}</span>
+                <span class="chip-inner">${escapeHtml(legendAmber)}</span>
+                <span class="chip-deriv">${escapeHtml(legendEmerald)}</span>
               </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[260px] md:max-h-none overflow-y-auto studio-scroll">
@@ -761,7 +853,7 @@ export class PaperlessStepSolver {
           <!-- Target Expression Card -->
           <div class="katex-card katex-hero flex-col gap-1 sm:gap-2">
             <div class="w-full flex items-center justify-between gap-2 text-[10px] sm:text-[11px] font-mono uppercase tracking-wider text-slate-400">
-              <span class="truncate">Differentiate w.r.t. x</span>
+              <span class="truncate">${escapeHtml(targetHeaderLabel)}</span>
               <span class="text-cyan-300/90 shrink-0">${escapeHtml(problem.tierLabel)} • ${globalIndex + 1}/${totalProblems}</span>
             </div>
             <div class="w-full flex items-center justify-center py-0.5 sm:py-1 overflow-x-auto" data-target-expression></div>
@@ -922,6 +1014,65 @@ export class PaperlessStepSolver {
   }
 
   _buildVerificationCardHtml(problem) {
+    const isIntegral = this._isIntegralMode();
+    const heading = isIntegral
+      ? 'Antiderivative Verified Numerically'
+      : 'Derivative Verified Numerically';
+    const subtitle = isIntegral
+      ? renderInlineMathText(
+          "Hover or drag across the plot to verify $\\frac{d}{dx}F(x) = f(x)$ and watch the shaded area under $f(x)$."
+        )
+      : renderInlineMathText(
+          "Hover or drag across the plot to compare your solved $f'(x)$ against the curve's true tangent slope."
+        );
+
+    const legendHtml = isIntegral
+      ? `
+          <span class="inline-flex items-center gap-1 text-cyan-300">
+            <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
+            f(x)
+          </span>
+          <span class="inline-flex items-center gap-1 text-emerald-300">
+            <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
+            F(x)
+          </span>
+          <span class="inline-flex items-center gap-1 text-emerald-200/90">
+            <span class="w-2.5 h-2 rounded-sm bg-emeraldGlow/35 border border-emeraldGlow/60 inline-block"></span>
+            area
+          </span>
+          <span class="inline-flex items-center gap-1 text-amber-300">
+            <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
+            F'(x) tangent
+          </span>
+        `
+      : `
+          <span class="inline-flex items-center gap-1 text-cyan-300">
+            <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
+            f(x)
+          </span>
+          <span class="inline-flex items-center gap-1 text-emerald-300">
+            <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
+            f'(x)
+          </span>
+          <span class="inline-flex items-center gap-1 text-amber-300">
+            <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
+            tangent
+          </span>
+        `;
+
+    const domainMeta =
+      isIntegral && Array.isArray(problem.definiteBounds)
+        ? `∫[${problem.definiteBounds[0]}, ${problem.definiteBounds[1]}] = ${problem.definiteValue} · [${problem.domain[0]}, ${problem.domain[1]}]`
+        : `[${problem.domain[0]}, ${problem.domain[1]}]`;
+
+    const canvasAria = isIntegral
+      ? 'Interactive dual curve graph comparing integrand f(x) and antiderivative F(x)'
+      : "Interactive dual curve graph comparing f(x) and f'(x)";
+
+    const col2Label = isIntegral ? 'Integrand f(x)' : 'f(x) Height';
+    const col3Label = isIntegral ? 'Antideriv F(x)' : "Exact f'(x)";
+    const col4Label = isIntegral ? "Slope F'(x)" : 'True Slope';
+
     return `
       <div class="rounded-2xl p-3 sm:p-5 bg-gradient-to-b from-emeraldGlow/[0.11] to-slate-950/85 border border-emeraldGlow/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] flex flex-col gap-3 sm:gap-4 snap-in">
         <!-- Solved Banner -->
@@ -932,10 +1083,10 @@ export class PaperlessStepSolver {
             </span>
             <div>
               <h3 class="font-display text-sm sm:text-lg font-bold text-emerald-200 leading-tight m-0">
-                Derivative Verified Numerically
+                ${escapeHtml(heading)}
               </h3>
               <p class="hidden sm:block text-xs text-slate-300 m-0">
-                ${renderInlineMathText("Hover or drag across the plot to compare your solved $f'(x)$ against the curve's true tangent slope.")}
+                ${subtitle}
               </p>
             </div>
           </div>
@@ -959,27 +1110,16 @@ export class PaperlessStepSolver {
         <div class="rounded-xl overflow-hidden border border-white/10 bg-[#080A0F] relative">
           <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 border-b border-white/[0.07] bg-slate-950/75 text-[10px] sm:text-[11px] font-mono">
             <div class="flex flex-wrap items-center gap-2.5 sm:gap-3">
-              <span class="inline-flex items-center gap-1 text-cyan-300">
-                <span class="w-2.5 h-0.5 rounded bg-cyanGlow inline-block"></span>
-                f(x)
-              </span>
-              <span class="inline-flex items-center gap-1 text-emerald-300">
-                <span class="w-2.5 h-0.5 rounded bg-emeraldGlow inline-block"></span>
-                f'(x)
-              </span>
-              <span class="inline-flex items-center gap-1 text-amber-300">
-                <span class="w-2.5 h-0.5 rounded bg-amberGlow inline-block"></span>
-                tangent
-              </span>
+              ${legendHtml}
             </div>
-            <span class="text-slate-400">[${problem.domain[0]}, ${problem.domain[1]}]</span>
+            <span class="text-slate-400">${escapeHtml(domainMeta)}</span>
           </div>
 
           <div class="relative w-full h-[175px] sm:h-[260px] select-none touch-none">
             <canvas
               data-verify-canvas
               class="block w-full h-full cursor-crosshair"
-              aria-label="Interactive dual curve graph comparing f(x) and f'(x)"
+              aria-label="${escapeHtml(canvasAria)}"
             ></canvas>
           </div>
 
@@ -990,16 +1130,16 @@ export class PaperlessStepSolver {
               <div class="text-slate-100 font-semibold mt-0.5" data-verify-x>—</div>
             </div>
             <div class="rounded-lg px-2.5 py-1.5 bg-cyanGlow/[0.06] border border-cyanGlow/20">
-              <div class="text-[10px] uppercase tracking-wider text-cyan-300/80">f(x) Height</div>
+              <div class="text-[10px] uppercase tracking-wider text-cyan-300/80">${escapeHtml(col2Label)}</div>
               <div class="text-cyan-200 font-semibold mt-0.5" data-verify-fx>—</div>
             </div>
             <div class="rounded-lg px-2.5 py-1.5 bg-emeraldGlow/[0.08] border border-emeraldGlow/25">
-              <div class="text-[10px] uppercase tracking-wider text-emerald-300/80">Exact f'(x)</div>
+              <div class="text-[10px] uppercase tracking-wider text-emerald-300/80">${escapeHtml(col3Label)}</div>
               <div class="text-emerald-200 font-semibold mt-0.5" data-verify-exact>—</div>
             </div>
             <div class="rounded-lg px-2.5 py-1.5 bg-violetGlow/[0.08] border border-violetGlow/25">
               <div class="flex items-center justify-between gap-1">
-                <span class="text-[10px] uppercase tracking-wider text-violet-300/80">True Slope</span>
+                <span class="text-[10px] uppercase tracking-wider text-violet-300/80">${escapeHtml(col4Label)}</span>
                 <span class="text-[10px] px-1.5 py-0.2 rounded bg-emeraldGlow/20 text-emerald-300 font-semibold" data-verify-match>MATCH ✓</span>
               </div>
               <div class="text-violet-200 font-semibold mt-0.5" data-verify-numeric>—</div>
@@ -1023,7 +1163,7 @@ export class PaperlessStepSolver {
     }
 
     // Cheat sheet formulas
-    CHEAT_SHEET_RULES.forEach((rule, idx) => {
+    this.cheatSheetRules.forEach((rule, idx) => {
       const el = this.container.querySelector(`[data-cheat-formula="${idx}"]`);
       if (el) renderKatex(el, rule.latex, false);
     });
@@ -1126,18 +1266,18 @@ export class PaperlessStepSolver {
   _updateSolvedBadges() {
     if (!this.container) return;
     const solvedSet = this._getSolvedSet();
-    const totalSolved = DERIVATIVE_PROBLEMS.filter((p) => solvedSet.has(p.id)).length;
+    const totalSolved = this.problems.filter((p) => solvedSet.has(p.id)).length;
 
     const overallEl = this.container.querySelector('[data-overall-solved] strong');
     if (overallEl) {
       overallEl.textContent = String(totalSolved);
     }
 
-    SOLVER_TIERS.forEach((tier) => {
+    this.tiers.forEach((tier) => {
       const list =
         tier.id === 'all'
-          ? DERIVATIVE_PROBLEMS
-          : DERIVATIVE_PROBLEMS.filter((p) => p.tier === tier.id);
+          ? this.problems
+          : this.problems.filter((p) => p.tier === tier.id);
       const count = list.filter((p) => solvedSet.has(p.id)).length;
       const badge = this.container.querySelector(
         `[data-tier-count="${CSS.escape(tier.id)}"]`
@@ -1163,8 +1303,7 @@ export class PaperlessStepSolver {
 
     const problem = this._getActiveProblem();
     if (this.verifyCursorX == null) {
-      const [xMin, xMax] = problem.domain;
-      this.verifyCursorX = xMin + (xMax - xMin) * 0.56;
+      this.verifyCursorX = this._getDefaultVerifyCursorX(problem);
     }
 
     this._drawVerificationCanvas();
@@ -1224,11 +1363,73 @@ export class PaperlessStepSolver {
     this.isDraggingVerify = false;
   }
 
+  _drawIntegralAreaFill(ctx, fn, xStart, xEnd, mapX, mapYf) {
+    const lo = Math.min(xStart, xEnd);
+    const hi = Math.max(xStart, xEnd);
+    if (hi - lo < 1e-6) return;
+
+    const steps = 120;
+    const yZeroPx = mapYf(0);
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+      const x = lo + (i / steps) * (hi - lo);
+      const y = fn(x);
+      if (Number.isFinite(y)) {
+        pts.push({ x, y });
+      }
+    }
+    if (pts.length < 2) return;
+
+    // Split into contiguous positive (>=0) and negative (<0) segments with exact zero crossings
+    const segments = [];
+    let current = { sign: pts[0].y >= 0 ? 1 : -1, points: [pts[0]] };
+
+    for (let i = 1; i < pts.length; i++) {
+      const prev = pts[i - 1];
+      const curr = pts[i];
+      const currSign = curr.y >= 0 ? 1 : -1;
+
+      if (currSign === current.sign) {
+        current.points.push(curr);
+      } else {
+        const denom = curr.y - prev.y;
+        const frac = Math.abs(denom) > 1e-12 ? (0 - prev.y) / denom : 0.5;
+        const cross = { x: prev.x + frac * (curr.x - prev.x), y: 0 };
+        current.points.push(cross);
+        segments.push(current);
+        current = { sign: currSign, points: [cross, curr] };
+      }
+    }
+    segments.push(current);
+
+    ctx.save();
+    for (const seg of segments) {
+      if (seg.points.length < 2) continue;
+      ctx.fillStyle =
+        seg.sign >= 0 ? 'rgba(52, 211, 153, 0.22)' : 'rgba(251, 113, 133, 0.22)';
+      ctx.beginPath();
+      ctx.moveTo(mapX(seg.points[0].x), yZeroPx);
+      for (const p of seg.points) {
+        ctx.lineTo(mapX(p.x), mapYf(p.y));
+      }
+      ctx.lineTo(mapX(seg.points[seg.points.length - 1].x), yZeroPx);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   _drawVerificationCanvas() {
     const canvas = this.verifyCanvas;
     if (!canvas || !canvas.isConnected) return;
 
+    const isIntegral = this._isIntegralMode();
     const problem = this._getActiveProblem();
+    const secondFn = isIntegral
+      ? problem.verifyAntiderivFn || problem.verifyDerivFn
+      : problem.verifyDerivFn;
+    if (typeof problem.verifyFn !== 'function' || typeof secondFn !== 'function') return;
+
     const rect = canvas.getBoundingClientRect();
     if (rect.width < 10 || rect.height < 10) return;
 
@@ -1255,53 +1456,53 @@ export class PaperlessStepSolver {
     const samples = 220;
     const xs = [];
     const fVals = [];
-    const dfVals = [];
+    const secVals = [];
 
-    let fMin = Infinity;
-    let fMax = -Infinity;
-    let dfMin = Infinity;
-    let dfMax = -Infinity;
+    let fMin = isIntegral ? 0 : Infinity;
+    let fMax = isIntegral ? 0 : -Infinity;
+    let secMin = Infinity;
+    let secMax = -Infinity;
 
     for (let i = 0; i <= samples; i++) {
       const x = xMin + (i / samples) * (xMax - xMin);
       const y = problem.verifyFn(x);
-      const dy = problem.verifyDerivFn(x);
+      const sy = secondFn(x);
       xs.push(x);
       fVals.push(y);
-      dfVals.push(dy);
+      secVals.push(sy);
       if (Number.isFinite(y)) {
         if (y < fMin) fMin = y;
         if (y > fMax) fMax = y;
       }
-      if (Number.isFinite(dy)) {
-        if (dy < dfMin) dfMin = dy;
-        if (dy > dfMax) dfMax = dy;
+      if (Number.isFinite(sy)) {
+        if (sy < secMin) secMin = sy;
+        if (sy > secMax) secMax = sy;
       }
     }
 
     const fSpan = Math.max(1e-3, fMax - fMin);
-    const dfSpan = Math.max(1e-3, dfMax - dfMin);
-    const scaleRatio = Math.max(fSpan / dfSpan, dfSpan / fSpan);
+    const secSpan = Math.max(1e-3, secMax - secMin);
+    const scaleRatio = Math.max(fSpan / secSpan, secSpan / fSpan);
     const useDualAxis = scaleRatio > 2.6;
 
     let fyMin;
     let fyMax;
-    let dfyMin;
-    let dfyMax;
+    let secyMin;
+    let secyMax;
 
     if (useDualAxis) {
       fyMin = fMin - fSpan * 0.14;
       fyMax = fMax + fSpan * 0.14;
-      dfyMin = dfMin - dfSpan * 0.14;
-      dfyMax = dfMax + dfSpan * 0.14;
+      secyMin = secMin - secSpan * 0.14;
+      secyMax = secMax + secSpan * 0.14;
     } else {
-      const combMin = Math.min(fMin, dfMin);
-      const combMax = Math.max(fMax, dfMax);
+      const combMin = Math.min(fMin, secMin);
+      const combMax = Math.max(fMax, secMax);
       const combSpan = Math.max(1e-3, combMax - combMin);
       fyMin = combMin - combSpan * 0.14;
       fyMax = combMax + combSpan * 0.14;
-      dfyMin = fyMin;
-      dfyMax = fyMax;
+      secyMin = fyMin;
+      secyMax = fyMax;
     }
 
     const padL = 52;
@@ -1315,7 +1516,7 @@ export class PaperlessStepSolver {
 
     const mapX = (x) => padL + ((x - xMin) / (xMax - xMin)) * plotW;
     const mapYf = (y) => padT + (1 - (y - fyMin) / (fyMax - fyMin)) * plotH;
-    const mapYdf = (y) => padT + (1 - (y - dfyMin) / (dfyMax - dfyMin)) * plotH;
+    const mapYsec = (y) => padT + (1 - (y - secyMin) / (secyMax - secyMin)) * plotH;
 
     // Subtle grid lines
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.055)';
@@ -1338,10 +1539,10 @@ export class PaperlessStepSolver {
       ctx.fillText(formatAxisTick(fTick), padL - 7, yPx);
 
       if (useDualAxis) {
-        const dfTick = dfyMax - (r / gridRows) * (dfyMax - dfyMin);
+        const secTick = secyMax - (r / gridRows) * (secyMax - secyMin);
         ctx.fillStyle = 'rgba(110, 231, 183, 0.8)';
         ctx.textAlign = 'left';
-        ctx.fillText(formatAxisTick(dfTick), padL + plotW + 7, yPx);
+        ctx.fillText(formatAxisTick(secTick), padL + plotW + 7, yPx);
       }
     }
 
@@ -1379,13 +1580,45 @@ export class PaperlessStepSolver {
     }
     ctx.restore();
 
-    // Clip to plot box for curves and tangent line
+    const cx = this.verifyCursorX ?? this._getDefaultVerifyCursorX(problem);
+
+    // Clip to plot box for shaded area, curves, and tangent line
     ctx.save();
     ctx.beginPath();
     ctx.rect(padL, padT, plotW, plotH);
     ctx.clip();
 
-    // Draw f'(x) in luminous Emerald
+    // Integral mode: shade signed area under integrand f(x) from start bound to cursor x
+    if (isIntegral) {
+      const areaStart = Array.isArray(problem.definiteBounds)
+        ? problem.definiteBounds[0]
+        : xMin;
+      this._drawIntegralAreaFill(ctx, problem.verifyFn, areaStart, cx, mapX, mapYf);
+
+      // Subtle vertical guides for definite integral bounds [a, b]
+      if (Array.isArray(problem.definiteBounds)) {
+        const [aBound, bBound] = problem.definiteBounds;
+        ctx.save();
+        ctx.setLineDash([3, 3]);
+        ctx.lineWidth = 1.2;
+        [
+          { x: aBound, color: 'rgba(34, 211, 238, 0.45)' },
+          { x: bBound, color: 'rgba(245, 158, 11, 0.55)' },
+        ].forEach(({ x, color }) => {
+          if (x >= xMin && x <= xMax) {
+            const bx = mapX(x);
+            ctx.strokeStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(bx, padT);
+            ctx.lineTo(bx, padT + plotH);
+            ctx.stroke();
+          }
+        });
+        ctx.restore();
+      }
+    }
+
+    // Draw secondary curve — f'(x) in derivative mode or F(x) in integral mode — in luminous Emerald
     ctx.save();
     ctx.strokeStyle = '#34D399';
     ctx.lineWidth = 2.25;
@@ -1394,9 +1627,9 @@ export class PaperlessStepSolver {
     ctx.beginPath();
     let started = false;
     for (let i = 0; i <= samples; i++) {
-      if (!Number.isFinite(dfVals[i])) continue;
+      if (!Number.isFinite(secVals[i])) continue;
       const px = mapX(xs[i]);
-      const py = mapYdf(dfVals[i]);
+      const py = mapYsec(secVals[i]);
       if (!started) {
         ctx.moveTo(px, py);
         started = true;
@@ -1407,7 +1640,7 @@ export class PaperlessStepSolver {
     ctx.stroke();
     ctx.restore();
 
-    // Draw f(x) in luminous Cyan
+    // Draw primary curve f(x) in luminous Cyan
     ctx.save();
     ctx.strokeStyle = '#22D3EE';
     ctx.lineWidth = 2.5;
@@ -1429,15 +1662,16 @@ export class PaperlessStepSolver {
     ctx.stroke();
     ctx.restore();
 
-    // Interactive cursor, tangent segment on f(x), and markers
-    const cx = this.verifyCursorX ?? xMin + (xMax - xMin) * 0.56;
+    // Interactive cursor, tangent segment, and markers
     const fxVal = problem.verifyFn(cx);
-    const exactSlope = problem.verifyDerivFn(cx);
-    const numericSlope = centralDiff(problem.verifyFn, cx, 1e-5);
+    const secVal = secondFn(cx);
+    const numericSlope = isIntegral
+      ? centralDiff(secondFn, cx, 1e-5)
+      : centralDiff(problem.verifyFn, cx, 1e-5);
 
     const cxPx = mapX(cx);
     const fyPx = mapYf(fxVal);
-    const dfyPx = mapYdf(exactSlope);
+    const secyPx = mapYsec(secVal);
 
     // Vertical glowing scan line
     ctx.save();
@@ -1450,10 +1684,17 @@ export class PaperlessStepSolver {
     ctx.stroke();
     ctx.restore();
 
-    // Exact screen-space tangent segment kissing f(x) at (cxPx, fyPx)
-    if (Number.isFinite(fxVal) && Number.isFinite(exactSlope)) {
+    // Exact screen-space tangent segment:
+    //  - derivatives mode: kisses f(x) at (cxPx, fyPx) with slope f'(cx)
+    //  - integrals mode: kisses F(x) at (cxPx, secyPx) with slope F'(cx) === f(cx)
+    const tangentVal = isIntegral ? secVal : fxVal;
+    const tangentSlope = isIntegral ? numericSlope : secVal;
+    const tangentAnchorY = isIntegral ? secyPx : fyPx;
+    const tangentSpanY = isIntegral ? secyMax - secyMin : fyMax - fyMin;
+
+    if (Number.isFinite(tangentVal) && Number.isFinite(tangentSlope)) {
       const dPxDx = plotW / (xMax - xMin);
-      const dPyDx = (-exactSlope * plotH) / (fyMax - fyMin);
+      const dPyDx = (-tangentSlope * plotH) / tangentSpanY;
       const mag = Math.hypot(dPxDx, dPyDx) || 1;
       const halfLen = 40;
       const ux = (dPxDx / mag) * halfLen;
@@ -1466,22 +1707,22 @@ export class PaperlessStepSolver {
       ctx.shadowColor = 'rgba(245, 158, 11, 0.8)';
       ctx.shadowBlur = 10;
       ctx.beginPath();
-      ctx.moveTo(cxPx - ux, fyPx - uy);
-      ctx.lineTo(cxPx + ux, fyPx + uy);
+      ctx.moveTo(cxPx - ux, tangentAnchorY - uy);
+      ctx.lineTo(cxPx + ux, tangentAnchorY + uy);
       ctx.stroke();
       ctx.restore();
     }
 
-    // Glowing point on f'(x)
-    if (Number.isFinite(exactSlope)) {
+    // Glowing point on secondary curve (f'(x) or F(x))
+    if (Number.isFinite(secVal)) {
       ctx.save();
       ctx.fillStyle = '#34D399';
       ctx.shadowColor = 'rgba(52, 211, 153, 0.9)';
       ctx.shadowBlur = 12;
       ctx.beginPath();
-      ctx.arc(cxPx, dfyPx, 5, 0, Math.PI * 2);
+      ctx.arc(cxPx, secyPx, 5, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = '#080B11';
+      ctx.strokeStyle = isIntegral ? '#FFFFFF' : '#080B11';
       ctx.lineWidth = 1.8;
       ctx.stroke();
       ctx.restore();
@@ -1510,17 +1751,21 @@ export class PaperlessStepSolver {
       ctx.fillStyle = 'rgba(148, 163, 184, 0.72)';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'top';
-      ctx.fillText('Dual Y-axis: Cyan f(x) left · Emerald f\'(x) right', padL + plotW - 6, padT + 4);
+      const dualHint = isIntegral
+        ? 'Dual Y-axis: Cyan f(x) left · Emerald F(x) right'
+        : "Dual Y-axis: Cyan f(x) left · Emerald f'(x) right";
+      ctx.fillText(dualHint, padL + plotW - 6, padT + 4);
     }
 
     ctx.restore();
 
     // Update live numerical verification telemetry readout
-    this._updateVerificationReadout(cx, fxVal, exactSlope, numericSlope);
+    this._updateVerificationReadout(cx, fxVal, secVal, numericSlope);
   }
 
-  _updateVerificationReadout(x, fxVal, exactSlope, numericSlope) {
+  _updateVerificationReadout(x, fxVal, secVal, numericSlope) {
     if (!this.container) return;
+    const isIntegral = this._isIntegralMode();
     const xEl = this.container.querySelector('[data-verify-x]');
     const fxEl = this.container.querySelector('[data-verify-fx]');
     const exactEl = this.container.querySelector('[data-verify-exact]');
@@ -1529,12 +1774,16 @@ export class PaperlessStepSolver {
 
     if (xEl) xEl.textContent = formatNum(x, 3);
     if (fxEl) fxEl.textContent = formatNum(fxVal, 4);
-    if (exactEl) exactEl.textContent = formatNum(exactSlope, 4);
+    if (exactEl) exactEl.textContent = formatNum(secVal, 4);
     if (numEl) numEl.textContent = formatNum(numericSlope, 4);
 
-    if (matchEl && Number.isFinite(exactSlope) && Number.isFinite(numericSlope)) {
-      const denom = Math.max(1, Math.abs(exactSlope));
-      const relErr = Math.abs(exactSlope - numericSlope) / denom;
+    // Compare:
+    //  - derivatives: exact f'(x) (secVal) vs numerical centralDiff of f(x) (numericSlope)
+    //  - integrals: integrand f(x) (fxVal) vs numerical centralDiff of F(x) (numericSlope)
+    const expected = isIntegral ? fxVal : secVal;
+    if (matchEl && Number.isFinite(expected) && Number.isFinite(numericSlope)) {
+      const denom = Math.max(1, Math.abs(expected));
+      const relErr = Math.abs(expected - numericSlope) / denom;
       matchEl.textContent = relErr < 1e-4 ? 'MATCH ✓' : `Δ ${relErr.toExponential(1)}`;
     }
   }

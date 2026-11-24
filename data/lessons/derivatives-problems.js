@@ -1,6 +1,6 @@
 /**
  * EIGENLAB — Derivatives Paperless Step-by-Step Problem Bank
- * 12 multi-step calculus problems spanning 5 progressive mastery tiers.
+ * 18 multi-step calculus problems spanning 5 progressive mastery tiers.
  *
  * Color convention inside KaTeX highlights:
  *  - Cyan   (#22D3EE): Outer function / u / primary factor
@@ -2009,6 +2009,1022 @@ export const DERIVATIVE_PROBLEMS = [
         lockedResultLatex:
           "f'(x) = \\textcolor{#34D399}{(2x + 1)^2\\big(6\\cos(x) - (2x + 1)\\sin(x)\\big)}",
         hint: 'Pull $(2x+1)^2$ out front: $6\\cos(x)$ remains from term 1, and $-(2x+1)\\sin(x)$ remains from term 2.'
+      }
+    ]
+  },
+
+  // =========================================================================
+  // EXPANDED MASTERY PROBLEMS (PROBLEMS 13–18)
+  // =========================================================================
+  {
+    id: 'prob-13-power-radical-reciprocal',
+    tier: 'power',
+    tierLabel: 'Power & Linearity',
+    title: 'Radical & Reciprocal Power Mix',
+    mechatronicsContext:
+      'Hydraulic orifice flow scales as $\\sqrt{x}$, inverse sensor spacing scales as $x^{-1}$, and aerodynamic drag scales as $x^2$—converting every term to power form makes differentiation effortless.',
+    expressionLatex: 'f(x) = 3\\sqrt{x} - \\frac{4}{x} + 2x^2',
+    finalAnswerLatex: "f'(x) = \\frac{3}{2\\sqrt{x}} + \\frac{4}{x^2} + 4x",
+    domain: [0.5, 4],
+    verifyFn: (x) => 3 * Math.sqrt(x) - 4 / x + 2 * x * x,
+    verifyDerivFn: (x) => 1.5 / Math.sqrt(x) + 4 / (x * x) + 4 * x,
+    steps: [
+      {
+        stepType: 'decompose',
+        badge: 'Rewrite as Powers',
+        prompt: 'Rewrite $\\sqrt{x} = x^{1/2}$ and $\\frac{4}{x} = 4x^{-1}$ so every term is ready for the Power Rule.',
+        highlightLatex:
+          'f(x) = \\textcolor{#22D3EE}{3\\sqrt{x}} - \\textcolor{#F59E0B}{\\frac{4}{x}} + \\textcolor{#22D3EE}{2x^2}',
+        options: [
+          {
+            id: 'a',
+            latex: '3x^2 - 4x^{-1} + 2x^2',
+            correct: false,
+            misconception:
+              'A square root is a fractional exponent $x^{1/2}$, not $x^2$.'
+          },
+          {
+            id: 'b',
+            latex: '3x^{-1/2} - 4x^{-1} + 2x^2',
+            correct: false,
+            misconception:
+              '$\\sqrt{x}$ sits in the numerator, so its exponent is positive $+\\frac{1}{2}$, not $-\\frac{1}{2}$.'
+          },
+          {
+            id: 'c',
+            latex: '3x^{1/2} - 4x^{-1} + 2x^2',
+            correct: true
+          },
+          {
+            id: 'd',
+            latex: '3x^{1/2} + 4x^{-1} + 2x^2',
+            correct: false,
+            misconception:
+              'Rewriting $\\frac{1}{x}$ as $x^{-1}$ does not change the minus sign in front of $-4$ yet.'
+          }
+        ],
+        lockedLabel: 'Power Form',
+        lockedResultLatex:
+          'f(x) = \\textcolor{#22D3EE}{3x^{1/2}} - \\textcolor{#F59E0B}{4x^{-1}} + \\textcolor{#22D3EE}{2x^2}',
+        hint: 'Use $\\sqrt{x} = x^{1/2}$ and $\\frac{1}{x} = x^{-1}$ while keeping the coefficients $3$, $-4$, and $+2$ unchanged.'
+      },
+      {
+        stepType: 'diff_part',
+        badge: 'Radical Power Term',
+        prompt: 'Apply the power rule to the radical term: $\\frac{d}{dx}\\big(3x^{1/2}\\big)$.',
+        highlightLatex:
+          '\\frac{d}{dx}\\left(\\textcolor{#22D3EE}{3x^{\\textcolor{#F59E0B}{1/2}}}\\right)',
+        options: [
+          {
+            id: 'a',
+            latex: '\\frac{3}{2}x^{1/2}',
+            correct: false,
+            misconception:
+              'Subtract $1$ from the exponent: $\\frac{1}{2} - 1 = -\\frac{1}{2}$.'
+          },
+          {
+            id: 'b',
+            latex: '\\frac{3}{2}x^{-1/2}',
+            correct: true
+          },
+          {
+            id: 'c',
+            latex: '3x^{-1/2}',
+            correct: false,
+            misconception:
+              'Remember to bring down the exponent $\\frac{1}{2}$ to multiply $3$: $3\\cdot\\frac{1}{2} = \\frac{3}{2}$.'
+          },
+          {
+            id: 'd',
+            latex: '\\frac{3}{2}x^{-3/2}',
+            correct: false,
+            misconception:
+              'Careful with fraction subtraction: $\\frac{1}{2} - 1 = -\\frac{1}{2}$, not $-\\frac{3}{2}$.'
+          }
+        ],
+        lockedLabel: 'Radical Deriv',
+        lockedResultLatex:
+          '\\frac{d}{dx}\\big(3x^{1/2}\\big) = \\textcolor{#34D399}{\\frac{3}{2}x^{-1/2}}',
+        hint: 'Multiply $3 \\cdot \\frac{1}{2} = \\frac{3}{2}$ and reduce the exponent: $\\frac{1}{2} - 1 = -\\frac{1}{2}$.'
+      },
+      {
+        stepType: 'diff_part',
+        badge: 'Reciprocal & Quadratic',
+        prompt: 'Differentiate the remaining two terms: $\\frac{d}{dx}\\big(-4x^{-1} + 2x^2\\big)$.',
+        highlightLatex:
+          '\\frac{d}{dx}\\left(\\textcolor{#F59E0B}{-4x^{-1}} + \\textcolor{#22D3EE}{2x^2}\\right)',
+        options: [
+          {
+            id: 'a',
+            latex: '-4x^{-2} + 4x',
+            correct: false,
+            misconception:
+              'Double negative! Multiplying $-4$ by the exponent $-1$ flips the sign to $+4x^{-2}$.'
+          },
+          {
+            id: 'b',
+            latex: '+4x^{0} + 4x',
+            correct: false,
+            misconception:
+              'Subtracting $1$ from $-1$ gives $-1 - 1 = -2$, not $0$!'
+          },
+          {
+            id: 'c',
+            latex: '+4x^{-2} + 2x',
+            correct: false,
+            misconception:
+              'For $2x^2$, bring down the exponent $2$ to multiply $2$: $2\\cdot 2x = 4x$.'
+          },
+          {
+            id: 'd',
+            latex: '+4x^{-2} + 4x',
+            correct: true
+          }
+        ],
+        lockedLabel: 'Remaining Terms',
+        lockedResultLatex:
+          '\\frac{d}{dx}\\big(-4x^{-1} + 2x^2\\big) = \\textcolor{#34D399}{+4x^{-2} + 4x}',
+        hint: 'Compute $(-4)(-1)x^{-1-1} = +4x^{-2}$ and $2(2)x^{2-1} = 4x$.'
+      },
+      {
+        stepType: 'simplify',
+        badge: 'Clean Radical Form',
+        prompt: 'Combine all three terms and rewrite negative/fractional exponents in clean radical and fraction form.',
+        highlightLatex:
+          "f'(x) = \\textcolor{#34D399}{\\frac{3}{2}x^{-1/2}} + \\textcolor{#34D399}{4x^{-2}} + \\textcolor{#34D399}{4x}",
+        options: [
+          {
+            id: 'a',
+            latex: '\\frac{3}{2\\sqrt{x}} + \\frac{4}{x^2} + 4x',
+            correct: true
+          },
+          {
+            id: 'b',
+            latex: '\\frac{3\\sqrt{x}}{2} + \\frac{4}{x^2} + 4x',
+            correct: false,
+            misconception:
+              'The exponent $-\\frac{1}{2}$ puts $\\sqrt{x}$ in the denominator: $x^{-1/2} = \\frac{1}{\\sqrt{x}}$.'
+          },
+          {
+            id: 'c',
+            latex: '\\frac{3}{2\\sqrt{x}} - \\frac{4}{x^2} + 4x',
+            correct: false,
+            misconception:
+              'Moving $x^{-2}$ to the denominator keeps the $+$ sign from $+4x^{-2}$.'
+          },
+          {
+            id: 'd',
+            latex: '\\frac{3}{2\\sqrt{x}} + \\frac{1}{4x^2} + 4x',
+            correct: false,
+            misconception:
+              'Only $x^{-2}$ moves to the denominator; the coefficient $4$ stays in the numerator.'
+          }
+        ],
+        lockedLabel: 'Final Result',
+        lockedResultLatex:
+          "f'(x) = \\textcolor{#34D399}{\\frac{3}{2\\sqrt{x}} + \\frac{4}{x^2} + 4x}",
+        hint: 'Replace $x^{-1/2}$ with $\\frac{1}{\\sqrt{x}}$ and $x^{-2}$ with $\\frac{1}{x^2}$.'
+      }
+    ]
+  },
+
+  {
+    id: 'prob-14-arctan-exp-decay',
+    tier: 'trig-exp',
+    tierLabel: 'Trig & Exp',
+    title: 'Phase Arctangent & Decay',
+    mechatronicsContext:
+      'First-order low-pass filter phase shifts follow $\\arctan(\\omega/\\omega_c)$, while transient RC capacitor voltages decay as $e^{-t}$.',
+    expressionLatex: 'f(x) = 2\\arctan(x) + 3e^{-x}',
+    finalAnswerLatex: "f'(x) = \\frac{2}{1 + x^2} - 3e^{-x}",
+    domain: [-2.2, 2.2],
+    verifyFn: (x) => 2 * Math.atan(x) + 3 * Math.exp(-x),
+    verifyDerivFn: (x) => 2 / (1 + x * x) - 3 * Math.exp(-x),
+    steps: [
+      {
+        stepType: 'diff_part',
+        badge: 'Inverse Tangent',
+        prompt: 'Differentiate the inverse tangent phase term: $\\frac{d}{dx}\\big(2\\arctan(x)\\big)$.',
+        highlightLatex: '\\frac{d}{dx}\\left(\\textcolor{#22D3EE}{2\\arctan(x)}\\right)',
+        options: [
+          {
+            id: 'a',
+            latex: '\\frac{2}{\\sqrt{1 - x^2}}',
+            correct: false,
+            misconception:
+              '$\\frac{1}{\\sqrt{1 - x^2}}$ is the derivative of $\\arcsin(x)$, not $\\arctan(x)$!'
+          },
+          {
+            id: 'b',
+            latex: '\\frac{2}{1 + x^2}',
+            correct: true
+          },
+          {
+            id: 'c',
+            latex: '2\\sec^2(x)',
+            correct: false,
+            misconception:
+              '$\\sec^2(x)$ is the derivative of $\\tan(x)$, whereas $\\frac{d}{dx}\\arctan(x) = \\frac{1}{1 + x^2}$.'
+          },
+          {
+            id: 'd',
+            latex: '\\frac{2}{1 - x^2}',
+            correct: false,
+            misconception:
+              'Sign check in the denominator: $\\frac{d}{dx}\\arctan(x) = \\frac{1}{1 + x^2}$ (plus sign, smooth for all real $x$).'
+          }
+        ],
+        lockedLabel: 'Arctan Deriv',
+        lockedResultLatex:
+          '\\frac{d}{dx}\\big(2\\arctan(x)\\big) = \\textcolor{#34D399}{\\frac{2}{1 + x^2}}',
+        hint: 'Recall the standard inverse-trig identity $\\frac{d}{dx}\\arctan(x) = \\frac{1}{1 + x^2}$ and scale by $2$.'
+      },
+      {
+        stepType: 'diff_part',
+        badge: 'Exponential Decay',
+        prompt: 'Differentiate the exponential decay term: $\\frac{d}{dx}\\big(3e^{-x}\\big)$.',
+        highlightLatex: '\\frac{d}{dx}\\left(\\textcolor{#F59E0B}{3e^{-x}}\\right)',
+        options: [
+          {
+            id: 'a',
+            latex: '3e^{-x}',
+            correct: false,
+            misconception:
+              'Watch the inner derivative of $-x$! Multiply by $\\frac{d}{dx}(-x) = -1$ to get $-3e^{-x}$.'
+          },
+          {
+            id: 'b',
+            latex: '-3x\\,e^{-x-1}',
+            correct: false,
+            misconception:
+              'Never use the power rule on an exponential—keep the exponent $-x$ intact and multiply by its derivative $-1$.'
+          },
+          {
+            id: 'c',
+            latex: '3e^{x}',
+            correct: false,
+            misconception:
+              'The exponent $-x$ stays $-x$; only the sign out front flips from differentiating $-x$.'
+          },
+          {
+            id: 'd',
+            latex: '-3e^{-x}',
+            correct: true
+          }
+        ],
+        lockedLabel: 'Decay Deriv',
+        lockedResultLatex:
+          '\\frac{d}{dx}\\big(3e^{-x}\\big) = \\textcolor{#34D399}{-3e^{-x}}',
+        hint: 'By the Chain Rule, $\\frac{d}{dx}(e^{kx}) = k\\,e^{kx}$; here $k = -1$.'
+      },
+      {
+        stepType: 'assemble',
+        badge: 'Assemble Result',
+        prompt: "Combine both locked derivatives to complete $f'(x)$.",
+        highlightLatex:
+          "f'(x) = \\textcolor{#34D399}{\\frac{2}{1 + x^2}} + \\big(\\textcolor{#34D399}{-3e^{-x}}\\big)",
+        options: [
+          {
+            id: 'a',
+            latex: '\\frac{2}{1 + x^2} - 3e^{-x}',
+            correct: true
+          },
+          {
+            id: 'b',
+            latex: '\\frac{2}{1 + x^2} + 3e^{-x}',
+            correct: false,
+            misconception:
+              'Exponential decay $3e^{-x}$ slopes downward, so its derivative contributes $-3e^{-x}$.'
+          },
+          {
+            id: 'c',
+            latex: '\\frac{1}{2(1 + x^2)} - 3e^{-x}',
+            correct: false,
+            misconception:
+              'Keep the factor $2$ in the numerator: $2\\cdot\\frac{1}{1+x^2} = \\frac{2}{1+x^2}$.'
+          },
+          {
+            id: 'd',
+            latex: '\\frac{2}{\\sqrt{1 - x^2}} - 3e^{-x}',
+            correct: false,
+            misconception:
+              'Use the $\\arctan(x)$ derivative $\\frac{2}{1 + x^2}$, not the $\\arcsin(x)$ formula.'
+          }
+        ],
+        lockedLabel: 'Final Result',
+        lockedResultLatex: "f'(x) = \\textcolor{#34D399}{\\frac{2}{1 + x^2} - 3e^{-x}}",
+        hint: 'Combine $\\frac{2}{1 + x^2}$ and $-3e^{-x}$ directly from the Step Ledger.'
+      }
+    ]
+  },
+
+  {
+    id: 'prob-15-product-x2-lnx',
+    tier: 'product',
+    tierLabel: 'Product Rule',
+    title: 'Quadratic-Logarithmic Profile',
+    mechatronicsContext:
+      'Cylindrical heat-conduction solutions and information-entropy scaling combine algebraic powers $x^2$ with logarithmic terms $\\ln(x)$.',
+    expressionLatex: 'f(x) = x^2 \\ln(x)',
+    finalAnswerLatex: "f'(x) = x\\big(2\\ln(x) + 1\\big)",
+    domain: [0.35, 3.5],
+    verifyFn: (x) => x * x * Math.log(x),
+    verifyDerivFn: (x) => x * (2 * Math.log(x) + 1),
+    steps: [
+      {
+        stepType: 'decompose',
+        badge: 'Decompose u & v',
+        prompt: 'Split the product $x^2\\ln(x)$ into factors $u$ and $v$ for the Product Rule.',
+        highlightLatex: 'f(x) = \\textcolor{#22D3EE}{x^2} \\cdot \\textcolor{#F59E0B}{\\ln(x)}',
+        options: [
+          {
+            id: 'a',
+            latex: 'u = 2x, \\quad v = \\frac{1}{x}',
+            correct: false,
+            misconception:
+              "Those are already the derivatives $u'$ and $v'$—first lock in the original factors $u$ and $v$."
+          },
+          {
+            id: 'b',
+            latex: 'u = \\ln(x^2), \\quad v = x',
+            correct: false,
+            misconception:
+              '$x^2$ multiplies $\\ln(x)$ on the outside; it is not inside the logarithm.'
+          },
+          {
+            id: 'c',
+            latex: 'u = x^2, \\quad v = \\ln(x)',
+            correct: true
+          },
+          {
+            id: 'd',
+            latex: 'u = x, \\quad v = x\\ln(x)',
+            correct: false,
+            misconception:
+              'Keep the algebraic power $x^2$ together as $u$ so each factor differentiates in a single clean step.'
+          }
+        ],
+        lockedLabel: 'Factors',
+        lockedResultLatex: '\\textcolor{#22D3EE}{u = x^2}, \\quad \\textcolor{#F59E0B}{v = \\ln(x)}',
+        hint: 'Match Cyan $u = x^2$ and Amber $v = \\ln(x)$.'
+      },
+      {
+        stepType: 'diff_part',
+        badge: 'Differentiate Parts',
+        prompt: "Compute the individual derivatives $u'$ and $v'$.",
+        highlightLatex:
+          "\\textcolor{#22D3EE}{u = x^2} \\Rightarrow u'=\\,?, \\quad \\textcolor{#F59E0B}{v = \\ln(x)} \\Rightarrow v'=\\,?",
+        options: [
+          {
+            id: 'a',
+            latex: "u' = 2x, \\quad v' = \\frac{1}{x}",
+            correct: true
+          },
+          {
+            id: 'b',
+            latex: "u' = 2x, \\quad v' = e^x",
+            correct: false,
+            misconception:
+              '$e^x$ is the inverse of $\\ln(x)$, not its derivative—recall $\\frac{d}{dx}\\ln(x) = \\frac{1}{x}$.'
+          },
+          {
+            id: 'c',
+            latex: "u' = x, \\quad v' = \\frac{1}{x}",
+            correct: false,
+            misconception:
+              'Bring down the exponent $2$ from $x^2$: $u\' = 2x$.'
+          },
+          {
+            id: 'd',
+            latex: "u' = 2x, \\quad v' = -\\frac{1}{x^2}",
+            correct: false,
+            misconception:
+              '$-\\frac{1}{x^2}$ is the second derivative of $\\ln(x)$; the first derivative is $\\frac{1}{x}$.'
+          }
+        ],
+        lockedLabel: 'Sub-Derivatives',
+        lockedResultLatex:
+          "\\textcolor{#34D399}{u' = 2x}, \\quad \\textcolor{#34D399}{v' = \\frac{1}{x}}",
+        hint: 'Apply the power rule to $x^2$ and use $\\frac{d}{dx}\\ln(x) = \\frac{1}{x}$.'
+      },
+      {
+        stepType: 'assemble',
+        badge: 'Assemble & Cancel',
+        prompt: "Substitute into $u'v + uv'$ and simplify $x^2 \\cdot \\frac{1}{x}$.",
+        highlightLatex:
+          "f'(x) = (\\textcolor{#34D399}{2x})(\\textcolor{#F59E0B}{\\ln x}) + (\\textcolor{#22D3EE}{x^2})\\!\\left(\\textcolor{#34D399}{\\frac{1}{x}}\\right)",
+        options: [
+          {
+            id: 'a',
+            latex: '2x\\cdot\\frac{1}{x} = 2',
+            correct: false,
+            misconception:
+              "Classic trap! That computes $u'\\cdot v'$ instead of the Product Rule sum $u'v + uv'$."
+          },
+          {
+            id: 'b',
+            latex: '2x\\ln(x) - x',
+            correct: false,
+            misconception:
+              'The Product Rule adds the two cross-terms with a $+$ sign.'
+          },
+          {
+            id: 'c',
+            latex: '2x\\ln(x) + 1',
+            correct: false,
+            misconception:
+              'Check the cancellation: $x^2 \\cdot \\frac{1}{x} = x$, not $1$.'
+          },
+          {
+            id: 'd',
+            latex: '2x\\ln(x) + x',
+            correct: true
+          }
+        ],
+        lockedLabel: 'Assembled',
+        lockedResultLatex: "f'(x) = 2x\\ln(x) + x",
+        hint: 'Cancel one power of $x$ in $x^2 \\cdot \\frac{1}{x} = x$, giving $2x\\ln(x) + x$.'
+      },
+      {
+        stepType: 'simplify',
+        badge: 'Factor Common x',
+        prompt: 'Factor out the common factor $x$ for the cleanest final form.',
+        highlightLatex:
+          '\\textcolor{#22D3EE}{x}\\cdot 2\\ln(x) + \\textcolor{#22D3EE}{x}\\cdot 1',
+        options: [
+          {
+            id: 'a',
+            latex: 'x\\big(2\\ln(x)\\big)',
+            correct: false,
+            misconception:
+              'When factoring $x$ out of $+x$, a $+1$ placeholder stays inside the parentheses!'
+          },
+          {
+            id: 'b',
+            latex: 'x\\big(2\\ln(x) + 1\\big)',
+            correct: true
+          },
+          {
+            id: 'c',
+            latex: '2x\\big(\\ln(x) + 1\\big)',
+            correct: false,
+            misconception:
+              'The second term $+x$ has no factor of $2$; factoring out $2x$ would leave $+\\frac{1}{2}$, not $+1$.'
+          },
+          {
+            id: 'd',
+            latex: 'x\\big(2\\ln(x) + x\\big)',
+            correct: false,
+            misconception:
+              'Once $x$ is factored out of $+x$, only $+1$ remains inside.'
+          }
+        ],
+        lockedLabel: 'Final Result',
+        lockedResultLatex: "f'(x) = \\textcolor{#34D399}{x\\big(2\\ln(x) + 1\\big)}",
+        hint: 'Pull $x$ out front: $2\\ln(x)$ stays from the first term and $+1$ stays from $+x$.'
+      }
+    ]
+  },
+
+  {
+    id: 'prob-16-quotient-exp-quad',
+    tier: 'quotient',
+    tierLabel: 'Quotient Rule',
+    title: 'Exponential-Quadratic Transfer',
+    mechatronicsContext:
+      'Frequency-weighted actuator transfer ratios combine exponential forcing $e^x$ over a quadratic pole denominator $x^2 + 1$.',
+    expressionLatex: 'f(x) = \\frac{e^x}{x^2 + 1}',
+    finalAnswerLatex: "f'(x) = \\frac{e^x(x - 1)^2}{(x^2 + 1)^2}",
+    domain: [-1.5, 2.2],
+    verifyFn: (x) => Math.exp(x) / (x * x + 1),
+    verifyDerivFn: (x) => (Math.exp(x) * (x - 1) ** 2) / (x * x + 1) ** 2,
+    steps: [
+      {
+        stepType: 'diff_part',
+        badge: 'Differentiate Parts',
+        prompt: "With $u = e^x$ and $v = x^2 + 1$, compute $u'$ and $v'$.",
+        highlightLatex:
+          "\\textcolor{#22D3EE}{u = e^x} \\Rightarrow u'=\\,?, \\quad \\textcolor{#F59E0B}{v = x^2 + 1} \\Rightarrow v'=\\,?",
+        options: [
+          {
+            id: 'a',
+            latex: "u' = x\\,e^{x-1}, \\quad v' = 2x",
+            correct: false,
+            misconception:
+              '$e^x$ is its own derivative—never apply the power rule to an exponential.'
+          },
+          {
+            id: 'b',
+            latex: "u' = e^x, \\quad v' = 2x",
+            correct: true
+          },
+          {
+            id: 'c',
+            latex: "u' = e^x, \\quad v' = 2x + 1",
+            correct: false,
+            misconception:
+              'The constant $+1$ differentiates to $0$, leaving $v\' = 2x$.'
+          },
+          {
+            id: 'd',
+            latex: "u' = 1, \\quad v' = 2x",
+            correct: false,
+            misconception:
+              '$\\frac{d}{dx}(e^x) = e^x$, not $1$.'
+          }
+        ],
+        lockedLabel: 'Sub-Derivatives',
+        lockedResultLatex: "\\textcolor{#34D399}{u' = e^x}, \\quad \\textcolor{#34D399}{v' = 2x}",
+        hint: 'Recall $\\frac{d}{dx}(e^x) = e^x$ and $\\frac{d}{dx}(x^2 + 1) = 2x$.'
+      },
+      {
+        stepType: 'assemble',
+        badge: 'Apply Quotient Rule',
+        prompt: "Substitute $u, v, u', v'$ into $\\frac{u'v - uv'}{v^2}$.",
+        highlightLatex:
+          '\\frac{(\\textcolor{#34D399}{e^x})(\\textcolor{#F59E0B}{x^2 + 1}) - (\\textcolor{#22D3EE}{e^x})(\\textcolor{#34D399}{2x})}{(\\textcolor{#F59E0B}{x^2 + 1})^2}',
+        options: [
+          {
+            id: 'a',
+            latex: '\\frac{e^x(x^2 + 1) + e^x(2x)}{(x^2 + 1)^2}',
+            correct: false,
+            misconception:
+              'The Quotient Rule subtracts $uv\'$ in the numerator, not adds.'
+          },
+          {
+            id: 'b',
+            latex: '\\frac{e^x(2x) - e^x(x^2 + 1)}{(x^2 + 1)^2}',
+            correct: false,
+            misconception:
+              'Reversed order! Always start with $u\'v = e^x(x^2 + 1)$ minus $uv\' = e^x(2x)$.'
+          },
+          {
+            id: 'c',
+            latex: '\\frac{e^x(x^2 + 1) - e^x(2x)}{(x^2 + 1)^2}',
+            correct: true
+          },
+          {
+            id: 'd',
+            latex: '\\frac{e^x(x^2 + 1) - e^x(2x)}{x^2 + 1}',
+            correct: false,
+            misconception:
+              'Do not forget to square the denominator: $(x^2 + 1)^2$.'
+          }
+        ],
+        lockedLabel: 'Assembled',
+        lockedResultLatex: "f'(x) = \\frac{e^x(x^2 + 1) - e^x(2x)}{(x^2 + 1)^2}",
+        hint: 'Plug directly into "low d-high minus high d-low, over low squared."'
+      },
+      {
+        stepType: 'simplify',
+        badge: 'Factor Out e^x',
+        prompt: 'Factor the common $e^x$ out of the numerator and sort the quadratic in descending powers.',
+        highlightLatex:
+          '\\frac{\\textcolor{#22D3EE}{e^x}\\big((x^2 + 1) - 2x\\big)}{(x^2 + 1)^2}',
+        options: [
+          {
+            id: 'a',
+            latex: '\\frac{e^x(x^2 - 2x + 1)}{(x^2 + 1)^2}',
+            correct: true
+          },
+          {
+            id: 'b',
+            latex: '\\frac{e^x(x^2 + 2x + 1)}{(x^2 + 1)^2}',
+            correct: false,
+            misconception:
+              'Preserve the minus sign from $-e^x(2x)$: the middle term is $-2x$.'
+          },
+          {
+            id: 'c',
+            latex: '\\frac{e^{2x}(x^2 - 2x + 1)}{(x^2 + 1)^2}',
+            correct: false,
+            misconception:
+              'Factoring $e^x$ out of a difference leaves a single $e^x$, not $e^{2x}$.'
+          },
+          {
+            id: 'd',
+            latex: '\\frac{e^x(x^2 - 2x)}{(x^2 + 1)^2}',
+            correct: false,
+            misconception:
+              'Do not drop the $+1$ from $(x^2 + 1)$!'
+          }
+        ],
+        lockedLabel: 'Factored e^x',
+        lockedResultLatex: "f'(x) = \\frac{e^x(x^2 - 2x + 1)}{(x^2 + 1)^2}",
+        hint: 'Pull out one shared $e^x$ and reorder $(x^2 + 1) - 2x = x^2 - 2x + 1$.'
+      },
+      {
+        stepType: 'simplify',
+        badge: 'Perfect Square Form',
+        prompt: 'Notice that $x^2 - 2x + 1$ is a perfect square—write the final factored derivative.',
+        highlightLatex:
+          '\\frac{e^x\\textcolor{#34D399}{(x^2 - 2x + 1)}}{(x^2 + 1)^2}',
+        options: [
+          {
+            id: 'a',
+            latex: '\\frac{e^x(x + 1)^2}{(x^2 + 1)^2}',
+            correct: false,
+            misconception:
+              '$(x + 1)^2 = x^2 + 2x + 1$; the minus sign on $-2x$ requires $(x - 1)^2$.'
+          },
+          {
+            id: 'b',
+            latex: '\\frac{e^x(x - 1)}{(x^2 + 1)^2}',
+            correct: false,
+            misconception:
+              '$x^2 - 2x + 1$ is quadratic, so it factors as $(x - 1)^2$ (squared!).'
+          },
+          {
+            id: 'c',
+            latex: '\\frac{e^x(x - 1)^2}{x^4 + 1}',
+            correct: false,
+            misconception:
+              '$(x^2 + 1)^2 \\neq x^4 + 1$—keep the denominator cleanly factored as $(x^2 + 1)^2$.'
+          },
+          {
+            id: 'd',
+            latex: '\\frac{e^x(x - 1)^2}{(x^2 + 1)^2}',
+            correct: true
+          }
+        ],
+        lockedLabel: 'Final Result',
+        lockedResultLatex: "f'(x) = \\textcolor{#34D399}{\\frac{e^x(x - 1)^2}{(x^2 + 1)^2}}",
+        hint: 'Factor $x^2 - 2x + 1 = (x - 1)^2$—this also reveals immediately that $f\'(x) \\ge 0$ everywhere!'
+      }
+    ]
+  },
+
+  {
+    id: 'prob-17-chain-log-quadratic',
+    tier: 'chain',
+    tierLabel: 'Chain & Combo',
+    title: 'Log-Barrier Gradient',
+    mechatronicsContext:
+      'Interior-point trajectory barriers and cross-entropy loss gradients take the log-chain form $\\frac{d}{dx}\\ln(u(x)) = \\frac{u\'(x)}{u(x)}$.',
+    expressionLatex: 'f(x) = \\ln(x^2 + 4x + 5)',
+    finalAnswerLatex: "f'(x) = \\frac{2x + 4}{x^2 + 4x + 5}",
+    domain: [-3.5, 1.5],
+    verifyFn: (x) => Math.log(x * x + 4 * x + 5),
+    verifyDerivFn: (x) => (2 * x + 4) / (x * x + 4 * x + 5),
+    steps: [
+      {
+        stepType: 'decompose',
+        badge: 'Peel Outer & Inner',
+        prompt: 'Split $\\ln(x^2 + 4x + 5)$ into its outer logarithm $g(u)$ and inner quadratic $u(x)$.',
+        highlightLatex:
+          'f(x) = \\textcolor{#22D3EE}{\\ln}\\!\\big(\\textcolor{#F59E0B}{x^2 + 4x + 5}\\big)',
+        options: [
+          {
+            id: 'a',
+            latex: '\\text{Outer: } u^2 + 4u + 5, \\quad \\text{Inner: } u = \\ln(x)',
+            correct: false,
+            misconception:
+              'Inverted! The quadratic sits INSIDE $\\ln(\\cdot)$, so $\\ln(u)$ is the outer function.'
+          },
+          {
+            id: 'b',
+            latex: '\\text{Outer: } \\ln(x), \\quad \\text{Inner: } x^2 + 4x + 5',
+            correct: false,
+            misconception:
+              'This is a nested composition $\\ln(u)$, not a product $\\ln(x)\\cdot(x^2 + 4x + 5)$.'
+          },
+          {
+            id: 'c',
+            latex: '\\text{Outer: } \\frac{1}{u}, \\quad \\text{Inner: } u = 2x + 4',
+            correct: false,
+            misconception:
+              'First identify the original undifferentiated outer and inner layers.'
+          },
+          {
+            id: 'd',
+            latex: '\\text{Outer: } \\ln(u), \\quad \\text{Inner: } u = x^2 + 4x + 5',
+            correct: true
+          }
+        ],
+        lockedLabel: 'Outer & Inner',
+        lockedResultLatex:
+          '\\textcolor{#22D3EE}{\\text{Outer: } \\ln(u)}, \\quad \\textcolor{#F59E0B}{\\text{Inner: } u = x^2 + 4x + 5}',
+        hint: 'Ask which function wraps the entire quadratic expression—the natural log $\\ln(u)$.'
+      },
+      {
+        stepType: 'diff_part',
+        badge: 'Outer Log Deriv',
+        prompt: 'Differentiate the outer $\\ln(u)$, keeping the inner quadratic $u = x^2 + 4x + 5$ untouched.',
+        highlightLatex:
+          '\\textcolor{#22D3EE}{\\frac{d}{du}\\ln(u)}\\Big|_{u = \\textcolor{#F59E0B}{x^2 + 4x + 5}}',
+        options: [
+          {
+            id: 'a',
+            latex: '\\frac{1}{2x + 4}',
+            correct: false,
+            misconception:
+              'Never differentiate the inside inside the denominator! Keep the original $u = x^2 + 4x + 5$ in $\\frac{1}{u}$.'
+          },
+          {
+            id: 'b',
+            latex: '\\frac{1}{x^2 + 4x + 5}',
+            correct: true
+          },
+          {
+            id: 'c',
+            latex: '\\ln(2x + 4)',
+            correct: false,
+            misconception:
+              'Differentiating $\\ln(u)$ turns it into the reciprocal $\\frac{1}{u}$, not another logarithm.'
+          },
+          {
+            id: 'd',
+            latex: 'e^{x^2 + 4x + 5}',
+            correct: false,
+            misconception:
+              '$e^u$ is the inverse of $\\ln(u)$, whereas $\\frac{d}{du}\\ln(u) = \\frac{1}{u}$.'
+          }
+        ],
+        lockedLabel: 'Outer Deriv',
+        lockedResultLatex:
+          "g'(u) = \\textcolor{#34D399}{\\frac{1}{\\textcolor{#F59E0B}{x^2 + 4x + 5}}}",
+        hint: 'Apply $\\frac{d}{du}\\ln(u) = \\frac{1}{u}$ and substitute $u = x^2 + 4x + 5$ verbatim.'
+      },
+      {
+        stepType: 'diff_part',
+        badge: 'Inner Derivative',
+        prompt: 'Now differentiate the inner quadratic $u = x^2 + 4x + 5$.',
+        highlightLatex: '\\frac{d}{dx}\\left(\\textcolor{#F59E0B}{x^2 + 4x + 5}\\right)',
+        options: [
+          {
+            id: 'a',
+            latex: '2x + 4',
+            correct: true
+          },
+          {
+            id: 'b',
+            latex: '2x + 4 + 5',
+            correct: false,
+            misconception:
+              'The standalone constant $+5$ differentiates to $0$.'
+          },
+          {
+            id: 'c',
+            latex: '2x + 4x',
+            correct: false,
+            misconception:
+              'The derivative of the linear term $4x$ is the constant $4$, not $4x$.'
+          },
+          {
+            id: 'd',
+            latex: 'x + 4',
+            correct: false,
+            misconception:
+              'Bring down the exponent $2$ on $x^2$: $\\frac{d}{dx}(x^2) = 2x$.'
+          }
+        ],
+        lockedLabel: 'Inner Deriv',
+        lockedResultLatex: "u'(x) = \\textcolor{#34D399}{2x + 4}",
+        hint: 'Differentiate term-by-term: $x^2 \\to 2x$, $4x \\to 4$, and $5 \\to 0$.'
+      },
+      {
+        stepType: 'assemble',
+        badge: 'Assemble Log-Chain',
+        prompt: "Multiply $g'(u)\\cdot u'(x)$ to form the log-derivative ratio $\\frac{u'(x)}{u(x)}$.",
+        highlightLatex:
+          "f'(x) = \\textcolor{#34D399}{\\frac{1}{x^2 + 4x + 5}} \\cdot \\textcolor{#34D399}{(2x + 4)}",
+        options: [
+          {
+            id: 'a',
+            latex: '\\frac{1}{x^2 + 4x + 5}',
+            correct: false,
+            misconception:
+              'Missing the Chain Rule factor! Multiply by the inner derivative $2x + 4$ in the numerator.'
+          },
+          {
+            id: 'b',
+            latex: '\\frac{2x + 4}{(x^2 + 4x + 5)^2}',
+            correct: false,
+            misconception:
+              'Do NOT square the denominator—that belongs to the Quotient Rule, whereas $\\frac{d}{dx}\\ln(u) = \\frac{u\'}{u}$.'
+          },
+          {
+            id: 'c',
+            latex: '\\frac{2x + 4}{x^2 + 4x + 5}',
+            correct: true
+          },
+          {
+            id: 'd',
+            latex: '\\frac{x^2 + 4x + 5}{2x + 4}',
+            correct: false,
+            misconception:
+              'Inverted fraction! The derivative $u\'(x)$ goes in the numerator and $u(x)$ stays in the denominator.'
+          }
+        ],
+        lockedLabel: 'Final Result',
+        lockedResultLatex: "f'(x) = \\textcolor{#34D399}{\\frac{2x + 4}{x^2 + 4x + 5}}",
+        hint: 'Place the inner derivative $2x + 4$ in the numerator over the original quadratic $x^2 + 4x + 5$.'
+      }
+    ]
+  },
+
+  {
+    id: 'prob-18-combo-damped-servo',
+    tier: 'chain',
+    tierLabel: 'Chain & Combo',
+    title: 'Damped Servo Velocity',
+    mechatronicsContext:
+      'Underdamped PID servo settling follows $x(t) = e^{-0.5t}\\sin(2t)$—combining Product Rule with Chain Rule yields the exact actuator velocity profile.',
+    expressionLatex: 'f(x) = e^{-0.5x}\\sin(2x)',
+    finalAnswerLatex: "f'(x) = e^{-0.5x}\\big(2\\cos(2x) - 0.5\\sin(2x)\\big)",
+    domain: [0, 5],
+    verifyFn: (x) => Math.exp(-0.5 * x) * Math.sin(2 * x),
+    verifyDerivFn: (x) => Math.exp(-0.5 * x) * (2 * Math.cos(2 * x) - 0.5 * Math.sin(2 * x)),
+    steps: [
+      {
+        stepType: 'identify_rule',
+        badge: 'Master Strategy',
+        prompt: 'Inspect $e^{-0.5x}\\sin(2x)$. Which combination of differentiation rules applies?',
+        highlightLatex:
+          'f(x) = \\textcolor{#22D3EE}{e^{-0.5x}} \\cdot \\textcolor{#F59E0B}{\\sin(2x)}',
+        options: [
+          {
+            id: 'a',
+            latex: '\\text{Product Rule only (no inner derivatives needed)}',
+            correct: false,
+            misconception:
+              'Both $-0.5x$ and $2x$ have non-unit slopes, so each factor requires the Chain Rule!'
+          },
+          {
+            id: 'b',
+            latex: '\\text{Chain Rule only}',
+            correct: false,
+            misconception:
+              'The decay envelope $e^{-0.5x}$ and oscillation $\\sin(2x)$ are multiplied together, so Product Rule governs the top level.'
+          },
+          {
+            id: 'c',
+            latex: '\\text{Product Rule outside, Chain Rule on both } e^{-0.5x} \\text{ and } \\sin(2x)',
+            correct: true
+          },
+          {
+            id: 'd',
+            latex: '\\text{Quotient Rule outside, Power Rule inside}',
+            correct: false,
+            misconception:
+              'This is a product of an exponential and a trig function, not a quotient.'
+          }
+        ],
+        lockedLabel: 'Strategy',
+        lockedResultLatex:
+          '\\text{Product Rule on } \\textcolor{#22D3EE}{u}\\textcolor{#F59E0B}{v} \\text{ + Chain Rule on both factors}',
+        hint: 'Outside operation is multiplication ($u\\cdot v$), and each factor has a linear scaling inside ($-0.5x$ and $2x$).'
+      },
+      {
+        stepType: 'diff_part',
+        badge: 'Chain Rule on u',
+        prompt: 'Differentiate the exponential envelope $u = e^{-0.5x}$ using the Chain Rule.',
+        highlightLatex: '\\frac{d}{dx}\\left(\\textcolor{#22D3EE}{e}^{\\textcolor{#F59E0B}{-0.5x}}\\right)',
+        options: [
+          {
+            id: 'a',
+            latex: "u' = -0.5e^{-0.5x}",
+            correct: true
+          },
+          {
+            id: 'b',
+            latex: "u' = e^{-0.5x}",
+            correct: false,
+            misconception:
+              'Forgot the Chain Rule inner derivative! Multiply by $\\frac{d}{dx}(-0.5x) = -0.5$.'
+          },
+          {
+            id: 'c',
+            latex: "u' = 0.5e^{-0.5x}",
+            correct: false,
+            misconception:
+              'Watch the minus sign: the decay exponent $-0.5x$ differentiates to $-0.5$, not $+0.5$.'
+          },
+          {
+            id: 'd',
+            latex: "u' = -0.5e^{-1.5x}",
+            correct: false,
+            misconception:
+              'Never subtract $1$ from the exponent of an exponential—keep $e^{-0.5x}$ intact.'
+          }
+        ],
+        lockedLabel: "u' (Chain)",
+        lockedResultLatex: "\\textcolor{#34D399}{u' = -0.5e^{-0.5x}}",
+        hint: 'Keep $e^{-0.5x}$ unchanged and multiply out front by $\\frac{d}{dx}(-0.5x) = -0.5$.'
+      },
+      {
+        stepType: 'diff_part',
+        badge: 'Chain Rule on v',
+        prompt: 'Differentiate the harmonic carrier $v = \\sin(2x)$ using the Chain Rule.',
+        highlightLatex: '\\frac{d}{dx}\\Big(\\textcolor{#22D3EE}{\\sin}(\\textcolor{#F59E0B}{2x})\\Big)',
+        options: [
+          {
+            id: 'a',
+            latex: "v' = \\cos(2x)",
+            correct: false,
+            misconception:
+              'Missing the Chain Rule frequency factor! Multiply by $\\frac{d}{dx}(2x) = 2$.'
+          },
+          {
+            id: 'b',
+            latex: "v' = -2\\cos(2x)",
+            correct: false,
+            misconception:
+              'Sign check: $\\frac{d}{du}\\sin(u) = +\\cos(u)$, with no minus sign.'
+          },
+          {
+            id: 'c',
+            latex: "v' = 2\\cos(x)",
+            correct: false,
+            misconception:
+              'Keep the original argument $(2x)$ inside cosine: $2\\cos(2x)$.'
+          },
+          {
+            id: 'd',
+            latex: "v' = 2\\cos(2x)",
+            correct: true
+          }
+        ],
+        lockedLabel: "v' (Chain)",
+        lockedResultLatex: "\\textcolor{#34D399}{v' = 2\\cos(2x)}",
+        hint: 'Outer $\\sin(u) \\to \\cos(u)$ with $u = 2x$, times inner derivative $\\frac{d}{dx}(2x) = 2$.'
+      },
+      {
+        stepType: 'assemble',
+        badge: 'Assemble Product',
+        prompt: "Combine $u, v, u', v'$ into $f'(x) = u'v + uv'$.",
+        highlightLatex:
+          '(\\textcolor{#34D399}{-0.5e^{-0.5x}})(\\textcolor{#F59E0B}{\\sin(2x)}) + (\\textcolor{#22D3EE}{e^{-0.5x}})(\\textcolor{#34D399}{2\\cos(2x)})',
+        options: [
+          {
+            id: 'a',
+            latex: '-e^{-0.5x}\\cos(2x)',
+            correct: false,
+            misconception:
+              "Classic trap! That multiplies $u'\\cdot v'$ instead of forming the Product Rule sum $u'v + uv'$."
+          },
+          {
+            id: 'b',
+            latex: '-0.5e^{-0.5x}\\sin(2x) + 2e^{-0.5x}\\cos(2x)',
+            correct: true
+          },
+          {
+            id: 'c',
+            latex: '-0.5e^{-0.5x}\\sin(2x) - 2e^{-0.5x}\\cos(2x)',
+            correct: false,
+            misconception:
+              'The Product Rule adds $+uv\'$; since $v\' = +2\\cos(2x)$, the cosine term is positive.'
+          },
+          {
+            id: 'd',
+            latex: '0.5e^{-0.5x}\\sin(2x) + 2e^{-0.5x}\\cos(2x)',
+            correct: false,
+            misconception:
+              'Keep the negative sign from $u\' = -0.5e^{-0.5x}$ on the sine term.'
+          }
+        ],
+        lockedLabel: 'Assembled',
+        lockedResultLatex: "f'(x) = 2e^{-0.5x}\\cos(2x) - 0.5e^{-0.5x}\\sin(2x)",
+        hint: 'Pair $u\'v = -0.5e^{-0.5x}\\sin(2x)$ with $+uv\' = +2e^{-0.5x}\\cos(2x)$.'
+      },
+      {
+        stepType: 'simplify',
+        badge: 'Factor Decay Envelope',
+        prompt: 'Factor out the shared decay envelope $e^{-0.5x}$ for the clean engineering velocity form.',
+        highlightLatex:
+          '\\textcolor{#22D3EE}{e^{-0.5x}}\\cdot 2\\cos(2x) - \\textcolor{#22D3EE}{e^{-0.5x}}\\cdot 0.5\\sin(2x)',
+        options: [
+          {
+            id: 'a',
+            latex: 'e^{-0.5x}\\big(2\\cos(2x) + 0.5\\sin(2x)\\big)',
+            correct: false,
+            misconception:
+              'Check the damping sign: the $-0.5\\sin(2x)$ term stays negative because the envelope decays.'
+          },
+          {
+            id: 'b',
+            latex: 'e^{-0.5x}\\big(\\cos(2x) - 0.5\\sin(2x)\\big)',
+            correct: false,
+            misconception:
+              'Do not drop the frequency factor $2$ in front of $\\cos(2x)$!'
+          },
+          {
+            id: 'c',
+            latex: 'e^{-0.5x}\\big(2\\cos(2x) - 0.5\\sin(2x)\\big)',
+            correct: true
+          },
+          {
+            id: 'd',
+            latex: 'e^{-x}\\big(2\\cos(2x) - 0.5\\sin(2x)\\big)',
+            correct: false,
+            misconception:
+              'Factoring $e^{-0.5x}$ out of a sum keeps the same exponent $-0.5x$ (do not double it to $-x$).'
+          }
+        ],
+        lockedLabel: 'Final Result',
+        lockedResultLatex:
+          "f'(x) = \\textcolor{#34D399}{e^{-0.5x}\\big(2\\cos(2x) - 0.5\\sin(2x)\\big)}",
+        hint: 'Pull $e^{-0.5x}$ out front and write the positive $2\\cos(2x)$ term first, followed by $-0.5\\sin(2x)$.'
       }
     ]
   }

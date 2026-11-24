@@ -6,7 +6,7 @@
  *                            with unified pointer/touch cursor scrubbing, tangent line,
  *                            sign/concavity shading, pulsing root alignment guides,
  *                            and Mechatronics Lens relabeling.
- *   - VisualQuizEngine     : Brilliant.org-style 5-challenge "Match the Derivative"
+ *   - VisualQuizEngine     : Brilliant.org-style 8-challenge "Match the Derivative"
  *                            visual intuition engine with animated geometric proof
  *                            overlays, conceptual hints, and store/sound integration.
  */
@@ -2079,6 +2079,178 @@ const QUIZ_CHALLENGES = [
       },
     ],
   },
+  {
+    id: 'visual-quiz-double-well',
+    badge: 'Quartic Wells',
+    title: 'Double-Well Potential',
+    domain: [-2.6, 2.6],
+    targetFormulaMath: 'f(x) = 0.25x^4 - 1.5x^2',
+    targetFormulaMech: 'U(x) = 0.25x^4 - 1.5x^2',
+    promptMath:
+      'Given the double-well quartic $f(x) = 0.25x^4 - 1.5x^2$ with three turning points at $x = 0$ and $x = \\pm\\sqrt{3} \\approx \\pm 1.73$, which graph below represents its derivative $f\'(x)$?',
+    promptMech:
+      'Given a bistable actuator potential energy $U(x) = 0.25x^4 - 1.5x^2$ with equilibria at $x = 0$ and $x = \\pm 1.73$, which graph below represents its slope $U\'(x)$?',
+    targetFn: (x) => 0.25 * x ** 4 - 1.5 * x * x,
+    targetDeriv: (x) => x ** 3 - 3 * x,
+    proofPoints: [
+      { x: -Math.sqrt(3), label: 'min → 0' },
+      { x: 0, label: 'max → 0' },
+      { x: Math.sqrt(3), label: 'min → 0' },
+    ],
+    proofTextMath:
+      'Three turning points at $x = -\\sqrt{3}, 0, +\\sqrt{3}$ force $f\'(x)$ to cross zero three times. The curve falls into the left well ($f\' < 0$), climbs to the center peak ($f\' > 0$), falls into the right well ($f\' < 0$), and rises steeply for $x > \\sqrt{3}$ ($f\' > 0$) — matching $f\'(x) = x^3 - 3x$.',
+    proofTextMech:
+      'Three zero-force equilibria ($x = \\pm\\sqrt{3}$ stable wells and $x = 0$ unstable crest) align with the three roots of $U\'(x) = x^3 - 3x$, flipping from negative to positive across each stable well.',
+    options: [
+      {
+        letter: 'A',
+        isCorrect: false,
+        formula: '-x^3 + 3x',
+        fn: (x) => -(x ** 3) + 3 * x,
+        wrongHintMath:
+          'Check the far right ($x > 1.73$): the quartic climbs steeply upward (positive slope), yet this inverted cubic plunges negative for $x > 1.73$.',
+        wrongHintMech:
+          'For $x > 1.73$, the potential energy rises steeply ($U\' > 0$), but this inverted cubic turns negative on the far right.',
+      },
+      {
+        letter: 'B',
+        isCorrect: false,
+        formula: '3x^2 - 3',
+        fn: (x) => 3 * x * x - 3,
+        wrongHintMath:
+          'Count the turning points: the double-well flattens THREE times ($x = -\\sqrt{3}, 0, +\\sqrt{3}$), so $f\'(x)$ must cross zero three times. This parabola only crosses zero twice — that is actually $f\'\'(x)$!',
+        wrongHintMech:
+          'There are three equilibria where $U\'(x) = 0$, so the derivative needs three roots — this parabola only crosses zero twice (that is the stiffness $U\'\'(x)$!).',
+      },
+      {
+        letter: 'C',
+        isCorrect: true,
+        formula: "f'(x) = x^3 - 3x",
+        fn: (x) => x ** 3 - 3 * x,
+        wrongHintMath: '',
+        wrongHintMech: '',
+      },
+    ],
+  },
+  {
+    id: 'visual-quiz-sigmoid-tanh',
+    badge: 'Soft Saturation',
+    title: 'Sigmoid Actuator Saturation',
+    domain: [-3.0, 3.0],
+    targetFormulaMath: 'f(x) = 2\\tanh(x)',
+    targetFormulaMech: 'u(e) = 2\\tanh(e)',
+    promptMath:
+      'Given the soft-saturation S-curve $f(x) = 2\\tanh(x)$ (always rising, steepest at $x = 0$, flattening at both ends), which graph below is its derivative $f\'(x)$?',
+    promptMech:
+      'Given a soft-saturating actuator curve $u(e) = 2\\tanh(e)$ (always rising, highest gain at $e = 0$, saturated at both ends), which graph below is its local gain $u\'(e)$?',
+    targetFn: (x) => 2 * Math.tanh(x),
+    targetDeriv: (x) => {
+      const c = Math.cosh(x);
+      return 2 / (c * c);
+    },
+    proofHeading: 'Geometric Proof Unlocked — Inflection Slope Peaks While Saturated Ends Approach Zero',
+    proofPoints: [
+      { x: -2.2, label: 'flat → ~0' },
+      { x: 0, label: 'steepest → peak' },
+      { x: 2.2, label: 'flat → ~0' },
+    ],
+    proofTextMath:
+      'Because $2\\tanh(x)$ rises everywhere, $f\'(x) = 2\\operatorname{sech}^2(x)$ stays strictly positive. It peaks at the steepest inflection point $x = 0$ ($f\'(0) = +2$) and tapers symmetrically toward $0$ where the S-curve flattens out.',
+    proofTextMech:
+      'Actuator gain $u\'(e) = 2\\operatorname{sech}^2(e)$ stays strictly positive, peaking at $+2$ near $e = 0$ and decaying smoothly toward $0$ as the output saturates at large $|e|$.',
+    options: [
+      {
+        letter: 'A',
+        isCorrect: false,
+        formula: '-2\\operatorname{sech}^2(x)',
+        fn: (x) => {
+          const c = Math.cosh(x);
+          return -2 / (c * c);
+        },
+        wrongHintMath:
+          'Watch the sign of the slope: $2\\tanh(x)$ rises left-to-right everywhere (positive slope), so $f\'(x)$ must stay strictly above zero, not below the x-axis.',
+        wrongHintMech:
+          'The command $u(e)$ increases monotonically with error $e$ (positive gain everywhere), whereas this inverted bell stays negative.',
+      },
+      {
+        letter: 'B',
+        isCorrect: true,
+        formula: "f'(x) = 2\\operatorname{sech}^2(x)",
+        fn: (x) => {
+          const c = Math.cosh(x);
+          return 2 / (c * c);
+        },
+        wrongHintMath: '',
+        wrongHintMech: '',
+      },
+      {
+        letter: 'C',
+        isCorrect: false,
+        formula: '-4\\operatorname{sech}^2(x)\\tanh(x)',
+        fn: (x) => {
+          const c = Math.cosh(x);
+          return (-4 * Math.tanh(x)) / (c * c);
+        },
+        wrongHintMath:
+          'At $x = 0$, $2\\tanh(x)$ has its STEEPEST positive slope ($+2$), not zero slope! This odd wave crosses zero at $x = 0$ — that is actually the 2nd derivative $f\'\'(x)$.',
+        wrongHintMech:
+          'At $e = 0$ the actuator has maximum gain ($+2$), not zero gain. This curve hits zero at $e = 0$ and goes negative for $e > 0$ — that is the curvature $u\'\'(e)$!',
+      },
+    ],
+  },
+  {
+    id: 'visual-quiz-exp-decay',
+    badge: 'Exponential Decay',
+    title: 'Capacitor Discharge Decay',
+    domain: [0, 4.0],
+    targetFormulaMath: 'f(x) = 3e^{-0.7x}',
+    targetFormulaMech: 'V(t) = 3e^{-0.7t}',
+    promptMath:
+      'Given the exponential decay curve $f(x) = 3e^{-0.7x}$ on $[0, 4]$ (always falling, steepest at $x = 0$, flattening toward $0$), which graph below represents its derivative $f\'(x)$?',
+    promptMech:
+      'Given an RC capacitor discharge voltage $V(t) = 3e^{-0.7t}\\text{ V}$ on $[0, 4]\\text{ s}$ (steepest drop at $t = 0$, settling toward $0$), which graph below is its rate $V\'(t) = dV/dt$?',
+    targetFn: (x) => 3 * Math.exp(-0.7 * x),
+    targetDeriv: (x) => -2.1 * Math.exp(-0.7 * x),
+    proofHeading: 'Geometric Proof Unlocked — Falling Curve Gives Negative Slopes Decaying Toward Zero',
+    proofPoints: [
+      { x: 0.25, label: 'steep drop → min' },
+      { x: 3.1, label: 'flattening → ~0' },
+    ],
+    proofTextMath:
+      'Because $3e^{-0.7x}$ falls across the entire interval, its derivative $f\'(x) = -2.1e^{-0.7x}$ stays strictly negative. Its slope is steepest at $x = 0$ ($f\'(0) = -2.1$) and rises smoothly toward $0$ from below as the curve flattens.',
+    proofTextMech:
+      'Voltage drops fastest right at $t = 0$ ($V\'(0) = -2.1\\text{ V/s}$), and the negative discharge rate decays exponentially toward $0$ from below as the capacitor empties.',
+    options: [
+      {
+        letter: 'A',
+        isCorrect: true,
+        formula: "f'(x) = -2.1e^{-0.7x}",
+        fn: (x) => -2.1 * Math.exp(-0.7 * x),
+        wrongHintMath: '',
+        wrongHintMech: '',
+      },
+      {
+        letter: 'B',
+        isCorrect: false,
+        formula: '2.1e^{-0.7x}',
+        fn: (x) => 2.1 * Math.exp(-0.7 * x),
+        wrongHintMath:
+          'Check the slope sign! $3e^{-0.7x}$ falls downward across the entire domain, so its derivative must be NEGATIVE everywhere — this candidate stays positive.',
+        wrongHintMech:
+          'The capacitor voltage is dropping (negative $dV/dt$), yet this graph stays positive everywhere above zero.',
+      },
+      {
+        letter: 'C',
+        isCorrect: false,
+        formula: '-2.1(1 - e^{-0.7x})',
+        fn: (x) => -2.1 * (1 - Math.exp(-0.7 * x)),
+        wrongHintMath:
+          'Compare both ends: $3e^{-0.7x}$ is steepest at $x = 0$ and nearly flat at $x = 4$, whereas this candidate starts at $0$ and gets MORE negative as $x$ increases!',
+        wrongHintMech:
+          'Discharge rate is strongest at $t = 0$ and weakens toward $0$ over time — this curve does the reverse, starting at $0$ and growing more negative.',
+      },
+    ],
+  },
 ];
 
 export class VisualQuizEngine {
@@ -2212,7 +2384,7 @@ export class VisualQuizEngine {
     `;
 
     const stepper = document.createElement('div');
-    stepper.className = 'flex items-center gap-1 sm:gap-1.5 shrink-0';
+    stepper.className = 'flex items-center flex-wrap sm:flex-nowrap gap-1 sm:gap-1.5 max-w-full';
 
     this._challenges.forEach((item, idx) => {
       const isSolved = this._solvedIds.has(item.id);
@@ -2221,7 +2393,7 @@ export class VisualQuizEngine {
       stepBtn.type = 'button';
       stepBtn.title = `${idx + 1}. ${item.title}`;
       stepBtn.className =
-        'el-sg-pill w-6 h-6 sm:w-7 sm:h-7 rounded-full text-[11px] sm:text-xs font-mono font-semibold flex items-center justify-center border cursor-pointer ' +
+        'el-sg-pill w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-full text-[11px] sm:text-xs font-mono font-semibold flex items-center justify-center border cursor-pointer ' +
         (isActive
           ? isSolved
             ? 'bg-emerald-400/20 border-emerald-400 text-emerald-200 shadow-[0_0_12px_rgba(52,211,153,0.35)]'
@@ -2246,7 +2418,7 @@ export class VisualQuizEngine {
 
     const solvedPill = document.createElement('span');
     solvedPill.className =
-      'ml-0.5 sm:ml-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold bg-slate-900 border border-slate-800 text-emerald-300';
+      'ml-0.5 sm:ml-1 px-1.5 sm:px-2 py-0.5 shrink-0 whitespace-nowrap rounded-full text-[10px] sm:text-[11px] font-mono font-semibold bg-slate-900 border border-slate-800 text-emerald-300';
     solvedPill.textContent = `${this._solvedIds.size}/${this._challenges.length}`;
     stepper.appendChild(solvedPill);
 
@@ -2466,10 +2638,11 @@ export class VisualQuizEngine {
 
     const left = document.createElement('div');
     left.className = 'flex flex-col gap-1';
+    const proofHeading = ch.proofHeading || 'Geometric Proof Unlocked — Turning Points Align With Zeros';
     left.innerHTML = `
       <div class="flex items-center gap-2 text-xs font-semibold text-emerald-300">
         <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-400/20 border border-emerald-400/60 text-[10px]">✓</span>
-        Geometric Proof Unlocked — Turning Points Align With Zeros
+        ${escapeHtml(proofHeading)}
       </div>
       <p class="text-xs sm:text-[13px] leading-relaxed text-slate-200">
         ${formatInlineMath(proofText)}
@@ -2497,7 +2670,7 @@ export class VisualQuizEngine {
         { signal: this._abortController.signal }
       );
     } else if (allSolved) {
-      nextBtn.textContent = 'All 5 Mastered • Review 1 →';
+      nextBtn.textContent = `All ${this._challenges.length} Mastered • Review 1 →`;
       nextBtn.addEventListener(
         'click',
         () => {
@@ -2675,17 +2848,28 @@ export class VisualQuizEngine {
     for (const pt of ch.proofPoints) {
       const px = map.xToPx(pt.x);
       const py = map.yToPx(ch.targetFn(pt.x));
+      const slope = typeof ch.targetDeriv === 'function' ? ch.targetDeriv(pt.x) : 0;
+      const vx = map.scaleX;
+      const vy = -slope * map.scaleY;
+      const mag = Math.hypot(vx, vy) || 1;
+      const ux = (vx / mag) * 22;
+      const uy = (vy / mag) * 22;
 
-      // Horizontal tangent segment showing slope = 0
+      // Exact tangent segment at proof point (horizontal when slope = 0)
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(map.plotLeft, map.plotTop, map.plotW, map.plotH);
+      ctx.clip();
       ctx.strokeStyle = COLORS.emerald;
       ctx.lineWidth = 2.2;
       ctx.shadowColor = 'rgba(52, 211, 153, 0.55)';
       ctx.shadowBlur = 8;
       ctx.beginPath();
-      ctx.moveTo(px - 22, py);
-      ctx.lineTo(px + 22, py);
+      ctx.moveTo(px - ux, py - uy);
+      ctx.lineTo(px + ux, py + uy);
       ctx.stroke();
       ctx.shadowBlur = 0;
+      ctx.restore();
 
       // Pulsing ring + dot
       ctx.beginPath();
@@ -2740,18 +2924,19 @@ export class VisualQuizEngine {
   }
 
   _drawOptionProofZeros(ctx, map, ch, pulse) {
-    const yZero = map.yToPx(0);
     ctx.save();
     for (const pt of ch.proofPoints) {
       const px = map.xToPx(pt.x);
+      const derivVal = typeof ch.targetDeriv === 'function' ? ch.targetDeriv(pt.x) : 0;
+      const py = map.yToPx(Math.abs(derivVal) < 1e-6 ? 0 : derivVal);
       ctx.beginPath();
-      ctx.arc(px, yZero, 5.2 + pulse * 2.8, 0, Math.PI * 2);
+      ctx.arc(px, py, 5.2 + pulse * 2.8, 0, Math.PI * 2);
       ctx.strokeStyle = `rgba(52, 211, 153, ${(0.7 - pulse * 0.35).toFixed(2)})`;
       ctx.lineWidth = 1.2;
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.arc(px, yZero, 3.4, 0, Math.PI * 2);
+      ctx.arc(px, py, 3.4, 0, Math.PI * 2);
       ctx.fillStyle = COLORS.emerald;
       ctx.fill();
       ctx.strokeStyle = '#0B0D12';

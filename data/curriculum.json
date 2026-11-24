@@ -28,11 +28,17 @@
         },
         {
           "id": "calc-integrals",
-          "status": "planned",
+          "status": "live",
           "title": "Integrals, Accumulation & Flux",
-          "tag": "Lesson 02 • Coming Next",
-          "description": "Connect Riemann slices to work, impulse, and fluid flux across curves and 3D surfaces via the Fundamental Theorem of Calculus.",
-          "estimatedMinutes": 30
+          "tag": "Lesson 02 • 3D Riemann Lab + Step Solver",
+          "description": "Refine 3D Riemann glass slices into continuous area, visualize the Fundamental Theorem of Calculus, and master u-substitution, trig identities, integration by parts, and partial fractions step by step.",
+          "estimatedMinutes": 30,
+          "stages": [
+            "3d-lab",
+            "intuition",
+            "solver",
+            "word-problems"
+          ]
         },
         {
           "id": "math-diff-eq",

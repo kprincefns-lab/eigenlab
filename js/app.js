@@ -16,13 +16,17 @@ import {
   createAmbientHeroScene,
 } from './viz/derivative-3d.js';
 import { StackedDerivativeLab, VisualQuizEngine } from './viz/stacked-graphs.js';
+import { Integral3DStudio, INTEGRAL_PRESETS } from './viz/integral-3d.js';
+import { StackedIntegralLab, IntegralVisualQuizEngine } from './viz/integral-graphs.js';
 import { PaperlessStepSolver } from './solver/step-solver.js';
+import { INTEGRAL_PROBLEMS, INTEGRAL_SOLVER_TIERS } from '../data/lessons/integrals-problems.js';
 
 // ---------------------------------------------------------------------------
 // Constants & Fallback Data
 // ---------------------------------------------------------------------------
 
 const LESSON_ID = 'calc-derivatives';
+const INTEGRAL_LESSON_ID = 'calc-integrals';
 
 const STAGES = [
   {
@@ -30,6 +34,7 @@ const STAGES = [
     number: 1,
     icon: '🌐',
     shortLabel: '3D Limit Lab',
+    mobileLabel: '3D Lab',
     label: '1. 3D Limit & Tangent Lab',
   },
   {
@@ -37,6 +42,7 @@ const STAGES = [
     number: 2,
     icon: '📈',
     shortLabel: 'Curve Intuition',
+    mobileLabel: 'Graphs',
     label: '2. Curve & Derivative Intuition',
   },
   {
@@ -44,6 +50,7 @@ const STAGES = [
     number: 3,
     icon: '🧮',
     shortLabel: 'Step Solver',
+    mobileLabel: 'Solver',
     label: '3. Paperless Step Solver',
   },
   {
@@ -51,6 +58,42 @@ const STAGES = [
     number: 4,
     icon: '⚙️',
     shortLabel: 'Word Problems',
+    mobileLabel: 'Applied',
+    label: '4. Applied Word Problems',
+  },
+];
+
+const INTEGRAL_STAGES = [
+  {
+    id: '3d-lab',
+    number: 1,
+    icon: '🌐',
+    shortLabel: '3D Riemann Lab',
+    mobileLabel: '3D Area',
+    label: '1. 3D Riemann & Area Lab',
+  },
+  {
+    id: 'intuition',
+    number: 2,
+    icon: '📈',
+    shortLabel: 'FTC Intuition',
+    mobileLabel: 'Graphs',
+    label: '2. Accumulation & FTC Intuition',
+  },
+  {
+    id: 'solver',
+    number: 3,
+    icon: '🧮',
+    shortLabel: 'Integral Solver',
+    mobileLabel: 'Solver',
+    label: '3. Paperless Integral Solver',
+  },
+  {
+    id: 'word-problems',
+    number: 4,
+    icon: '⚙️',
+    shortLabel: 'Word Problems',
+    mobileLabel: 'Applied',
     label: '4. Applied Word Problems',
   },
 ];
@@ -84,6 +127,34 @@ const PLANNED_TOPIC_METADATA = {
     summary:
       'Use local derivative slopes to tune learning rates and converge cleanly across loss landscapes.',
   },
+  'Actuator Displacement from Velocity Profiles': {
+    domain: 'Mechatronics',
+    accent: 'amber',
+    equation: '\\Delta x = \\int_{t_0}^{t_1} v(t)\\,dt',
+    summary:
+      'Integrate trapezoidal and sinusoidal servo velocity commands to compute exact linear stroke displacement.',
+  },
+  'Work & Energy Along Variable Force Paths': {
+    domain: 'Physics',
+    accent: 'violet',
+    equation: 'W = \\int_{x_0}^{x_1} F(x)\\,dx',
+    summary:
+      'Compute mechanical work stored in nonlinear springs, magnetic solenoids, and pneumatic actuators.',
+  },
+  'Capacitor Voltage from Current Pulses': {
+    domain: 'Electronics',
+    accent: 'cyan',
+    equation: 'v(t) = v(0) + \\frac{1}{C}\\int_{0}^{t} i(\\tau)\\,d\\tau',
+    summary:
+      'Track accumulated charge and voltage ripple across DC bus capacitors under pulsed PWM loads.',
+  },
+  'Probability Mass & Expected Value in AI': {
+    domain: 'AI & ML',
+    accent: 'emerald',
+    equation: '\\mathbb{E}[X] = \\int_{-\\infty}^{\\infty} x\\,p(x)\\,dx',
+    summary:
+      'Connect continuous area under probability density curves to Bayesian expectations and sensor fusion.',
+  },
 };
 
 const FALLBACK_CURRICULUM = {
@@ -103,14 +174,17 @@ const FALLBACK_CURRICULUM = {
           title: 'Derivatives & Instantaneous Rate of Change',
           tag: 'Lesson 01 • 3D Interactive + Step Solver',
           description:
-            'Collapse secant chords into tangent vectors on live 3D surfaces, map curves to slopes, and master 12 symbolic rules.',
+            'Collapse secant chords into tangent vectors on live 3D surfaces, map curves to slopes, and master 18 symbolic rules.',
           estimatedMinutes: 25,
         },
         {
           id: 'calc-integrals',
-          status: 'planned',
+          status: 'live',
           title: 'Integrals, Accumulation & Flux',
-          tag: 'Lesson 02 • Coming Next',
+          tag: 'Lesson 02 • 3D Riemann Lab + Step Solver',
+          description:
+            'Refine 3D Riemann glass slices into continuous area, visualize FTC accumulation, and master u-sub, trig, by parts, and partial fractions.',
+          estimatedMinutes: 30,
         },
       ],
     },
@@ -174,6 +248,18 @@ const FALLBACK_WORD_PROBLEMS = {
   problems: [],
 };
 
+const FALLBACK_INTEGRAL_WORD_PROBLEMS = {
+  lessonId: 'calc-integrals',
+  status: 'coming_soon',
+  plannedTopics: [
+    'Actuator Displacement from Velocity Profiles',
+    'Work & Energy Along Variable Force Paths',
+    'Capacitor Voltage from Current Pulses',
+    'Probability Mass & Expected Value in AI',
+  ],
+  problems: [],
+};
+
 // ---------------------------------------------------------------------------
 // Application Runtime State
 // ---------------------------------------------------------------------------
@@ -184,6 +270,10 @@ const appState = {
   stage: '3d-lab', // '3d-lab' | 'intuition' | 'solver' | 'word-problems'
   curriculum: FALLBACK_CURRICULUM,
   wordProblems: FALLBACK_WORD_PROBLEMS,
+  wordProblemsByLesson: {
+    'calc-derivatives': FALLBACK_WORD_PROBLEMS,
+    'calc-integrals': FALLBACK_INTEGRAL_WORD_PROBLEMS,
+  },
   lab: {
     presetId: null,
     x0: 0.6,
@@ -201,6 +291,29 @@ const appState = {
     exactSlope: 0,
     tangentLocked: false,
   },
+  integralLab: {
+    presetId: 'parabola',
+    a: -1.5,
+    b: 2.0,
+    n: 12,
+    rule: 'midpoint', // 'left' | 'midpoint' | 'right'
+    cameraPreset: '3d',
+    showAccumulation: true,
+    isAnimating: false,
+  },
+  integralTelemetry: {
+    a: -1.5,
+    b: 2.0,
+    n: 12,
+    rule: 'midpoint',
+    riemannSum: 0,
+    exactIntegral: 0,
+    error: 0,
+    positiveArea: 0,
+    negativeArea: 0,
+    fb: 0,
+    isExactLocked: false,
+  },
 };
 
 const activeInstances = {
@@ -211,6 +324,18 @@ const activeInstances = {
   stepSolver: null,
   cleanupFns: [],
 };
+
+function isIntegralLesson() {
+  return appState.lessonId === INTEGRAL_LESSON_ID;
+}
+
+function getLessonStages() {
+  return isIntegralLesson() ? INTEGRAL_STAGES : STAGES;
+}
+
+function stageStoreKey(stageId) {
+  return isIntegralLesson() ? `int:${stageId}` : stageId;
+}
 
 // ---------------------------------------------------------------------------
 // Store & Peer Interop Helpers
@@ -237,6 +362,36 @@ function normalizePresets() {
     defaultX: p.defaultX ?? p.initialX ?? 0.6,
     raw: p,
   }));
+}
+
+function normalizeIntegralPresets() {
+  if (!INTEGRAL_PRESETS) return [];
+  const list = Array.isArray(INTEGRAL_PRESETS)
+    ? INTEGRAL_PRESETS
+    : Object.entries(INTEGRAL_PRESETS).map(([id, v]) => ({ id, ...v }));
+
+  return list.map((p, idx) => ({
+    id: p.id ?? p.key ?? `int-preset-${idx}`,
+    name: p.name ?? p.label ?? `Preset ${idx + 1}`,
+    mechatronicsLabel: p.mechatronicsLabel ?? null,
+    latex: p.latex ?? 'f(x)',
+    integralLatex: p.integralLatex ?? 'F(x)',
+    fn: p.fn ?? ((x) => x),
+    antideriv: p.antideriv ?? ((x) => 0.5 * x * x),
+    xMin: p.domain?.[0] ?? -2.8,
+    xMax: p.domain?.[1] ?? 2.8,
+    defaultA: p.defaultA ?? (p.domain?.[0] ?? -1.5),
+    defaultB: p.defaultB ?? (p.domain?.[1] ?? 2.0),
+    raw: p,
+  }));
+}
+
+function getActiveIntegralPreset(presets) {
+  if (!presets.length) return null;
+  if (!appState.integralLab.presetId) {
+    appState.integralLab.presetId = presets[0].id;
+  }
+  return presets.find((p) => p.id === appState.integralLab.presetId) || presets[0];
 }
 
 function getActivePreset(presets) {
@@ -301,9 +456,10 @@ function getMasterySnapshot() {
   return {
     percent,
     solvedProblems,
-    totalProblems: 12,
+    totalProblems: 32,
     solvedVisual,
-    totalVisual: 5,
+    totalVisual: 14,
+    totalStages: 8,
     streak,
     accuracyPct: stats.accuracyPct ?? 100,
     completedStages,
@@ -311,12 +467,12 @@ function getMasterySnapshot() {
 }
 
 function isStageDone(stageId) {
-  return getStoreState().completedStages.includes(stageId);
+  return getStoreState().completedStages.includes(stageStoreKey(stageId));
 }
 
 function markStageDone(stageId) {
   if (!stageId || isStageDone(stageId)) return;
-  store?.markStageComplete?.(stageId);
+  store?.markStageComplete?.(stageStoreKey(stageId));
   updateLessonStageDotsUI();
 }
 
@@ -732,20 +888,24 @@ function renderHubView() {
                 Manipulate live 3D WebGL curves, collapse secant chords into exact tangent vectors, and solve paperless symbolic derivations—with a global <span class="text-amberGlow font-medium">Mechatronics Lens</span> bridging calculus directly to actuators, velocity profiles, and feedback control.
               </p>
 
-              <div class="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-0.5 sm:pt-1">
+              <div class="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3 pt-0.5 sm:pt-1">
                 <button
                   id="hub-hero-launch"
                   type="button"
                   class="btn-glow-cyan w-full sm:w-auto !rounded-2xl !px-5 !py-2.5 sm:!py-3 !text-sm"
                 >
-                  <span>Launch Lesson 01: Derivatives 3D Lab</span>
+                  <span>Lesson 01: Derivatives 3D Lab</span>
                   <span aria-hidden="true" class="text-base">→</span>
                 </button>
 
-                <span class="hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-white/[0.03] border border-white/10 text-xs text-slate-300 font-mono">
-                  <span class="w-2 h-2 rounded-full ${lensOn ? 'bg-amberGlow' : 'bg-cyanGlow'}"></span>
-                  Lens: <strong class="text-white">${lensOn ? 'Mechatronics x(t), v(t)' : "Pure Math f(x), f'(x)"}</strong>
-                </span>
+                <button
+                  id="hub-hero-launch-integrals"
+                  type="button"
+                  class="btn-glass w-full sm:w-auto !rounded-2xl !px-4 !py-2.5 sm:!py-3 !text-sm !border-violetGlow/40 !text-violet-200 hover:!border-violetGlow/70 hover:!bg-violetGlow/10"
+                >
+                  <span>Lesson 02: Integrals 3D Lab</span>
+                  <span aria-hidden="true" class="text-base text-violetGlow">→</span>
+                </button>
               </div>
             </div>
 
@@ -756,11 +916,11 @@ function renderHubView() {
               <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between gap-2 mb-2 sm:mb-3">
                   <div class="min-w-0">
-                    <h2 class="font-display font-semibold text-xs sm:text-sm text-white truncate">Lesson 01 Mastery</h2>
-                    <p class="hidden sm:block text-xs text-slate-400">Progress saved locally across 3D Lab, Visual Quiz &amp; Step Solver</p>
+                    <h2 class="font-display font-semibold text-xs sm:text-sm text-white truncate">Studio Mastery Telemetry</h2>
+                    <p class="hidden sm:block text-xs text-slate-400">Progress saved locally across Derivatives &amp; Integrals studios</p>
                   </div>
                   <span class="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-mono bg-emeraldGlow/10 text-emeraldGlow border border-emeraldGlow/25 shrink-0">
-                    ${stats.completedStages.length}/4 Stages
+                    ${stats.completedStages.length}/${stats.totalStages} Stages
                   </span>
                 </div>
 
@@ -861,6 +1021,11 @@ function renderHubView() {
     openLesson(LESSON_ID, '3d-lab');
   });
 
+  document.getElementById('hub-hero-launch-integrals')?.addEventListener('click', () => {
+    playSfx('tick');
+    openLesson(INTEGRAL_LESSON_ID, '3d-lab');
+  });
+
   document.getElementById('hub-preview-launch')?.addEventListener('click', () => {
     playSfx('tick');
     openLesson(LESSON_ID, '3d-lab');
@@ -894,40 +1059,53 @@ function bindHubAudioToggle() {
 }
 
 // ---------------------------------------------------------------------------
-// VIEW 2 — Lesson 01: Derivatives Studio (`calc-derivatives`)
+// VIEW 2 — Interactive Lesson Studio (`calc-derivatives` & `calc-integrals`)
 // ---------------------------------------------------------------------------
 
 function openLesson(lessonId = LESSON_ID, stageId = '3d-lab') {
   appState.view = 'lesson';
-  appState.lessonId = lessonId;
+  appState.lessonId = lessonId === INTEGRAL_LESSON_ID ? INTEGRAL_LESSON_ID : LESSON_ID;
   appState.stage = stageId;
   renderLessonShell();
   mountActiveStage();
 }
 
+function getLessonSubtitleText(on) {
+  if (isIntegralLesson()) {
+    return on
+      ? 'Mechatronics Lens: Velocity v(t) → Net Displacement Δx & Accumulator Dynamics'
+      : 'Calculus Lens: 3D Riemann Sums, FTC Accumulation & Symbolic Integration';
+  }
+  return on
+    ? 'Mechatronics Lens: Displacement x(t) → Velocity v(t) & Actuator Dynamics'
+    : 'Calculus Lens: Secant Limits, Tangent Slopes & Symbolic Rules';
+}
+
 function renderStageCompletionDotsHTML() {
-  return STAGES.map((stage) => {
-    const done = isStageDone(stage.id);
-    const active = appState.stage === stage.id;
-    let classes = 'bg-white/10 border-white/20 text-slate-400 hover:border-white/40';
-    if (done) {
-      classes =
-        'bg-emeraldGlow/20 border-emeraldGlow/60 text-emeraldGlow shadow-[0_0_10px_rgba(52,211,153,0.3)]';
-    } else if (active) {
-      classes =
-        'bg-cyanGlow/20 border-cyanGlow text-cyanGlow shadow-[0_0_10px_rgba(34,211,238,0.35)]';
-    }
-    return `
-      <button
-        type="button"
-        data-stage-jump="${stage.id}"
-        title="Stage ${stage.number}: ${escapeHtml(stage.shortLabel)}${done ? ' (Completed)' : ''}"
-        class="w-6 h-6 rounded-full border text-[11px] font-mono font-semibold flex items-center justify-center transition-all cursor-pointer ${classes}"
-      >
-        ${done ? '✓' : stage.number}
-      </button>
-    `;
-  }).join('');
+  return getLessonStages()
+    .map((stage) => {
+      const done = isStageDone(stage.id);
+      const active = appState.stage === stage.id;
+      let classes = 'bg-white/10 border-white/20 text-slate-400 hover:border-white/40';
+      if (done) {
+        classes =
+          'bg-emeraldGlow/20 border-emeraldGlow/60 text-emeraldGlow shadow-[0_0_10px_rgba(52,211,153,0.3)]';
+      } else if (active) {
+        classes =
+          'bg-cyanGlow/20 border-cyanGlow text-cyanGlow shadow-[0_0_10px_rgba(34,211,238,0.35)]';
+      }
+      return `
+        <button
+          type="button"
+          data-stage-jump="${stage.id}"
+          title="Stage ${stage.number}: ${escapeHtml(stage.shortLabel)}${done ? ' (Completed)' : ''}"
+          class="w-6 h-6 rounded-full border text-[11px] font-mono font-semibold flex items-center justify-center transition-all cursor-pointer ${classes}"
+        >
+          ${done ? '✓' : stage.number}
+        </button>
+      `;
+    })
+    .join('');
 }
 
 function updateLessonStageDotsUI() {
@@ -945,7 +1123,7 @@ function updateLessonStageDotsUI() {
     });
   }
 
-  STAGES.forEach((stage) => {
+  getLessonStages().forEach((stage) => {
     const done = isStageDone(stage.id);
     document.querySelectorAll(`[data-stage-pill="${stage.id}"]`).forEach((pill) => {
       pill.classList.toggle('is-complete', done);
@@ -972,12 +1150,10 @@ function renderLessonShell() {
   const root = document.getElementById('app');
   if (!root) return;
 
-  const mobileLabels = {
-    '3d-lab': '3D Lab',
-    intuition: 'Graphs',
-    solver: 'Solver',
-    'word-problems': 'Applied',
-  };
+  const stages = getLessonStages();
+  const isInt = isIntegralLesson();
+  const lessonBadge = isInt ? 'Lesson 02' : 'Lesson 01';
+  const lessonTitle = isInt ? 'Integrals Studio' : 'Derivatives Studio';
 
   root.innerHTML = `
     <div class="min-h-screen flex flex-col relative view-enter">
@@ -1000,17 +1176,15 @@ function renderLessonShell() {
 
             <div class="min-w-0">
               <div class="flex items-center gap-2">
-                <span class="text-[10px] font-mono uppercase tracking-wider text-cyanGlow hidden md:inline">Lesson 01</span>
+                <span class="text-[10px] font-mono uppercase tracking-wider ${
+                  isInt ? 'text-violetGlow' : 'text-cyanGlow'
+                } hidden md:inline">${lessonBadge}</span>
                 <h1 class="font-display font-bold text-xs sm:text-base text-white truncate">
-                  Derivatives Studio
+                  ${lessonTitle}
                 </h1>
               </div>
               <div id="lesson-lens-subtitle" class="text-[11px] text-slate-400 truncate hidden md:block">
-                ${
-                  isMechatronicsLens()
-                    ? 'Mechatronics Lens: Displacement x(t) → Velocity v(t) & Actuator Dynamics'
-                    : 'Calculus Lens: Secant Limits, Tangent Slopes & Symbolic Rules'
-                }
+                ${getLessonSubtitleText(isMechatronicsLens())}
               </div>
             </div>
 
@@ -1031,26 +1205,28 @@ function renderLessonShell() {
       <nav aria-label="Lesson stages" class="hidden md:block sticky top-16 z-30 py-3 px-3 sm:px-6 bg-gradient-to-b from-[#0B0D12]/90 via-[#0B0D12]/65 to-transparent backdrop-blur-md">
         <div class="max-w-[1440px] mx-auto flex justify-center">
           <div class="stage-nav studio-scroll">
-            ${STAGES.map((stage) => {
-              const active = appState.stage === stage.id;
-              const done = isStageDone(stage.id);
-              return `
-                <button
-                  type="button"
-                  data-stage-pill="${stage.id}"
-                  aria-current="${active ? 'page' : 'false'}"
-                  class="stage-pill ${active ? 'active' : ''} ${done ? 'is-complete' : ''}"
-                >
-                  <span aria-hidden="true">${stage.icon}</span>
-                  <span>${escapeHtml(stage.label)}</span>
-                  <span data-stage-check class="${
-                    done
-                      ? 'ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-emeraldGlow/20 text-emeraldGlow text-[10px]'
-                      : 'hidden'
-                  }">${done ? '✓' : ''}</span>
-                </button>
-              `;
-            }).join('')}
+            ${stages
+              .map((stage) => {
+                const active = appState.stage === stage.id;
+                const done = isStageDone(stage.id);
+                return `
+                  <button
+                    type="button"
+                    data-stage-pill="${stage.id}"
+                    aria-current="${active ? 'page' : 'false'}"
+                    class="stage-pill ${active ? 'active' : ''} ${done ? 'is-complete' : ''}"
+                  >
+                    <span aria-hidden="true">${stage.icon}</span>
+                    <span>${escapeHtml(stage.label)}</span>
+                    <span data-stage-check class="${
+                      done
+                        ? 'ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-emeraldGlow/20 text-emeraldGlow text-[10px]'
+                        : 'hidden'
+                    }">${done ? '✓' : ''}</span>
+                  </button>
+                `;
+              })
+              .join('')}
           </div>
         </div>
       </nav>
@@ -1061,26 +1237,28 @@ function renderLessonShell() {
       <!-- Mobile Thumb-Friendly Floating Bottom Tab Bar (md:hidden) -->
       <nav aria-label="Mobile lesson stages" class="mobile-bottom-nav md:hidden">
         <div class="grid grid-cols-4 gap-1 max-w-md mx-auto">
-          ${STAGES.map((stage) => {
-            const active = appState.stage === stage.id;
-            const done = isStageDone(stage.id);
-            return `
-              <button
-                type="button"
-                data-stage-pill="${stage.id}"
-                aria-current="${active ? 'page' : 'false'}"
-                class="mobile-tab ${active ? 'active' : ''} ${done ? 'is-complete' : ''}"
-              >
-                <span aria-hidden="true" class="text-base leading-none">${stage.icon}</span>
-                <span>${escapeHtml(mobileLabels[stage.id] || stage.shortLabel)}</span>
-                <span data-stage-check class="${
-                  done
-                    ? 'absolute top-1 right-2 w-2 h-2 rounded-full bg-emeraldGlow shadow-[0_0_6px_#34D399]'
-                    : 'hidden'
-                }"></span>
-              </button>
-            `;
-          }).join('')}
+          ${stages
+            .map((stage) => {
+              const active = appState.stage === stage.id;
+              const done = isStageDone(stage.id);
+              return `
+                <button
+                  type="button"
+                  data-stage-pill="${stage.id}"
+                  aria-current="${active ? 'page' : 'false'}"
+                  class="mobile-tab ${active ? 'active' : ''} ${done ? 'is-complete' : ''}"
+                >
+                  <span aria-hidden="true" class="text-base leading-none">${stage.icon}</span>
+                  <span>${escapeHtml(stage.mobileLabel || stage.shortLabel)}</span>
+                  <span data-stage-check class="${
+                    done
+                      ? 'absolute top-1 right-2 w-2 h-2 rounded-full bg-emeraldGlow shadow-[0_0_6px_#34D399]'
+                      : 'hidden'
+                  }"></span>
+                </button>
+              `;
+            })
+            .join('')}
         </div>
       </nav>
     </div>
@@ -1138,25 +1316,34 @@ function propagateLensToActiveStage() {
 
   const sub = document.getElementById('lesson-lens-subtitle');
   if (sub) {
-    sub.textContent = on
-      ? 'Mechatronics Lens: Displacement x(t) → Velocity v(t) & Actuator Dynamics'
-      : 'Calculus Lens: Secant Limits, Tangent Slopes & Symbolic Rules';
+    sub.textContent = getLessonSubtitleText(on);
   }
 
   // Propagate immediately to active stage components
   if (activeInstances.studio3D) {
     activeInstances.studio3D.toggleMechatronicsLens?.(on);
-    updateStage1LensUI();
-    updateStage1TelemetryUI();
+    if (isIntegralLesson()) {
+      updateIntegralStage1LensUI();
+      updateIntegralStage1TelemetryUI();
+    } else {
+      updateStage1LensUI();
+      updateStage1TelemetryUI();
+    }
   }
   if (activeInstances.stackedLab) {
     activeInstances.stackedLab.setMechatronicsLens?.(on);
     activeInstances.stackedLab.setLens?.(lensStr);
     const titleEl = document.getElementById('stage2-lab-title');
     if (titleEl) {
-      titleEl.textContent = on
-        ? 'Synchronized Position x(t) & Velocity v(t)'
-        : "Synchronized f(x) & Derivative f'(x)";
+      if (isIntegralLesson()) {
+        titleEl.textContent = on
+          ? 'Synchronized Velocity v(t) & Displacement x(t)'
+          : 'Synchronized Integrand f(x) & Accumulation F(x)';
+      } else {
+        titleEl.textContent = on
+          ? 'Synchronized Position x(t) & Velocity v(t)'
+          : "Synchronized f(x) & Derivative f'(x)";
+      }
     }
   }
   if (activeInstances.quizEngine) {
@@ -1190,6 +1377,26 @@ function switchStage(stageId) {
 function mountActiveStage() {
   const container = document.getElementById('stage-container');
   if (!container) return;
+
+  if (isIntegralLesson()) {
+    switch (appState.stage) {
+      case '3d-lab':
+        mountIntegralStage1Lab3D(container);
+        break;
+      case 'intuition':
+        mountIntegralStage2Intuition(container);
+        break;
+      case 'solver':
+        mountIntegralStage3Solver(container);
+        break;
+      case 'word-problems':
+        mountStage4WordProblems(container);
+        break;
+      default:
+        mountIntegralStage1Lab3D(container);
+    }
+    return;
+  }
 
   switch (appState.stage) {
     case '3d-lab':
@@ -1968,7 +2175,10 @@ function updateStage1TelemetryUI() {
 
 function mountStage2Intuition(container) {
   const on = isMechatronicsLens();
-  const stats = getMasterySnapshot();
+  const s = getStoreState();
+  const solvedDerivQuizzes = (s.solvedQuizzes || []).filter(
+    (id) => !String(id).startsWith('int-quiz-')
+  ).length;
   let activeSubTab = 'lab'; // 'lab' | 'quiz' on mobile (<lg)
 
   container.innerHTML = `
@@ -1987,7 +2197,7 @@ function mountStage2Intuition(container) {
           data-stage2-subtab="quiz"
           class="py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer border border-transparent text-slate-300 hover:text-white"
         >
-          🎯 Match Quiz (${stats.solvedVisual}/${stats.totalVisual})
+          🎯 Match Quiz (${solvedDerivQuizzes}/8)
         </button>
       </div>
 
@@ -2107,9 +2317,11 @@ function mountStage2Intuition(container) {
   if (quizHost && typeof VisualQuizEngine === 'function') {
     try {
       const updateQuizTabCount = () => {
-        const s = getMasterySnapshot();
+        const solvedDeriv = (getStoreState().solvedQuizzes || []).filter(
+          (id) => !String(id).startsWith('int-quiz-')
+        ).length;
         const quizBtn = container.querySelector('[data-stage2-subtab="quiz"]');
-        if (quizBtn) quizBtn.textContent = `🎯 Match Quiz (${s.solvedVisual}/${s.totalVisual})`;
+        if (quizBtn) quizBtn.textContent = `🎯 Match Quiz (${solvedDeriv}/8)`;
       };
       activeInstances.quizEngine = new VisualQuizEngine(quizHost, {
         mechatronicsLens: isMechatronicsLens(),
@@ -2153,7 +2365,7 @@ function mountStage3Solver(container) {
           <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-emeraldGlow">Interactive Symbolic Drill</div>
           <h2 class="font-display font-bold text-2xl text-white mt-0.5">Paperless Step-by-Step Derivative Solver</h2>
           <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Identify the differentiation rule, verify each algebraic transformation, and build muscle memory across 12 curated engineering problems.
+            Identify the differentiation rule, verify each algebraic transformation, and build muscle memory across 18 curated engineering problems.
           </p>
         </div>
 
@@ -2235,25 +2447,971 @@ function enrichPlannedTopic(entry, idx) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// LESSON 02 — INTEGRALS STUDIO (`calc-integrals`) STAGES 1–3
+// ---------------------------------------------------------------------------
+
+function mountIntegralStage1Lab3D(container) {
+  const presets = normalizeIntegralPresets();
+  const activePreset = getActiveIntegralPreset(presets);
+  const lensOn = isMechatronicsLens();
+
+  if (activePreset) {
+    if (
+      appState.integralLab.b < activePreset.xMin ||
+      appState.integralLab.b > activePreset.xMax
+    ) {
+      appState.integralLab.a = activePreset.defaultA;
+      appState.integralLab.b = activePreset.defaultB;
+    }
+  }
+
+  container.innerHTML = `
+    <section class="space-y-2 sm:space-y-4 view-enter">
+      <!-- Top Preset Strip + Camera Angle Presets -->
+      <div class="flex items-center justify-between gap-2 sm:gap-3">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar xl:flex-wrap flex-1 min-w-0 py-0.5" role="tablist" aria-label="Integral curve presets">
+          ${presets
+            .map((p) => {
+              const isSelected = activePreset && p.id === activePreset.id;
+              return `
+                <button
+                  type="button"
+                  data-int-preset-id="${escapeHtml(p.id)}"
+                  class="shrink-0 whitespace-nowrap px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-medium border transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-cyanGlow/15 border-cyanGlow/50 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.2)]'
+                      : 'bg-slate-900/60 border-white/10 text-slate-300 hover:border-white/25 hover:text-white'
+                  }"
+                >
+                  ${escapeHtml(p.name)}
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+
+        <div class="hidden xl:flex items-center gap-1 bg-slate-900/75 p-1 rounded-xl border border-white/10 shrink-0">
+          ${[
+            { id: '3d', label: '3D Studio' },
+            { id: 'front', label: 'Front 2D Graph' },
+            { id: 'iso', label: 'Isometric' },
+          ]
+            .map((cam) => {
+              const active = appState.integralLab.cameraPreset === cam.id;
+              return `
+                <button
+                  type="button"
+                  data-int-camera-preset="${cam.id}"
+                  class="px-3 py-1.5 rounded-lg text-[11px] font-mono transition-all cursor-pointer ${
+                    active
+                      ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+                      : 'text-slate-400 border border-transparent hover:text-white'
+                  }"
+                >
+                  ${cam.label}
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+      </div>
+
+      <!-- Main Split-Screen Mobile / Full-Bleed Desktop 3D Riemann Studio -->
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-2.5 sm:gap-4 items-stretch">
+        <!-- 3D Viewport Canvas Container -->
+        <div class="xl:col-span-8 canvas-stage relative h-[36dvh] min-h-[210px] max-h-[295px] sm:h-[420px] sm:max-h-none xl:h-[calc(100vh-210px)] xl:min-h-[540px] flex flex-col">
+          <div id="integral-3d-canvas" class="absolute inset-0 w-full h-full"></div>
+
+          <!-- Top-Left Floating Equation HUD -->
+          <div class="pointer-events-none relative z-10 flex items-start justify-between gap-2 p-2.5 sm:p-4">
+            <div class="pointer-events-auto rounded-xl sm:rounded-2xl px-2.5 py-1.5 sm:px-4 sm:py-3 bg-[#0B0D12]/80 backdrop-blur-xl border border-white/15 shadow-lg max-w-full">
+              <div class="hidden sm:flex items-center gap-2 mb-1.5">
+                <span class="w-2 h-2 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE]"></span>
+                <span id="int-hud-curve-label" class="text-[10px] font-mono uppercase tracking-widest text-slate-400">
+                  ${lensOn ? 'Velocity Rate & Accumulated Stroke' : 'Integrand f(x) & Antiderivative F(x)'}
+                </span>
+              </div>
+              <div class="flex flex-wrap items-center gap-x-2.5 sm:gap-x-4 gap-y-0.5 text-xs sm:text-sm text-white">
+                <span id="int-hud-fx-math" class="text-cyan-200"></span>
+                <span class="hidden sm:inline text-slate-600">|</span>
+                <span id="int-hud-Fx-math" class="hidden sm:inline text-violet-300"></span>
+              </div>
+            </div>
+
+            <!-- Mechatronics Accumulator Gauge Indicator (Desktop/Tablet) -->
+            <div id="int-hud-mech-indicator" class="hidden sm:block pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
+              lensOn
+                ? 'bg-amberGlow/15 border-amberGlow/45 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
+                : 'bg-[#0B0D12]/70 border-white/10 text-slate-400'
+            }">
+              <div class="flex items-center gap-2 text-[11px] font-mono">
+                <span class="w-2 h-2 rounded-full ${lensOn ? 'bg-amberGlow animate-pulse' : 'bg-slate-600'}"></span>
+                <span id="int-hud-mech-text">${lensOn ? '3D Accumulator Gauge: SYNCED' : '3D Gauge: Standby'}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Legend + Compact Mobile Camera Switcher -->
+          <div class="pointer-events-none relative z-10 mt-auto p-2 sm:p-4 flex items-center justify-between gap-2">
+            <div class="hidden sm:inline-flex items-center gap-3 px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-300">
+              <span><span class="text-emeraldGlow">■</span> +Area</span>
+              <span><span class="text-rose-400">■</span> −Area</span>
+              <span><span class="text-amberGlow">●</span> Limit b</span>
+              <span><span class="text-violetGlow">●</span> F(x) Ribbon</span>
+            </div>
+
+            <div class="pointer-events-auto xl:hidden ml-auto flex items-center gap-0.5 bg-[#0B0D12]/80 backdrop-blur-md p-0.5 rounded-xl border border-white/15">
+              ${[
+                { id: '3d', label: '3D' },
+                { id: 'front', label: '2D' },
+                { id: 'iso', label: 'Iso' },
+              ]
+                .map((cam) => {
+                  const active = appState.integralLab.cameraPreset === cam.id;
+                  return `
+                    <button
+                      type="button"
+                      data-int-camera-preset="${cam.id}"
+                      class="px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all cursor-pointer ${
+                        active
+                          ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+                          : 'text-slate-400 border border-transparent hover:text-white'
+                      }"
+                    >
+                      ${cam.label}
+                    </button>
+                  `;
+                })
+                .join('')}
+            </div>
+
+            <div class="hidden xl:inline-flex items-center px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-400">
+              Drag to orbit • Scroll to zoom
+            </div>
+          </div>
+        </div>
+
+        <!-- Tactile Riemann Control Deck & Live Telemetry Card -->
+        <aside class="xl:col-span-4 flex flex-col gap-2 sm:gap-4 xl:h-[calc(100vh-210px)] xl:overflow-y-auto studio-scroll pr-0.5">
+          <!-- Compact 1-Row Mobile Telemetry / Expanded Desktop KaTeX Telemetry -->
+          <div class="glass-panel p-2.5 sm:p-5 space-y-2 sm:space-y-4">
+            <div class="flex items-center justify-between gap-2">
+              <div class="hidden xl:block">
+                <div class="text-[10px] font-mono uppercase tracking-[0.14em] text-slate-400">Live Accumulation Telemetry</div>
+                <h2 class="font-display font-semibold text-sm text-white mt-0.5">Riemann Sum vs. Definite Integral</h2>
+              </div>
+
+              <!-- Mobile Compact Inline Readout -->
+              <div class="flex xl:hidden items-center gap-2 min-w-0 flex-1">
+                <div class="flex-1 min-w-0 rounded-xl px-2.5 py-1 bg-amberGlow/[0.08] border border-amberGlow/25">
+                  <div class="text-[9px] font-mono uppercase tracking-wider text-amberGlow/90 truncate">Riemann</div>
+                  <div id="int-val-riemann-compact" class="font-mono font-semibold text-sm text-white leading-tight">0.000</div>
+                </div>
+                <div class="flex-1 min-w-0 rounded-xl px-2.5 py-1 bg-emeraldGlow/[0.08] border border-emeraldGlow/25">
+                  <div class="text-[9px] font-mono uppercase tracking-wider text-emeraldGlow/90 truncate">
+                    ${lensOn ? 'Net Δx' : 'Exact ∫'}
+                  </div>
+                  <div id="int-val-exact-compact" class="font-mono font-semibold text-sm text-emeraldGlow leading-tight">0.000</div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5 shrink-0">
+                <div
+                  id="int-badge-exact"
+                  class="px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-amberGlow/15 border-amberGlow/30 text-amberGlow"
+                >
+                  RIEMANN
+                </div>
+                <button
+                  id="int-btn-toggle-mobile-formula"
+                  type="button"
+                  aria-expanded="false"
+                  title="Toggle KaTeX integral formula"
+                  class="xl:hidden px-2 py-1 rounded-lg bg-white/[0.05] border border-white/15 text-[11px] font-mono text-cyan-200 cursor-pointer"
+                >
+                  ∫ ▾
+                </button>
+              </div>
+            </div>
+
+            <!-- Collapsible on Mobile (<xl), Always Open on Desktop (xl:block) -->
+            <div id="int-mobile-formula-drawer" class="hidden xl:block space-y-3 sm:space-y-4">
+              <div class="katex-card flex items-center justify-center min-h-[60px] sm:min-h-[76px]">
+                <div id="int-telemetry-katex" class="text-slate-100 text-xs sm:text-sm overflow-x-auto"></div>
+              </div>
+
+              <div class="hidden xl:grid grid-cols-2 gap-3">
+                <div class="rounded-2xl p-3.5 bg-amberGlow/[0.06] border border-amberGlow/25">
+                  <div id="int-label-riemann" class="text-[10px] font-mono uppercase tracking-wider text-amberGlow/90">
+                    Riemann Sum (N=${appState.integralLab.n})
+                  </div>
+                  <div id="int-val-riemann" class="font-mono font-semibold text-xl text-white mt-1">0.0000</div>
+                </div>
+                <div class="rounded-2xl p-3.5 bg-emeraldGlow/[0.06] border border-emeraldGlow/25">
+                  <div id="int-label-exact" class="text-[10px] font-mono uppercase tracking-wider text-emeraldGlow/90">
+                    ${lensOn ? 'Exact Displacement Δx' : 'Exact Integral ∫ f dx'}
+                  </div>
+                  <div id="int-val-exact" class="font-mono font-semibold text-xl text-emeraldGlow mt-1">0.0000</div>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
+                <span>Signed Split (+ / −)</span>
+                <span id="int-val-signed" class="text-slate-200">+0.00 / -0.00</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tactile Sliders, Rule Switcher & Animate N → ∞ -->
+          <div class="glass-panel p-2.5 sm:p-5 space-y-2.5 sm:space-y-4 flex-1 flex flex-col justify-between">
+            <div class="space-y-2 sm:space-y-4">
+              <!-- Upper Limit b Slider (Amber) -->
+              <div class="space-y-1 sm:space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label for="slider-int-b" id="label-int-b" class="text-xs font-medium text-slate-200 flex items-center gap-2">
+                    <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B]"></span>
+                    ${lensOn ? 'End Time b (s)' : 'Upper Limit b'}
+                  </label>
+                  <span id="readout-int-b" class="px-2 py-0.5 rounded-lg bg-amberGlow/15 border border-amberGlow/30 font-mono text-[11px] sm:text-xs text-amberGlow font-semibold">
+                    ${formatSigned(appState.integralLab.b, 2)}
+                  </span>
+                </div>
+                <input
+                  id="slider-int-b"
+                  type="range"
+                  min="${activePreset ? activePreset.xMin : -2.8}"
+                  max="${activePreset ? activePreset.xMax : 2.8}"
+                  step="0.05"
+                  value="${appState.integralLab.b}"
+                  class="studio-slider-amber"
+                />
+              </div>
+
+              <!-- Subdivisions N Slider (Cyan) + Compact Rule Pills -->
+              <div class="space-y-1 sm:space-y-1.5">
+                <div class="flex items-center justify-between gap-2">
+                  <label for="slider-int-n" class="text-xs font-medium text-slate-200 flex items-center gap-2">
+                    <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE]"></span>
+                    Slices N
+                  </label>
+                  <div class="flex items-center gap-1">
+                    <div class="inline-flex items-center bg-slate-900/90 p-0.5 rounded-lg border border-white/10">
+                      ${[
+                        { id: 'left', label: 'L' },
+                        { id: 'midpoint', label: 'Mid' },
+                        { id: 'right', label: 'R' },
+                      ]
+                        .map((r) => {
+                          const act = appState.integralLab.rule === r.id;
+                          return `
+                            <button
+                              type="button"
+                              data-int-rule="${r.id}"
+                              class="px-2 py-0.5 rounded-md text-[10px] font-mono transition-all cursor-pointer ${
+                                act
+                                  ? 'bg-cyanGlow/20 text-cyan-200 border border-cyanGlow/45'
+                                  : 'text-slate-400 border border-transparent hover:text-white'
+                              }"
+                            >${r.label}</button>
+                          `;
+                        })
+                        .join('')}
+                    </div>
+                    <span id="readout-int-n" class="px-2 py-0.5 rounded-lg bg-cyanGlow/15 border border-cyanGlow/30 font-mono text-[11px] sm:text-xs text-cyanGlow font-semibold">
+                      ${appState.integralLab.n}
+                    </span>
+                  </div>
+                </div>
+                <input
+                  id="slider-int-n"
+                  type="range"
+                  min="4"
+                  max="80"
+                  step="1"
+                  value="${appState.integralLab.n}"
+                  class="studio-slider-cyan"
+                />
+              </div>
+
+              <!-- Action Row: Animate N → ∞ + Mobile F(x) Ribbon Toggle -->
+              <div class="flex items-center gap-2 pt-0.5">
+                <button
+                  id="btn-animate-refine"
+                  type="button"
+                  class="flex-1 py-2.5 sm:py-3.5 px-3 sm:px-4 rounded-xl sm:rounded-2xl bg-gradient-to-r from-emeraldGlow via-cyanGlow to-violetGlow text-slate-950 font-display font-bold text-xs sm:text-sm tracking-wide shadow-[0_0_24px_rgba(34,211,238,0.28)] hover:brightness-110 active:scale-[0.985] transition-all cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2"
+                >
+                  <span id="int-anim-icon" aria-hidden="true">▶</span>
+                  <span id="int-anim-text">Animate N → ∞</span>
+                </button>
+
+                <label class="xl:hidden shrink-0 inline-flex items-center gap-1.5 px-2.5 py-2.5 rounded-xl bg-violetGlow/10 border border-violetGlow/30 text-[11px] font-mono text-violet-200 cursor-pointer select-none">
+                  <input
+                    id="toggle-accum-ribbon-mobile"
+                    type="checkbox"
+                    ${appState.integralLab.showAccumulation ? 'checked' : ''}
+                    class="w-3.5 h-3.5 rounded accent-violet-400 cursor-pointer"
+                  />
+                  <span>${lensOn ? 'x(t)' : 'F(x)'}</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Desktop F(x) Ribbon Toggle + Stage 2 Forward Link -->
+            <div class="hidden xl:block pt-4 border-t border-white/10 space-y-3">
+              <label class="flex items-center justify-between gap-3 cursor-pointer select-none group">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-2.5 h-2.5 rounded-full bg-violetGlow shadow-[0_0_8px_#A78BFA]"></span>
+                  <div>
+                    <div id="int-label-ribbon" class="text-xs font-medium text-slate-200 group-hover:text-white">
+                      ${lensOn ? 'Show x(t) 3D Displacement Ribbon' : 'Show F(x) 3D Accumulation Ribbon'}
+                    </div>
+                    <div class="text-[11px] text-slate-400">Parallel 3D antiderivative track</div>
+                  </div>
+                </div>
+                <input
+                  id="toggle-accum-ribbon"
+                  type="checkbox"
+                  ${appState.integralLab.showAccumulation ? 'checked' : ''}
+                  class="w-4 h-4 rounded accent-violet-400 cursor-pointer"
+                />
+              </label>
+
+              <button
+                id="btn-int-next-intuition"
+                type="button"
+                class="btn-glass w-full !justify-between !text-xs"
+              >
+                <span>Continue to Stage 2: FTC &amp; Area Intuition</span>
+                <span class="text-cyanGlow" aria-hidden="true">→</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  `;
+
+  const sliderB = document.getElementById('slider-int-b');
+  const sliderN = document.getElementById('slider-int-n');
+  syncSliderTrackFill(sliderB);
+  syncSliderTrackFill(sliderN);
+
+  const canvasHost = document.getElementById('integral-3d-canvas');
+  let prevLocked = false;
+
+  const handleIntegralTelemetry = (m = {}) => {
+    const a = Number.isFinite(m.a) ? m.a : appState.integralLab.a;
+    const b = Number.isFinite(m.b) ? m.b : appState.integralLab.b;
+    const n = Number.isFinite(m.n) ? m.n : appState.integralLab.n;
+    const rule = m.rule || appState.integralLab.rule;
+
+    appState.integralLab.a = a;
+    appState.integralLab.b = b;
+    appState.integralLab.n = n;
+    appState.integralLab.rule = rule;
+
+    const riemannSum = Number.isFinite(m.riemannSum) ? m.riemannSum : 0;
+    const exactIntegral = Number.isFinite(m.exactIntegral) ? m.exactIntegral : 0;
+    const error = Number.isFinite(m.error) ? m.error : Math.abs(riemannSum - exactIntegral);
+    const positiveArea = Number.isFinite(m.positiveArea) ? m.positiveArea : 0;
+    const negativeArea = Number.isFinite(m.negativeArea) ? m.negativeArea : 0;
+    const isExactLocked = Boolean(m.isExactLocked ?? (n >= 64 || error < 0.015));
+
+    appState.integralTelemetry = {
+      a,
+      b,
+      n,
+      rule,
+      riemannSum,
+      exactIntegral,
+      error,
+      positiveArea,
+      negativeArea,
+      fb: Number.isFinite(m.fb) ? m.fb : 0,
+      isExactLocked,
+    };
+
+    if (sliderB && Math.abs(parseFloat(sliderB.value) - b) > 0.005) {
+      sliderB.value = String(b);
+      syncSliderTrackFill(sliderB);
+    }
+    if (sliderN && Math.abs(parseInt(sliderN.value, 10) - n) >= 1) {
+      sliderN.value = String(n);
+      syncSliderTrackFill(sliderN);
+    }
+
+    if (isExactLocked && !prevLocked) {
+      playSfx('success');
+      markStageDone('3d-lab');
+    }
+    prevLocked = isExactLocked;
+
+    updateIntegralStage1TelemetryUI();
+  };
+
+  if (canvasHost && typeof Integral3DStudio === 'function') {
+    try {
+      const studio = new Integral3DStudio({
+        fnKey: activePreset?.id || 'parabola',
+        a: appState.integralLab.a,
+        b: appState.integralLab.b,
+        n: appState.integralLab.n,
+        rule: appState.integralLab.rule,
+        showAccumulation: appState.integralLab.showAccumulation,
+        showMechatronics: lensOn,
+        onChange: handleIntegralTelemetry,
+      });
+      studio.init(canvasHost);
+      studio.setCameraPreset?.(appState.integralLab.cameraPreset);
+      activeInstances.studio3D = studio;
+      const initMetrics = studio.getMetrics?.();
+      if (initMetrics) handleIntegralTelemetry(initMetrics);
+    } catch (err) {
+      console.error('[EIGENLAB] Integral3DStudio init error:', err);
+    }
+  }
+
+  updateIntegralStage1LensUI();
+  updateIntegralStage1TelemetryUI();
+
+  let cancelRefineAnim = null;
+  const finishRefineUI = () => {
+    appState.integralLab.isAnimating = false;
+    const icon = document.getElementById('int-anim-icon');
+    const txt = document.getElementById('int-anim-text');
+    if (icon) icon.textContent = '▶';
+    if (txt) txt.textContent = 'Animate N → ∞';
+  };
+  const stopRefineAnim = () => {
+    if (typeof cancelRefineAnim === 'function') {
+      try {
+        cancelRefineAnim();
+      } catch {
+        // Ignore
+      }
+      cancelRefineAnim = null;
+    }
+    finishRefineUI();
+  };
+  activeInstances.cleanupFns.push(stopRefineAnim);
+
+  // Wire Integral Preset Pills
+  container.querySelectorAll('[data-int-preset-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-int-preset-id');
+      if (!id || id === appState.integralLab.presetId) return;
+      playSfx('tick');
+      stopRefineAnim();
+      appState.integralLab.presetId = id;
+      const preset = presets.find((p) => p.id === id);
+
+      container.querySelectorAll('[data-int-preset-id]').forEach((el) => {
+        const sel = el.getAttribute('data-int-preset-id') === id;
+        el.className = `shrink-0 whitespace-nowrap px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-medium border transition-all cursor-pointer ${
+          sel
+            ? 'bg-cyanGlow/15 border-cyanGlow/50 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.2)]'
+            : 'bg-slate-900/60 border-white/10 text-slate-300 hover:border-white/25 hover:text-white'
+        }`;
+      });
+
+      if (preset) {
+        appState.integralLab.a = preset.defaultA;
+        appState.integralLab.b = preset.defaultB;
+        if (sliderB) {
+          sliderB.min = String(preset.xMin);
+          sliderB.max = String(preset.xMax);
+          sliderB.value = String(preset.defaultB);
+          syncSliderTrackFill(sliderB);
+        }
+        const m = activeInstances.studio3D?.setFunction?.(id);
+        if (m) handleIntegralTelemetry(m);
+        updateIntegralStage1LensUI();
+      }
+    });
+  });
+
+  // Wire Camera Presets
+  container.querySelectorAll('[data-int-camera-preset]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const camId = btn.getAttribute('data-int-camera-preset');
+      if (!camId) return;
+      playSfx('tick');
+      appState.integralLab.cameraPreset = camId;
+      container.querySelectorAll('[data-int-camera-preset]').forEach((el) => {
+        const active = el.getAttribute('data-int-camera-preset') === camId;
+        el.className = `${
+          el.textContent.trim().length <= 3 ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'
+        } rounded-lg font-mono transition-all cursor-pointer ${
+          active
+            ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+            : 'text-slate-400 border border-transparent hover:text-white'
+        }`;
+      });
+      activeInstances.studio3D?.setCameraPreset?.(camId);
+    });
+  });
+
+  // Wire Rule Pills (Left / Midpoint / Right)
+  container.querySelectorAll('[data-int-rule]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const rule = btn.getAttribute('data-int-rule');
+      if (!rule || rule === appState.integralLab.rule) return;
+      playSfx('tick');
+      appState.integralLab.rule = rule;
+      container.querySelectorAll('[data-int-rule]').forEach((el) => {
+        const act = el.getAttribute('data-int-rule') === rule;
+        el.className = `px-2 py-0.5 rounded-md text-[10px] font-mono transition-all cursor-pointer ${
+          act
+            ? 'bg-cyanGlow/20 text-cyan-200 border border-cyanGlow/45'
+            : 'text-slate-400 border border-transparent hover:text-white'
+        }`;
+      });
+      const m = activeInstances.studio3D?.setRule?.(rule);
+      if (m) handleIntegralTelemetry(m);
+    });
+  });
+
+  // Wire Sliders
+  sliderB?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    syncSliderTrackFill(sliderB);
+    appState.integralLab.b = val;
+    playSfx('tick');
+    activeInstances.studio3D?.setB?.(val);
+  });
+
+  sliderN?.addEventListener('input', (e) => {
+    const val = parseInt(e.target.value, 10);
+    if (appState.integralLab.isAnimating) stopRefineAnim();
+    syncSliderTrackFill(sliderN);
+    appState.integralLab.n = val;
+    playSfx('tick');
+    activeInstances.studio3D?.setSubdivisions?.(val);
+  });
+
+  // Wire Accumulation Ribbon Toggle (Desktop + Mobile synced)
+  const accToggle = document.getElementById('toggle-accum-ribbon');
+  const accToggleMob = document.getElementById('toggle-accum-ribbon-mobile');
+  const syncAccum = (checked) => {
+    playSfx('snap');
+    appState.integralLab.showAccumulation = !!checked;
+    if (accToggle) accToggle.checked = appState.integralLab.showAccumulation;
+    if (accToggleMob) accToggleMob.checked = appState.integralLab.showAccumulation;
+    activeInstances.studio3D?.toggleAccumulationCurve?.(appState.integralLab.showAccumulation);
+  };
+  accToggle?.addEventListener('change', (e) => syncAccum(e.target.checked));
+  accToggleMob?.addEventListener('change', (e) => syncAccum(e.target.checked));
+
+  // Wire Mobile KaTeX Drawer Toggle
+  const intFormulaBtn = document.getElementById('int-btn-toggle-mobile-formula');
+  const intFormulaDrawer = document.getElementById('int-mobile-formula-drawer');
+  intFormulaBtn?.addEventListener('click', () => {
+    playSfx('tick');
+    if (!intFormulaDrawer) return;
+    const isHidden = intFormulaDrawer.classList.contains('hidden');
+    intFormulaDrawer.classList.toggle('hidden', !isHidden);
+    intFormulaBtn.setAttribute('aria-expanded', String(isHidden));
+    intFormulaBtn.textContent = isHidden ? '∫ ▴' : '∫ ▾';
+  });
+
+  // Wire Animate N → ∞
+  document.getElementById('btn-animate-refine')?.addEventListener('click', () => {
+    playSfx('snap');
+    markStageDone('3d-lab');
+    stopRefineAnim();
+    const studio = activeInstances.studio3D;
+    if (!studio || typeof studio.animateRefine !== 'function') return;
+
+    appState.integralLab.isAnimating = true;
+    const icon = document.getElementById('int-anim-icon');
+    const txt = document.getElementById('int-anim-text');
+    if (icon) icon.textContent = '◉';
+    if (txt) txt.textContent = 'Refining N → 80...';
+
+    cancelRefineAnim = studio.animateRefine((m) => {
+      if (m && m.n >= 80) {
+        cancelRefineAnim = null;
+        finishRefineUI();
+      }
+    });
+  });
+
+  document.getElementById('btn-int-next-intuition')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('intuition');
+  });
+}
+
+function updateIntegralStage1LensUI() {
+  const presets = normalizeIntegralPresets();
+  const preset = getActiveIntegralPreset(presets);
+  const on = isMechatronicsLens();
+
+  const fxEl = document.getElementById('int-hud-fx-math');
+  const FxEl = document.getElementById('int-hud-Fx-math');
+  if (preset) {
+    typesetMath(fxEl, preset.latex, false);
+    typesetMath(FxEl, preset.integralLatex, false);
+  }
+
+  const label = document.getElementById('int-hud-curve-label');
+  if (label) {
+    label.textContent = on
+      ? preset?.mechatronicsLabel || 'Velocity Rate & Accumulated Stroke'
+      : 'Integrand f(x) & Antiderivative F(x)';
+  }
+
+  const mechInd = document.getElementById('int-hud-mech-indicator');
+  const mechText = document.getElementById('int-hud-mech-text');
+  if (mechInd && mechText) {
+    mechInd.className = `hidden sm:block pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
+      on
+        ? 'bg-amberGlow/15 border-amberGlow/45 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
+        : 'bg-[#0B0D12]/70 border-white/10 text-slate-400'
+    }`;
+    const dot = mechInd.querySelector('span');
+    if (dot) dot.className = `w-2 h-2 rounded-full ${on ? 'bg-amberGlow animate-pulse' : 'bg-slate-600'}`;
+    mechText.textContent = on ? '3D Accumulator Gauge: SYNCED' : '3D Gauge: Standby';
+  }
+
+  const bLbl = document.getElementById('label-int-b');
+  if (bLbl) {
+    bLbl.innerHTML = `<span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B]"></span>${
+      on ? 'End Time b (s)' : 'Upper Limit b'
+    }`;
+  }
+
+  const exactLbl = document.getElementById('int-label-exact');
+  if (exactLbl) exactLbl.textContent = on ? 'Exact Displacement Δx' : 'Exact Integral ∫ f dx';
+
+  const ribLbl = document.getElementById('int-label-ribbon');
+  if (ribLbl) {
+    ribLbl.textContent = on
+      ? 'Show x(t) 3D Displacement Ribbon'
+      : 'Show F(x) 3D Accumulation Ribbon';
+  }
+}
+
+function updateIntegralStage1TelemetryUI() {
+  const t = appState.integralTelemetry;
+  const on = isMechatronicsLens();
+
+  const rB = document.getElementById('readout-int-b');
+  if (rB) rB.textContent = formatSigned(t.b, 2);
+
+  const rN = document.getElementById('readout-int-n');
+  if (rN) rN.textContent = String(t.n);
+
+  const rLbl = document.getElementById('int-label-riemann');
+  if (rLbl) rLbl.textContent = `Riemann Sum (N=${t.n})`;
+
+  const vR = document.getElementById('int-val-riemann');
+  if (vR) vR.textContent = formatNum(t.riemannSum, 4);
+
+  const vE = document.getElementById('int-val-exact');
+  if (vE) vE.textContent = formatNum(t.exactIntegral, 4);
+
+  const vRC = document.getElementById('int-val-riemann-compact');
+  if (vRC) vRC.textContent = formatNum(t.riemannSum, 3);
+
+  const vEC = document.getElementById('int-val-exact-compact');
+  if (vEC) vEC.textContent = formatNum(t.exactIntegral, 3);
+
+  const vS = document.getElementById('int-val-signed');
+  if (vS) {
+    vS.textContent = `+${formatNum(t.positiveArea, 2)} / ${formatNum(t.negativeArea, 2)}`;
+  }
+
+  const badge = document.getElementById('int-badge-exact');
+  if (badge) {
+    if (t.isExactLocked) {
+      badge.textContent = 'EXACT ∫ ✓';
+      badge.className =
+        'px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-emeraldGlow/20 border-emeraldGlow/60 text-emeraldGlow shadow-[0_0_18px_rgba(52,211,153,0.3)]';
+    } else {
+      badge.textContent = 'RIEMANN';
+      badge.className =
+        'px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-300 bg-amberGlow/15 border-amberGlow/30 text-amberGlow';
+    }
+  }
+
+  const katexEl = document.getElementById('int-telemetry-katex');
+  if (katexEl) {
+    const aStr = formatNum(t.a, 1);
+    const bStr = formatNum(t.b, 2);
+    const valStr = formatNum(t.riemannSum, 3);
+    const tex = on
+      ? `\\sum_{i=1}^{${t.n}} v(t_i^*)\\Delta t \\approx \\int_{${aStr}}^{${bStr}} v(t)\\,dt = ${valStr}`
+      : `\\sum_{i=1}^{${t.n}} f(x_i^*)\\Delta x \\approx \\int_{${aStr}}^{${bStr}} f(x)\\,dx = ${valStr}`;
+    typesetMath(katexEl, tex, true);
+  }
+}
+
+function mountIntegralStage2Intuition(container) {
+  const on = isMechatronicsLens();
+  const s = getStoreState();
+  const solvedIntQuizzes = (s.solvedQuizzes || []).filter((id) =>
+    String(id).startsWith('int-quiz-')
+  ).length;
+  let activeSubTab = 'lab';
+
+  container.innerHTML = `
+    <section class="space-y-3 lg:space-y-6 view-enter">
+      <!-- Mobile Segmented Sub-Tab Switcher (<lg) -->
+      <div class="lg:hidden grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[#0E121C]/90 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+        <button
+          type="button"
+          data-stage2-subtab="lab"
+          class="py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer bg-cyanGlow/20 border border-cyanGlow/45 text-cyan-100 shadow-sm"
+        >
+          📈 FTC Area Lab
+        </button>
+        <button
+          type="button"
+          data-stage2-subtab="quiz"
+          class="py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer border border-transparent text-slate-300 hover:text-white"
+        >
+          🎯 Match Quiz (${solvedIntQuizzes}/6)
+        </button>
+      </div>
+
+      <!-- Synchronized Integrand f(x) & Accumulation F(x) Lab -->
+      <div id="stage2-panel-lab" class="glass-panel p-2.5 sm:p-5 lg:p-6 space-y-2.5 sm:space-y-4">
+        <div class="hidden sm:flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-cyanGlow">Fundamental Theorem of Calculus</div>
+            <h2 id="stage2-lab-title" class="font-display font-bold text-xl text-white mt-0.5">
+              ${on ? 'Synchronized Velocity v(t) & Displacement x(t)' : 'Synchronized Integrand f(x) & Accumulation F(x)'}
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Drag the upper limit b to watch signed area accumulate in real time—and see how the height of f(x) is the exact tangent slope of F(x).
+            </p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-[11px] font-mono bg-white/[0.04] border border-white/10 text-slate-300">
+            Scrub cursor b across graph
+          </span>
+        </div>
+
+        <div id="stacked-integral-lab-host" class="w-full min-h-[300px] sm:min-h-[380px]"></div>
+
+        <div class="lg:hidden flex justify-end pt-0.5">
+          <button
+            type="button"
+            id="btn-mobile-jump-quiz"
+            class="btn-glow-cyan !py-2 !px-3.5 !text-xs !rounded-xl w-full"
+          >
+            Test Your Intuition: Match the Accumulation Quiz →
+          </button>
+        </div>
+      </div>
+
+      <!-- Visual "Match the Accumulation" Quiz Engine -->
+      <div id="stage2-panel-quiz" class="hidden lg:block glass-panel p-2.5 sm:p-5 lg:p-6 space-y-2.5 sm:space-y-4">
+        <div class="hidden sm:flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-violetGlow">Visual Area Mastery</div>
+            <h2 class="font-display font-bold text-xl text-white mt-0.5">Match the Accumulation Challenges</h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Trace positive &amp; negative area regions on the rate curve—then pick its matching accumulation graph F(x).
+            </p>
+          </div>
+          <button
+            id="btn-next-solver"
+            type="button"
+            class="btn-glass !text-xs"
+          >
+            Next: Integral Solver →
+          </button>
+        </div>
+
+        <div id="integral-quiz-engine-host" class="w-full min-h-[280px] sm:min-h-[320px]"></div>
+      </div>
+    </section>
+  `;
+
+  const panelLab = document.getElementById('stage2-panel-lab');
+  const panelQuiz = document.getElementById('stage2-panel-quiz');
+  const setSubTab = (tab) => {
+    activeSubTab = tab;
+    if (panelLab && panelQuiz) {
+      panelLab.classList.toggle('hidden', tab !== 'lab');
+      panelLab.classList.add('lg:block');
+      panelQuiz.classList.toggle('hidden', tab !== 'quiz');
+      panelQuiz.classList.add('lg:block');
+    }
+    container.querySelectorAll('[data-stage2-subtab]').forEach((btn) => {
+      const isAct = btn.getAttribute('data-stage2-subtab') === tab;
+      btn.className = isAct
+        ? 'py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer bg-cyanGlow/20 border border-cyanGlow/45 text-cyan-100 shadow-sm'
+        : 'py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer border border-transparent text-slate-300 hover:text-white';
+    });
+    requestAnimationFrame(() => {
+      if (tab === 'lab') {
+        activeInstances.stackedLab?._resizeAll?.();
+        activeInstances.stackedLab?._drawAll?.();
+      } else {
+        activeInstances.quizEngine?._resizeCanvases?.();
+        activeInstances.quizEngine?._drawCanvases?.();
+      }
+      window.dispatchEvent(new Event('resize'));
+    });
+  };
+
+  container.querySelectorAll('[data-stage2-subtab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const next = btn.getAttribute('data-stage2-subtab');
+      if (next && next !== activeSubTab) {
+        playSfx('tick');
+        setSubTab(next);
+      }
+    });
+  });
+
+  document.getElementById('btn-mobile-jump-quiz')?.addEventListener('click', () => {
+    playSfx('tick');
+    setSubTab('quiz');
+  });
+
+  const labHost = document.getElementById('stacked-integral-lab-host');
+  if (labHost && typeof StackedIntegralLab === 'function') {
+    try {
+      activeInstances.stackedLab = new StackedIntegralLab(labHost, {
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onInteract: () => markStageDone('intuition'),
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] StackedIntegralLab mount error:', err);
+    }
+  }
+
+  const quizHost = document.getElementById('integral-quiz-engine-host');
+  if (quizHost && typeof IntegralVisualQuizEngine === 'function') {
+    try {
+      const updateTabCount = (payload) => {
+        const count =
+          payload?.solvedCount ??
+          (getStoreState().solvedQuizzes || []).filter((id) =>
+            String(id).startsWith('int-quiz-')
+          ).length;
+        const quizBtn = container.querySelector('[data-stage2-subtab="quiz"]');
+        if (quizBtn) quizBtn.textContent = `🎯 Match Quiz (${count}/6)`;
+      };
+      activeInstances.quizEngine = new IntegralVisualQuizEngine(quizHost, {
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onAnswer: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+        onProgress: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+        onComplete: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] IntegralVisualQuizEngine mount error:', err);
+    }
+  }
+
+  document.getElementById('btn-next-solver')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('solver');
+  });
+}
+
+function mountIntegralStage3Solver(container) {
+  container.innerHTML = `
+    <section class="max-w-4xl mx-auto space-y-3 sm:space-y-5 view-enter">
+      <div class="hidden md:flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-violetGlow">Interactive Integration Drill</div>
+          <h2 class="font-display font-bold text-2xl text-white mt-0.5">Paperless Step-by-Step Integral Solver</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+            Master Power &amp; FTC, u-Substitution, Trig &amp; Half-Angle, Integration by Parts, and Partial Fractions across 14 step-by-step problems.
+          </p>
+        </div>
+
+        <button
+          id="btn-next-word-problems"
+          type="button"
+          class="btn-glass !text-xs"
+        >
+          Next: Word Problems →
+        </button>
+      </div>
+
+      <div id="paperless-solver-host" class="glass-panel p-2.5 sm:p-5 md:p-6 min-h-[420px]"></div>
+    </section>
+  `;
+
+  const host = document.getElementById('paperless-solver-host');
+  if (host && typeof PaperlessStepSolver === 'function') {
+    try {
+      activeInstances.stepSolver = new PaperlessStepSolver(host, {
+        mode: 'integrals',
+        problems: INTEGRAL_PROBLEMS,
+        tiers: INTEGRAL_SOLVER_TIERS,
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onSolve: () => {
+          markStageDone('solver');
+          updateLessonStageDotsUI();
+        },
+        onProblemSolved: () => {
+          markStageDone('solver');
+          updateLessonStageDotsUI();
+        },
+        onProgress: (info) => {
+          if (!info || (info.solvedCount ?? 1) >= 1) {
+            markStageDone('solver');
+            updateLessonStageDotsUI();
+          }
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] Integral PaperlessStepSolver mount error:', err);
+    }
+  }
+
+  document.getElementById('btn-next-word-problems')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('word-problems');
+  });
+}
+
 function mountStage4WordProblems(container) {
   if (!container) return;
 
-  const data = appState.wordProblems || FALLBACK_WORD_PROBLEMS;
+  const isInt = isIntegralLesson();
+  const fallbackData = isInt ? FALLBACK_INTEGRAL_WORD_PROBLEMS : FALLBACK_WORD_PROBLEMS;
+  const data = appState.wordProblemsByLesson?.[appState.lessonId] || fallbackData;
+  const jsonFilePath = isInt
+    ? 'data/lessons/integrals-word-problems.json'
+    : 'data/lessons/derivatives-word-problems.json';
   const problems = Array.isArray(data.problems) ? data.problems : [];
   const rawPlanned =
     Array.isArray(data.plannedTopics) && data.plannedTopics.length
       ? data.plannedTopics
-      : FALLBACK_WORD_PROBLEMS.plannedTopics;
+      : fallbackData.plannedTopics;
   const plannedTopics = rawPlanned.map(enrichPlannedTopic);
   const isComingSoon = data.status === 'coming_soon' && problems.length === 0;
 
   container.innerHTML = `
-    <section class="max-w-5xl mx-auto space-y-6 view-enter">
+    <section class="max-w-5xl mx-auto space-y-4 sm:space-y-6 view-enter">
       <!-- Engineering Blueprint Header Card -->
-      <div class="glass-panel relative overflow-hidden p-6 sm:p-8">
+      <div class="glass-panel relative overflow-hidden p-4 sm:p-8">
         <div class="pointer-events-none absolute inset-0 opacity-[0.06]" style="background-image: linear-gradient(to right, #22D3EE 1px, transparent 1px), linear-gradient(to bottom, #22D3EE 1px, transparent 1px); background-size: 28px 28px;"></div>
 
-        <div class="relative flex flex-wrap items-start justify-between gap-4">
+        <div class="relative flex flex-wrap items-start justify-between gap-3 sm:gap-4">
           <div class="space-y-2 max-w-2xl">
             <div class="flex flex-wrap items-center gap-2">
               <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-mono uppercase tracking-wider border ${
@@ -2273,13 +3431,20 @@ function mountStage4WordProblems(container) {
               </span>
             </div>
 
-            <h2 class="font-display font-bold text-2xl sm:text-3xl text-white">
-              ${escapeHtml(data.title || 'Applied Engineering Word Problems')}
+            <h2 class="font-display font-bold text-xl sm:text-3xl text-white">
+              ${escapeHtml(
+                data.title ||
+                  (isInt
+                    ? 'Applied Integral Word Problems'
+                    : 'Applied Engineering Word Problems')
+              )}
             </h2>
-            <p class="text-sm text-slate-300/90 leading-relaxed">
+            <p class="text-xs sm:text-sm text-slate-300/90 leading-relaxed">
               ${escapeHtml(
                 data.subtitle ||
-                  'Translate physical mechatronics, electronics, thermal, and machine learning narratives into differential models and solve them interactively.'
+                  (isInt
+                    ? 'Translate velocity profiles, variable force paths, pulsed currents, and probability densities into definite integrals.'
+                    : 'Translate physical mechatronics, electronics, thermal, and machine learning narratives into differential models and solve them interactively.')
               )}
             </p>
           </div>
@@ -2294,12 +3459,12 @@ function mountStage4WordProblems(container) {
         </div>
 
         <!-- Auto-Activation Architectural Note -->
-        <div class="relative mt-6 rounded-2xl p-4 bg-[#080A0F]/80 border border-cyanGlow/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div class="flex items-start gap-3">
-            <span class="text-lg leading-none mt-0.5" aria-hidden="true">📐</span>
+        <div class="relative mt-4 sm:mt-6 rounded-2xl p-3 sm:p-4 bg-[#080A0F]/80 border border-cyanGlow/25 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+          <div class="flex items-start gap-2.5 sm:gap-3">
+            <span class="text-base sm:text-lg leading-none mt-0.5" aria-hidden="true">📐</span>
             <div class="text-xs text-slate-300 leading-relaxed">
               <strong class="text-white">Automatic Activation:</strong> Dropping structured word problems into
-              <code class="px-1.5 py-0.5 rounded bg-white/10 text-cyanGlow font-mono">data/lessons/derivatives-word-problems.json</code>
+              <code class="px-1.5 py-0.5 rounded bg-white/10 text-cyanGlow font-mono">${jsonFilePath}</code>
               activates them automatically in this stage without modifying any app code.
             </div>
           </div>
@@ -2443,13 +3608,6 @@ function subscribeToStoreUpdates() {
   if (typeof store?.subscribe !== 'function') return;
   store.subscribe(() => {
     const stats = getMasterySnapshot();
-    if (stats.solvedProblems >= 1 && !isStageDone('solver')) {
-      store.markStageComplete('solver');
-    }
-    if (stats.solvedVisual >= 1 && !isStageDone('intuition')) {
-      store.markStageComplete('intuition');
-    }
-
     if (appState.view === 'lesson') {
       updateLessonStageDotsUI();
     } else if (appState.view === 'hub') {
@@ -2460,17 +3618,25 @@ function subscribeToStoreUpdates() {
 }
 
 async function boot() {
-  const [curriculum, wordProblems] = await Promise.all([
+  const [curriculum, derivWordProblems, intWordProblems] = await Promise.all([
     fetchJsonSafe('./data/curriculum.json', FALLBACK_CURRICULUM),
     fetchJsonSafe('./data/lessons/derivatives-word-problems.json', FALLBACK_WORD_PROBLEMS),
+    fetchJsonSafe(
+      './data/lessons/integrals-word-problems.json',
+      FALLBACK_INTEGRAL_WORD_PROBLEMS
+    ),
     waitForKatex(),
   ]);
 
   if (curriculum && Array.isArray(curriculum.domains)) {
     appState.curriculum = curriculum;
   }
-  if (wordProblems && typeof wordProblems === 'object') {
-    appState.wordProblems = wordProblems;
+  if (derivWordProblems && typeof derivWordProblems === 'object') {
+    appState.wordProblems = derivWordProblems;
+    appState.wordProblemsByLesson['calc-derivatives'] = derivWordProblems;
+  }
+  if (intWordProblems && typeof intWordProblems === 'object') {
+    appState.wordProblemsByLesson['calc-integrals'] = intWordProblems;
   }
 
   subscribeToStoreUpdates();
