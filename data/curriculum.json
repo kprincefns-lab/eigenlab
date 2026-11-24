@@ -1,0 +1,153 @@
+{
+  "brand": "EIGENLAB",
+  "tagline": "Interactive 3D Engineering & Deep-Learning Studio",
+  "version": "1.0.0",
+  "domains": [
+    {
+      "id": "math",
+      "title": "Engineering Mathematics",
+      "shortTitle": "Mathematics",
+      "subtitle": "Calculus, differential systems, and linear geometry that form the language of modern engineering.",
+      "accent": "#22D3EE",
+      "accentBg": "rgba(34, 211, 238, 0.14)",
+      "symbol": "∂/∂x",
+      "lessons": [
+        {
+          "id": "calc-derivatives",
+          "status": "live",
+          "title": "Derivatives & Instantaneous Rate of Change",
+          "tag": "Lesson 01 • 3D Interactive + Step Solver",
+          "description": "Collapse secant chords into tangent vectors on live 3D surfaces, build geometric intuition for slopes and curvature, and master product, quotient, and chain rule decompositions step by step.",
+          "estimatedMinutes": 25,
+          "stages": [
+            "3d-lab",
+            "intuition",
+            "solver",
+            "word-problems"
+          ]
+        },
+        {
+          "id": "calc-integrals",
+          "status": "planned",
+          "title": "Integrals, Accumulation & Flux",
+          "tag": "Lesson 02 • Coming Next",
+          "description": "Connect Riemann slices to work, impulse, and fluid flux across curves and 3D surfaces via the Fundamental Theorem of Calculus.",
+          "estimatedMinutes": 30
+        },
+        {
+          "id": "math-diff-eq",
+          "status": "planned",
+          "title": "Differential Equations & System Dynamics",
+          "tag": "Lesson 03 • Coming Next",
+          "description": "Explore phase portraits, damped harmonic oscillators, and exponential stability in first- and second-order ODE systems.",
+          "estimatedMinutes": 35
+        },
+        {
+          "id": "math-lin-alg",
+          "status": "planned",
+          "title": "Linear Algebra, Eigenvalues & Transforms",
+          "tag": "Lesson 04 • Coming Next",
+          "description": "Warp 3D vector spaces interactively to see eigenvectors, singular value decomposition, and orthogonal projections in motion.",
+          "estimatedMinutes": 30
+        }
+      ]
+    },
+    {
+      "id": "mechatronics",
+      "title": "Mechatronics & Control Systems",
+      "shortTitle": "Mechatronics",
+      "subtitle": "Closed-loop feedback, robotic mechanisms, and real-time dynamical models linking sensors to actuators.",
+      "accent": "#F59E0B",
+      "accentBg": "rgba(245, 158, 11, 0.14)",
+      "symbol": "G(s)",
+      "lessons": [
+        {
+          "id": "mech-pid",
+          "status": "planned",
+          "title": "PID Control & Feedback Stability",
+          "tag": "Control Lab • Coming Next",
+          "description": "Tune proportional, integral, and derivative gains on live physical rigs to balance rise time, overshoot, and steady-state error.",
+          "estimatedMinutes": 30
+        },
+        {
+          "id": "mech-kinematics",
+          "status": "planned",
+          "title": "Forward & Inverse Robot Kinematics",
+          "tag": "Robotics • Coming Next",
+          "description": "Manipulate multi-axis joint spaces, Denavit-Hartenberg transforms, and Jacobian velocity mappings on a 3D robotic arm.",
+          "estimatedMinutes": 35
+        },
+        {
+          "id": "mech-state-space",
+          "status": "planned",
+          "title": "State-Space Modeling & Signals",
+          "tag": "Dynamics • Coming Next",
+          "description": "Formulate coupled electromechanical systems in matrix state space and analyze poles, controllability, and frequency response.",
+          "estimatedMinutes": 35
+        }
+      ]
+    },
+    {
+      "id": "physics",
+      "title": "Theoretical Physics",
+      "shortTitle": "Physics",
+      "subtitle": "Variational principles, electromagnetic fields, and quantum wave mechanics visualized in geometric detail.",
+      "accent": "#A78BFA",
+      "accentBg": "rgba(167, 139, 250, 0.14)",
+      "symbol": "∇×E",
+      "lessons": [
+        {
+          "id": "phys-lagrangian",
+          "status": "planned",
+          "title": "Lagrangian & Hamiltonian Mechanics",
+          "tag": "Analytical Mechanics • Coming Next",
+          "description": "Derive equations of motion from stationary action and watch trajectories evolve across energy-conserving phase spaces.",
+          "estimatedMinutes": 35
+        },
+        {
+          "id": "phys-em",
+          "status": "planned",
+          "title": "Maxwell's Equations & Vector Fields",
+          "tag": "Electromagnetism • Coming Next",
+          "description": "Inspect divergence, curl, and propagating electromagnetic waves in an interactive 3D field laboratory.",
+          "estimatedMinutes": 35
+        },
+        {
+          "id": "phys-quantum",
+          "status": "planned",
+          "title": "Quantum States & Wavefunctions",
+          "tag": "Quantum • Coming Next",
+          "description": "Visualize complex probability amplitudes, superposition interference, and stationary eigenstates in confining potentials.",
+          "estimatedMinutes": 40
+        }
+      ]
+    },
+    {
+      "id": "ai",
+      "title": "AI & Machine Learning",
+      "shortTitle": "AI & ML",
+      "subtitle": "High-dimensional optimization, automatic differentiation, and geometric sequence architectures.",
+      "accent": "#34D399",
+      "accentBg": "rgba(52, 211, 153, 0.14)",
+      "symbol": "∇L(θ)",
+      "lessons": [
+        {
+          "id": "ai-backprop",
+          "status": "planned",
+          "title": "Multivariable Gradients & Backpropagation",
+          "tag": "Optimization • Coming Next",
+          "description": "Trace reverse-mode chain-rule gradients through computational graphs and steer optimizers across non-convex loss landscapes.",
+          "estimatedMinutes": 30
+        },
+        {
+          "id": "ai-attention",
+          "status": "planned",
+          "title": "Transformers & Geometric Attention",
+          "tag": "Deep Learning • Coming Next",
+          "description": "See query-key inner products, softmax routing, and multi-head projections dynamically shape token representations in 3D.",
+          "estimatedMinutes": 35
+        }
+      ]
+    }
+  ]
+}

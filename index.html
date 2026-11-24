@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta
+    name="description"
+    content="EIGENLAB — Interactive 3D Engineering Studio for Mechatronics, Calculus, Theoretical Physics, and AI."
+  />
+  <meta name="theme-color" content="#0B0D12" />
+  <title>EIGENLAB — Interactive 3D Engineering Studio</title>
+
+  <link rel="manifest" href="./manifest.json" />
+  <link
+    rel="icon"
+    type="image/svg+xml"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230B0D12'/%3E%3Crect x='2' y='2' width='60' height='60' rx='14' fill='none' stroke='%2322D3EE' stroke-opacity='0.45' stroke-width='2'/%3E%3Cpath d='M18 20h28M18 32h22M18 44h28M18 20v24' stroke='%2322D3EE' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Ccircle cx='46' cy='32' r='4' fill='%23F59E0B'/%3E%3C/svg%3E"
+  />
+
+  <!-- Google Fonts: Space Grotesk, Plus Jakarta Sans, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- KaTeX 0.19.1 -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/katex@0.19.1/dist/katex.min.css"
+  />
+  <script
+    defer
+    src="https://cdn.jsdelivr.net/npm/katex@0.19.1/dist/katex.min.js"
+  ></script>
+
+  <!-- Tailwind CSS CDN + EIGENLAB Theme Configuration -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Space Grotesk', 'sans-serif'],
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            studio: '#0B0D12',
+            cyanGlow: '#22D3EE',
+            amberGlow: '#F59E0B',
+            violetGlow: '#A78BFA',
+            emeraldGlow: '#34D399',
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Three.js 0.170.0 Import Map -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <!-- Studio Stylesheet -->
+  <link rel="stylesheet" href="./css/studio.css" />
+</head>
+<body class="bg-studio text-slate-100 font-sans antialiased selection:bg-cyanGlow/25 selection:text-cyan-200 overflow-x-hidden">
+  <div id="app" class="min-h-screen relative"></div>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

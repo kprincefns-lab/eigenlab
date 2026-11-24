@@ -1,0 +1,23 @@
+{
+  "name": "EIGENLAB — Engineering Studio",
+  "short_name": "EIGENLAB",
+  "description": "Interactive 3D Engineering & Deep-Learning Studio for Calculus, Mechatronics, Theoretical Physics, and AI.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0B0D12",
+  "theme_color": "#0B0D12",
+  "categories": [
+    "education",
+    "science",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2322D3EE'/%3E%3Cstop offset='100%25' stop-color='%23A78BFA'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='112' fill='%230B0D12'/%3E%3Crect x='24' y='24' width='464' height='464' rx='92' fill='%23121621' stroke='rgba(255,255,255,0.12)' stroke-width='4'/%3E%3Cpath d='M118 354 C 178 340, 214 156, 286 156 C 344 156, 360 250, 404 206' fill='none' stroke='url(%23g)' stroke-width='22' stroke-linecap='round'/%3E%3Cline x1='154' y1='328' x2='366' y2='146' stroke='%23F59E0B' stroke-width='12' stroke-linecap='round' stroke-dasharray='18 14'/%3E%3Ccircle cx='252' cy='244' r='22' fill='%2322D3EE' stroke='%230B0D12' stroke-width='8'/%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

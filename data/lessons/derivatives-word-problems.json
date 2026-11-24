@@ -1,0 +1,11 @@
+{
+  "lessonId": "calc-derivatives",
+  "status": "coming_soon",
+  "plannedTopics": [
+    "Servo Velocity & Acceleration Profiling",
+    "Capacitor Current i(t) = C dv/dt",
+    "Thermal Cooling Rates & Optimization",
+    "Gradient Descent Loss Minimization"
+  ],
+  "problems": []
+}
