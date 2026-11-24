@@ -13,6 +13,7 @@ const COLORS = {
   amber: '#F59E0B',
   emerald: '#34D399',
   violet: '#A78BFA',
+  rose: '#FB7185',
   text: '#F3F6FC',
   muted: '#94A3B8',
   bgHalo: '#070A10',
@@ -69,6 +70,10 @@ function buildDefs(prefix) {
     `<linearGradient id="${prefix}glass-cyan" x1="0" y1="0" x2="0" y2="1">` +
     `<stop offset="0%" stop-color="#12303E" stop-opacity="0.92"/>` +
     `<stop offset="100%" stop-color="#091520" stop-opacity="0.96"/>` +
+    `</linearGradient>` +
+    `<linearGradient id="${prefix}glass-emerald" x1="0" y1="0" x2="0" y2="1">` +
+    `<stop offset="0%" stop-color="#0D3326" stop-opacity="0.92"/>` +
+    `<stop offset="100%" stop-color="#071913" stop-opacity="0.96"/>` +
     `</linearGradient>` +
     `<linearGradient id="${prefix}glass-amber" x1="0" y1="0" x2="0" y2="1">` +
     `<stop offset="0%" stop-color="#31210C" stop-opacity="0.92"/>` +
@@ -890,6 +895,547 @@ function renderFeedbackPD(d, p, isSetup) {
   return wrapSVG(p, `Unity-feedback block diagram: C(s)=${controllerVal}, G(s)=${plantVal}`, body);
 }
 
+/* ==========================================================================
+   9. Complex s-Plane Pole-Zero Map (pole-zero)
+   ========================================================================== */
+function resolveSymbolicAccent(accent, idx, p) {
+  const palette = ['cyan', 'emerald', 'violet', 'amber'];
+  const key = typeof accent === 'string' && accent.trim() ? accent.trim().toLowerCase() : palette[idx % palette.length];
+  if (key === 'cyan') return { color: COLORS.cyan, fill: `url(#${p}glass-cyan)` };
+  if (key === 'emerald' || key === 'green') return { color: COLORS.emerald, fill: `url(#${p}glass-emerald)` };
+  if (key === 'violet' || key === 'purple') return { color: COLORS.violet, fill: `url(#${p}glass-violet)` };
+  if (key === 'amber' || key === 'orange') return { color: COLORS.amber, fill: `url(#${p}glass-amber)` };
+  if (key === 'rose' || key === 'coral' || key === 'red') return { color: COLORS.rose, fill: `url(#${p}glass-node)` };
+  if (/^#[0-9a-f]{3,8}$/i.test(key)) return { color: accent.trim(), fill: `url(#${p}glass-node)` };
+  return { color: COLORS.cyan, fill: `url(#${p}glass-cyan)` };
+}
+
+function renderPoleZeroSymbolic(d, p, stepIdx) {
+  const revealZerosStep = typeof d.revealZerosStep === 'number' ? d.revealZerosStep : 1;
+  const revealPolesStep = typeof d.revealPolesStep === 'number' ? d.revealPolesStep : 1;
+  const revealStep = typeof d.revealStep === 'number' ? d.revealStep : Math.min(revealZerosStep, revealPolesStep);
+  const revealed = stepIdx >= revealStep;
+
+  let body = '';
+
+  if (!revealed) {
+    const hint = fmt(d.setupHint, 'L(s) = N_L / D_L → S(s), T(s)');
+    const hintSize = fitFontSize(hint, 294, 10.5, 7.8);
+    const subHint = fmt(d.setupSubHint, 'Map loop numerator N_L & denominator D_L to closed-loop S(s), T(s)');
+    const subSize = fitFontSize(subHint, 294, 8.2, 6.8);
+
+    body =
+      `<rect x="26" y="16" width="368" height="110" rx="7" fill="rgba(7,11,20,0.68)" stroke="rgba(148,163,184,0.2)" stroke-width="0.9"/>` +
+      `<rect x="48" y="34" width="324" height="62" rx="9" fill="url(#${p}glass-node)" stroke="${COLORS.cyan}" stroke-opacity="0.5" stroke-width="1.2"/>` +
+      `<line x1="56" y1="35.3" x2="364" y2="35.3" stroke="rgba(255,255,255,0.2)" stroke-width="0.9"/>` +
+      labelText(210, 48, 'SYMBOLIC LOOP ARCHITECTURE', {
+        color: COLORS.cyan,
+        size: 7.5,
+        weight: '600',
+        opacity: '0.78',
+        letterSpacing: '1.1',
+      }) +
+      labelText(210, 68, hint, { color: COLORS.text, size: hintSize, weight: '700' }) +
+      labelText(210, 84, subHint, { color: COLORS.muted, size: subSize, weight: '500' }) +
+      labelText(
+        210,
+        113,
+        `<tspan fill="${COLORS.emerald}">○ N_L Zeros</tspan>` +
+          `<tspan fill="${COLORS.muted}">  ·  </tspan>` +
+          `<tspan fill="${COLORS.cyan}">× D_L Poles</tspan>` +
+          `<tspan fill="${COLORS.muted}">  ·  </tspan>` +
+          `<tspan fill="${COLORS.violet}">S(s) + T(s) = 1</tspan>`,
+        { size: 8, weight: '600', raw: true }
+      ) +
+      renderSubtitle(d.subtitle, 14, 143);
+
+    return wrapSVG(p, d.subtitle ? `${d.subtitle} (symbolic setup)` : 'Symbolic loop pole-zero architecture (setup)', body);
+  }
+
+  const rawBadges =
+    Array.isArray(d.symbolicBadges) && d.symbolicBadges.length > 0
+      ? d.symbolicBadges
+      : [
+          { title: 'Sensitivity S(s)', expr: 'D_L / (D_L + N_L)', accent: 'cyan' },
+          { title: 'Complementary T(s)', expr: 'N_L / (D_L + N_L)', accent: 'emerald' },
+        ];
+
+  const n = rawBadges.length;
+  const gap = n > 2 ? 8 : 12;
+  const totalW = 376;
+  const startX = 22;
+  const cardW = (totalW - gap * (n - 1)) / n;
+  const cardY = 34;
+  const cardH = 82;
+
+  const cards = rawBadges
+    .map((item, idx) => {
+      const isObj = item && typeof item === 'object';
+      const title = isObj ? fmt(item.title ?? item.label ?? item.name ?? item.tag, '') : '';
+      const expr = isObj ? fmt(item.expr ?? item.formula ?? item.value ?? item.text, '') : fmt(item, '');
+      const sub = isObj ? fmt(item.sub ?? item.note ?? item.hint, '') : '';
+      const accent = resolveSymbolicAccent(isObj ? item.accent ?? item.color : '', idx, p);
+
+      const x = Math.round((startX + idx * (cardW + gap)) * 10) / 10;
+      const cx = Math.round((x + cardW / 2) * 10) / 10;
+      const innerW = Math.max(48, cardW - 16);
+
+      let textNodes = '';
+      if (title && expr && sub) {
+        textNodes =
+          labelText(cx, cardY + 19, title, {
+            color: accent.color,
+            size: fitFontSize(title, innerW, 8.2, 6.8),
+            weight: '600',
+            opacity: '0.9',
+          }) +
+          labelText(cx, cardY + 46, expr, {
+            color: COLORS.text,
+            size: fitFontSize(expr, innerW, 11, 7.5),
+            weight: '700',
+          }) +
+          labelText(cx, cardY + 67, sub, {
+            color: accent.color,
+            size: fitFontSize(sub, innerW, 7.8, 6.5),
+            weight: '500',
+            opacity: '0.86',
+          });
+      } else if (title && expr) {
+        textNodes =
+          labelText(cx, cardY + 25, title, {
+            color: accent.color,
+            size: fitFontSize(title, innerW, 8.6, 7),
+            weight: '600',
+            opacity: '0.9',
+          }) +
+          labelText(cx, cardY + 55, expr, {
+            color: COLORS.text,
+            size: fitFontSize(expr, innerW, 11.5, 7.5),
+            weight: '700',
+          });
+      } else {
+        const display = expr || title;
+        textNodes = labelText(cx, cardY + 45, display, {
+          color: COLORS.text,
+          size: fitFontSize(display, innerW, 10.5, 7.5),
+          weight: '700',
+        });
+      }
+
+      return (
+        `<g>` +
+        `<rect x="${x}" y="${cardY}" width="${cardW.toFixed(1)}" height="${cardH}" rx="9" fill="${accent.fill}" stroke="${accent.color}" stroke-opacity="0.78" stroke-width="1.45"/>` +
+        `<line x1="${(x + 8).toFixed(1)}" y1="${cardY + 1.3}" x2="${(x + cardW - 8).toFixed(1)}" y2="${cardY + 1.3}" stroke="rgba(255,255,255,0.22)" stroke-width="0.95"/>` +
+        textNodes +
+        `</g>`
+      );
+    })
+    .join('');
+
+  const topBadge = d.summaryBadge
+    ? pillBadge(210, 16, d.summaryBadge, COLORS.violet, {
+        size: fitFontSize(d.summaryBadge, 340, 8.4, 7.2),
+        padX: 9,
+        h: 16,
+        bg: 'rgba(7,11,20,0.92)',
+        textColor: '#EDE9FE',
+      })
+    : '';
+
+  body = topBadge + cards + renderSubtitle(d.subtitle, 14, 143);
+
+  return wrapSVG(p, d.subtitle ? `Symbolic loop map: ${d.subtitle}` : 'Symbolic loop pole-zero map', body);
+}
+
+function renderPoleZeroMap(d, p, isSetup, activeStepIndex) {
+  const stepIdx = typeof activeStepIndex === 'number' ? activeStepIndex : isSetup ? 0 : 1;
+
+  if (d.mode === 'symbolic') {
+    return renderPoleZeroSymbolic(d, p, stepIdx);
+  }
+
+  const b = d.bounds && typeof d.bounds === 'object' ? d.bounds : {};
+  const minRe = typeof b.minRe === 'number' && Number.isFinite(b.minRe) ? b.minRe : -6;
+  const maxRe = typeof b.maxRe === 'number' && Number.isFinite(b.maxRe) ? b.maxRe : 3;
+  const minIm = typeof b.minIm === 'number' && Number.isFinite(b.minIm) ? b.minIm : -4;
+  const maxIm = typeof b.maxIm === 'number' && Number.isFinite(b.maxIm) ? b.maxIm : 4;
+  const reSpan = maxRe > minRe ? maxRe - minRe : 1;
+  const imSpan = maxIm > minIm ? maxIm - minIm : 1;
+
+  const plotX = 26;
+  const plotY = 16;
+  const plotW = 368;
+  const plotH = 110;
+
+  const clamp = (val, lo, hi) => Math.max(lo, Math.min(hi, val));
+  const rawMapX = (re) => plotX + ((re - minRe) / reSpan) * plotW;
+  const rawMapY = (im) => plotY + (1 - (im - minIm) / imSpan) * plotH;
+  const mapX = (re) => Math.round(clamp(rawMapX(re), plotX + 10, plotX + plotW - 10) * 10) / 10;
+  const mapY = (im) => Math.round(clamp(rawMapY(im), plotY + 10, plotY + plotH - 10) * 10) / 10;
+
+  const revealZerosStep = typeof d.revealZerosStep === 'number' ? d.revealZerosStep : 1;
+  const revealPolesStep = typeof d.revealPolesStep === 'number' ? d.revealPolesStep : 1;
+  const showZeros = stepIdx >= revealZerosStep;
+  const showPoles = stepIdx >= revealPolesStep;
+
+  const poles = Array.isArray(d.poles) ? d.poles : [];
+  const zeros = Array.isArray(d.zeros) ? d.zeros : [];
+  const hasTarget = Boolean(d.target && typeof d.target === 'object');
+
+  const isCoincidentWith = (item, list) => {
+    const r1 = Number(item.re ?? 0);
+    const i1 = Number(item.im ?? 0);
+    return list.some((other) => Math.hypot(r1 - Number(other.re ?? 0), i1 - Number(other.im ?? 0)) < 1e-3);
+  };
+
+  // Clip path for RHP fill inside rounded plot frame
+  let body =
+    `<clipPath id="${p}pz-clip"><rect x="${plotX}" y="${plotY}" width="${plotW}" height="${plotH}" rx="7"/></clipPath>` +
+    `<rect x="${plotX}" y="${plotY}" width="${plotW}" height="${plotH}" rx="7" fill="rgba(7,11,20,0.68)"/>`;
+
+  const hasXZero = minRe <= 0 && maxRe >= 0;
+  const hasYZero = minIm <= 0 && maxIm >= 0;
+  const xZero = clamp(rawMapX(0), plotX + 4, plotX + plotW - 4);
+  const yZero = clamp(rawMapY(0), plotY + 4, plotY + plotH - 4);
+
+  // Shaded RHP unstable zone & LHP/RHP region micro-labels
+  if (maxRe > 0) {
+    const rhpStart = clamp(rawMapX(0), plotX, plotX + plotW);
+    const rhpW = plotX + plotW - rhpStart;
+    if (rhpW > 1) {
+      body += `<rect x="${rhpStart.toFixed(1)}" y="${plotY}" width="${rhpW.toFixed(1)}" height="${plotH}" fill="rgba(244,63,94,0.11)" clip-path="url(#${p}pz-clip)"/>`;
+    }
+    if (rhpW >= 54) {
+      body += labelText(plotX + plotW - 6, plotY + 11, 'RHP (σ>0)', {
+        color: COLORS.rose,
+        size: 7.5,
+        weight: '600',
+        anchor: 'end',
+        opacity: '0.88',
+      });
+    } else if (rhpW >= 24) {
+      body += labelText(plotX + plotW - 5, plotY + 11, 'RHP', {
+        color: COLORS.rose,
+        size: 7.5,
+        weight: '600',
+        anchor: 'end',
+        opacity: '0.88',
+      });
+    }
+    if (minRe < 0 && rhpStart - plotX >= 56) {
+      body += labelText(plotX + 7, plotY + 11, 'LHP (σ<0)', {
+        color: '#6EE7B7',
+        size: 7.5,
+        weight: '600',
+        anchor: 'start',
+        opacity: '0.65',
+      });
+    }
+  } else if (minRe < 0) {
+    body += labelText(plotX + 7, plotY + 11, 'LHP (σ<0)', {
+      color: '#6EE7B7',
+      size: 7.5,
+      weight: '600',
+      anchor: 'start',
+      opacity: '0.65',
+    });
+  }
+
+  // Real axis (sigma) & clean integer reference ticks
+  if (hasYZero) {
+    body += `<line x1="${plotX + 4}" y1="${yZero.toFixed(1)}" x2="${plotX + plotW - 4}" y2="${yZero.toFixed(1)}" stroke="${COLORS.wire}" stroke-opacity="0.58" stroke-width="1.2" marker-end="url(#${p}arrow-slate)"/>`;
+    const sigmaY = yZero - 6 < plotY + 18 ? yZero + 11 : yZero - 6;
+    body += labelText(plotX + plotW - 6, sigmaY.toFixed(1), 'σ', {
+      color: COLORS.muted,
+      size: 9,
+      weight: '600',
+      anchor: 'end',
+    });
+
+    // Track real-axis marker positions so tick numerals never clutter or collide
+    const realMarkerXs = [];
+    if (showPoles) {
+      for (const pl of poles) {
+        if (Math.abs(Number(pl.im ?? 0)) <= 0.6) realMarkerXs.push(mapX(Number(pl.re ?? 0)));
+      }
+    }
+    if (showZeros) {
+      for (const z of zeros) {
+        if (Math.abs(Number(z.im ?? 0)) <= 0.6) realMarkerXs.push(mapX(Number(z.re ?? 0)));
+      }
+    }
+    if (hasTarget && Math.abs(Number(d.target.im ?? 0)) <= 0.6) {
+      realMarkerXs.push(mapX(Number(d.target.re ?? 0)));
+    }
+
+    const tickStep = reSpan <= 6 ? 1 : reSpan <= 14 ? 2 : reSpan <= 28 ? 5 : 10;
+    const firstTick = Math.ceil(minRe / tickStep) * tickStep;
+    const lastTick = Math.floor(maxRe / tickStep) * tickStep;
+    const tickLabelY = yZero + 10.5 > plotY + plotH - 4 ? yZero - 5.5 : yZero + 10.5;
+
+    for (let t = firstTick; t <= lastTick; t += tickStep) {
+      const tx = rawMapX(t);
+      if (tx < plotX + 14 || tx > plotX + plotW - 18) continue;
+      body += `<line x1="${tx.toFixed(1)}" y1="${(yZero - 2.5).toFixed(1)}" x2="${tx.toFixed(1)}" y2="${(yZero + 2.5).toFixed(1)}" stroke="rgba(148,163,184,0.34)" stroke-width="0.9"/>`;
+
+      const collides = realMarkerXs.some((mx) => Math.abs(tx - mx) < 16);
+      if (collides) continue;
+
+      if (t === 0) {
+        body += labelText((tx - 4.5).toFixed(1), tickLabelY.toFixed(1), '0', {
+          color: COLORS.muted,
+          size: 7,
+          weight: '500',
+          anchor: 'end',
+          opacity: '0.52',
+        });
+      } else {
+        body += labelText(tx.toFixed(1), tickLabelY.toFixed(1), String(t), {
+          color: COLORS.muted,
+          size: 7,
+          weight: '500',
+          anchor: 'middle',
+          opacity: '0.46',
+        });
+      }
+    }
+  }
+
+  // Imaginary axis (j*omega) & subtle tick marks
+  if (hasXZero) {
+    body += `<line x1="${xZero.toFixed(1)}" y1="${plotY + plotH - 3}" x2="${xZero.toFixed(1)}" y2="${plotY + 4}" stroke="${COLORS.amber}" stroke-opacity="0.55" stroke-width="1.25" stroke-dasharray="3.5 2.5" marker-end="url(#${p}arrow-amber)"/>`;
+    const jwOnLeft = xZero > plotX + plotW - 76;
+    const jwX = jwOnLeft ? xZero - 6 : xZero + 6;
+    const jwAnchor = jwOnLeft ? 'end' : 'start';
+    body += labelText(jwX.toFixed(1), plotY + 11, 'jω', {
+      color: COLORS.amber,
+      size: 8.5,
+      weight: '600',
+      anchor: jwAnchor,
+      opacity: '0.88',
+    });
+
+    const imStep = imSpan <= 6 ? 1 : imSpan <= 14 ? 2 : 5;
+    const firstIm = Math.ceil(minIm / imStep) * imStep;
+    const lastIm = Math.floor(maxIm / imStep) * imStep;
+    for (let imTick = firstIm; imTick <= lastIm; imTick += imStep) {
+      if (imTick === 0) continue;
+      const ty = rawMapY(imTick);
+      if (ty < plotY + 14 || ty > plotY + plotH - 10) continue;
+      body += `<line x1="${(xZero - 2.2).toFixed(1)}" y1="${ty.toFixed(1)}" x2="${(xZero + 2.2).toFixed(1)}" y2="${ty.toFixed(1)}" stroke="rgba(245,158,11,0.34)" stroke-width="0.9"/>`;
+    }
+  }
+
+  // Crisp outer plot border
+  body += `<rect x="${plotX}" y="${plotY}" width="${plotW}" height="${plotH}" rx="7" fill="none" stroke="rgba(148,163,184,0.22)" stroke-width="0.9"/>`;
+
+  // Smart non-overlapping marker label placement helper
+  const placeMarkerLabel = (mx, my, im, kind, text, color, explicitPos) => {
+    const labelStr = fmt(text, '');
+    if (!labelStr) return '';
+    const fontSize = 8.4;
+
+    let pos = explicitPos;
+    if (!pos) {
+      if (im > 1e-6) {
+        pos = my - 10 < plotY + 14 ? (mx > plotX + plotW - 74 ? 'left' : 'right') : 'above';
+      } else if (im < -1e-6) {
+        pos = my + 14 > plotY + plotH - 3 ? (mx > plotX + plotW - 74 ? 'left' : 'right') : 'below';
+      } else if (kind === 'zero') {
+        pos = 'above';
+      } else if (kind === 'target') {
+        pos = my - 10 < plotY + 14 ? 'below' : 'above';
+      } else {
+        pos = 'below';
+      }
+    }
+
+    let lx = mx;
+    let ly = my;
+    let anchor = 'middle';
+
+    if (pos === 'above') {
+      ly = Math.max(plotY + 10, my - 10);
+    } else if (pos === 'below') {
+      const dy = kind === 'pole' && Math.abs(im) <= 1e-6 ? 15 : 14;
+      ly = Math.min(plotY + plotH - 4, my + dy);
+    } else if (pos === 'left') {
+      lx = mx - 9;
+      ly = clamp(my + 3, plotY + 10, plotY + plotH - 4);
+      anchor = 'end';
+    } else if (pos === 'right') {
+      lx = mx + 9;
+      ly = clamp(my + 3, plotY + 10, plotY + plotH - 4);
+      anchor = 'start';
+    }
+
+    const estW = labelStr.length * fontSize * 0.62;
+    const minEdge = plotX + 6;
+    const maxEdge = plotX + plotW - 6;
+
+    if (anchor === 'middle') {
+      if (lx - estW / 2 < minEdge) {
+        lx = Math.max(minEdge, mx - 5);
+        anchor = 'start';
+      } else if (lx + estW / 2 > maxEdge) {
+        lx = Math.min(maxEdge, mx + 5);
+        anchor = 'end';
+      }
+    } else if (anchor === 'start' && lx + estW > maxEdge) {
+      lx = Math.min(maxEdge, mx - 9);
+      anchor = 'end';
+    } else if (anchor === 'end' && lx - estW < minEdge) {
+      lx = Math.max(minEdge, mx + 9);
+      anchor = 'start';
+    }
+
+    return labelText(lx.toFixed(1), ly.toFixed(1), labelStr, {
+      color,
+      size: fontSize,
+      weight: '600',
+      anchor,
+    });
+  };
+
+  // Progressive zero-spoiler rendering
+  if (!showZeros && !showPoles) {
+    const hint = fmt(d.setupHint, 'Find Zeros N(s)=0 (○) & Poles D(s)=0 (×)');
+    const hintSize = fitFontSize(hint, 286, 9.2, 7.2);
+    body +=
+      `<g>` +
+      `<rect x="58" y="51" width="304" height="42" rx="9" fill="rgba(7,11,20,0.88)" stroke="rgba(34,211,238,0.44)" stroke-width="1"/>` +
+      `<line x1="66" y1="52.2" x2="354" y2="52.2" stroke="rgba(255,255,255,0.16)" stroke-width="0.8"/>` +
+      labelText(210, 66.5, hint, { color: '#E0F2FE', size: hintSize, weight: '600' }) +
+      labelText(
+        210,
+        82.5,
+        `<tspan fill="${COLORS.emerald}">○ Zero</tspan>` +
+          `<tspan fill="${COLORS.muted}">  ·  </tspan>` +
+          `<tspan fill="${COLORS.cyan}">× LHP Pole</tspan>` +
+          `<tspan fill="${COLORS.muted}">  ·  </tspan>` +
+          `<tspan fill="${COLORS.rose}">×/○ RHP Trap</tspan>`,
+        { size: 7.8, weight: '600', raw: true }
+      ) +
+      `</g>`;
+  } else {
+    // Draw Zeros first (so coincident pole x draws crisply inside larger dashed zero ring)
+    if (showZeros) {
+      for (const z of zeros) {
+        const re = Number(z.re ?? 0);
+        const im = Number(z.im ?? 0);
+        const zx = mapX(re);
+        const zy = mapY(im);
+        const isRHP = re > 1e-6;
+        const coincident = showPoles && isCoincidentWith(z, poles);
+        const r = coincident ? 6.5 : 5.2;
+        const ringColor = isRHP ? (coincident ? COLORS.amber : COLORS.rose) : COLORS.emerald;
+        const dashAttr = coincident ? ' stroke-dasharray="3.2 1.8"' : '';
+
+        body += `<circle cx="${zx}" cy="${zy}" r="${r}" fill="#070B14" stroke="${ringColor}" stroke-width="2"${dashAttr} filter="url(#${p}glow-soft)"/>`;
+        if (isRHP && !coincident) {
+          body += `<circle cx="${zx}" cy="${zy}" r="2.9" fill="none" stroke="${COLORS.amber}" stroke-width="1.05"/>`;
+        }
+        if (z.mult && Number(z.mult) > 1) {
+          body += labelText((zx + r + 2).toFixed(1), (zy - 4).toFixed(1), `×${z.mult}`, {
+            color: isRHP ? COLORS.amber : COLORS.emerald,
+            size: 7.5,
+            weight: '700',
+            anchor: 'start',
+          });
+        }
+        if (z.label) {
+          body += placeMarkerLabel(zx, zy, im, 'zero', z.label, isRHP ? COLORS.amber : COLORS.emerald, z.labelPos);
+        }
+      }
+    }
+
+    // Draw Poles on top
+    if (showPoles) {
+      for (const pl of poles) {
+        const re = Number(pl.re ?? 0);
+        const im = Number(pl.im ?? 0);
+        const px = mapX(re);
+        const py = mapY(im);
+        const color = re > 1e-6 ? COLORS.rose : Math.abs(re) <= 1e-6 ? COLORS.amber : COLORS.cyan;
+        const coincident = showZeros && isCoincidentWith(pl, zeros);
+        const arm = coincident ? 3.8 : 4.5;
+
+        body +=
+          `<g stroke="${color}" stroke-width="2.1" stroke-linecap="round" filter="url(#${p}glow-soft)">` +
+          `<line x1="${(px - arm).toFixed(1)}" y1="${(py - arm).toFixed(1)}" x2="${(px + arm).toFixed(1)}" y2="${(py + arm).toFixed(1)}"/>` +
+          `<line x1="${(px - arm).toFixed(1)}" y1="${(py + arm).toFixed(1)}" x2="${(px + arm).toFixed(1)}" y2="${(py - arm).toFixed(1)}"/>` +
+          `</g>`;
+
+        if (pl.mult && Number(pl.mult) > 1) {
+          body += labelText((px + 6.5).toFixed(1), (py - 4.5).toFixed(1), `×${pl.mult}`, {
+            color,
+            size: 7.5,
+            weight: '700',
+            anchor: 'start',
+          });
+        }
+        if (pl.label) {
+          body += placeMarkerLabel(px, py, im, 'pole', pl.label, color, pl.labelPos);
+        }
+      }
+    }
+  }
+
+  // Optional desired CL pole target marker (Violet diamond — always visible, including Step 0)
+  if (hasTarget) {
+    const tre = Number(d.target.re ?? 0);
+    const tim = Number(d.target.im ?? 0);
+    const tx = mapX(tre);
+    const ty = mapY(tim);
+    const dr = 5.5;
+    body +=
+      `<polygon points="${tx},${(ty - dr).toFixed(1)} ${(tx + dr).toFixed(1)},${ty} ${tx},${(ty + dr).toFixed(1)} ${(tx - dr).toFixed(1)},${ty}" ` +
+      `fill="rgba(167,139,250,0.22)" stroke="${COLORS.violet}" stroke-width="1.8" stroke-linejoin="round" filter="url(#${p}glow-boost)"/>` +
+      `<circle cx="${tx}" cy="${ty}" r="1.4" fill="#EDE9FE"/>` +
+      placeMarkerLabel(tx, ty, tim, 'target', fmt(d.target.label, 's_d'), '#DDD6FE', d.target.labelPos);
+  }
+
+  // Top progress / summary pills (placed at y=11 so they never collide with LHP/RHP micro-labels at y=27)
+  if (showZeros && !showPoles) {
+    body += pillBadge(210, 11, 'Zeros ○ locked · Solve D(s)=0 for Poles ×', COLORS.emerald, {
+      size: 7.8,
+      padX: 8,
+      h: 15,
+      bg: 'rgba(7,11,20,0.92)',
+      textColor: '#A7F3D0',
+    });
+  } else if (!showZeros && showPoles) {
+    body += pillBadge(210, 11, 'Poles × locked · Solve N(s)=0 for Zeros ○', COLORS.cyan, {
+      size: 7.8,
+      padX: 8,
+      h: 15,
+      bg: 'rgba(7,11,20,0.92)',
+      textColor: '#A5F3FC',
+    });
+  } else if (showPoles && showZeros && d.summaryBadge) {
+    body += pillBadge(210, 11, d.summaryBadge, COLORS.cyan, {
+      size: fitFontSize(d.summaryBadge, 336, 8.4, 7.2),
+      padX: 9,
+      h: 15.5,
+      bg: 'rgba(7,11,20,0.92)',
+      textColor: '#E0F2FE',
+    });
+  }
+
+  body += renderSubtitle(d.subtitle, 14, 143);
+
+  const ariaLabel =
+    !showZeros && !showPoles
+      ? d.subtitle
+        ? `${d.subtitle} (s-plane setup)`
+        : 'Complex s-plane pole-zero map (setup)'
+      : d.subtitle
+        ? `Complex s-plane pole-zero map: ${d.subtitle}`
+        : 'Complex s-plane pole-zero map';
+
+  return wrapSVG(p, ariaLabel, body);
+}
+
 const RENDERERS = {
   msd: renderMSD,
   rotational: renderRotational,
@@ -899,6 +1445,7 @@ const RENDERERS = {
   'dc-motor': renderDCMotor,
   'thermal-2zone': renderThermal2Zone,
   'feedback-pd': renderFeedbackPD,
+  'pole-zero': renderPoleZeroMap,
 };
 
 /**
@@ -923,5 +1470,5 @@ export function renderSystemSchematicSVG(diagram, options = {}) {
   const isSetup = activeStepIndex === 0;
   const prefix = `sch-${String(diagram.type).replace(/[^a-z0-9-]/gi, '')}-`;
 
-  return renderer(diagram, prefix, isSetup);
+  return renderer(diagram, prefix, isSetup, activeStepIndex);
 }

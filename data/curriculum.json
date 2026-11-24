@@ -112,7 +112,7 @@
           "status": "live",
           "title": "Root Locus, Bode & Lead-Lag Design",
           "tag": "Controls 03 • 3D |G(s)| Surface, Bode & Compensators",
-          "description": "Slice the 3D Laplace magnitude surface |G(s)| along the jω-axis to see Bode curves emerge, trace Root Locus asymptotes and breakaway points, and synthesize Phase-Lead, Phase-Lag, and Nyquist-stable compensators in multi-part drills.",
+          "description": "Extract open-loop zeros and poles (including RHP non-minimum-phase and hidden cancellation traps), slice the 3D Laplace magnitude surface |G(s)| along the jω-axis for Bode curves, trace Root Locus asymptotes, and synthesize Phase-Lead, Phase-Lag, and Nyquist-stable compensators in multi-part drills.",
           "estimatedMinutes": 40,
           "stages": [
             "3d-lab",

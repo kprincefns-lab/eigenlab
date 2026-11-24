@@ -1,6 +1,7 @@
 /**
- * EIGENLAB — Controls 03: Root Locus, Bode Frequency Design, Lead-Lag & Robustness
- * 10 deep, engineering-grade, multi-part (5–6 steps each) control problems spanning:
+ * EIGENLAB — Controls 03: Poles & Zeros, Root Locus, Bode Frequency Design, Lead-Lag & Robustness
+ * 12 deep, engineering-grade, multi-part (5–7 steps each) control problems spanning:
+ * Pole-Zero Extraction (RHP Non-Minimum-Phase & Hidden Cancellation Traps),
  * Root Locus Geometry & Angle Design, Bode Asymptotes & Resonance, Exact Gain/Phase
  * Margins, Phase-Lead & Phase-Lag Synthesis, Sensitivity Waterbed Trade-offs, and
  * Nyquist Stability for Open-Loop Unstable Plants.
@@ -11,12 +12,13 @@
  *
  * Color convention inside KaTeX highlights:
  *  - Cyan   (#22D3EE): Open-loop plant G(s) / L(s) / frequency ω / poles
- *  - Amber  (#F59E0B): Gain K / phase target φm / crossover ωgc / critical point −1
+ *  - Amber  (#F59E0B): Gain K / phase target φm / crossover ωgc / critical point −1 / zeros
  *  - Emerald(#34D399): Solved step result / compensator C(s) / exact margins & bounds
  */
 
 export const FREQ_SOLVER_TIERS = [
   { id: 'all', label: 'All Tiers' },
+  { id: 'poles-zeros', label: 'Poles & Zeros' },
   { id: 'root-locus', label: 'Root Locus' },
   { id: 'bode-freq', label: 'Bode & Resonance' },
   { id: 'compensators', label: 'Lead-Lag Design' },
@@ -24,6 +26,551 @@ export const FREQ_SOLVER_TIERS = [
 ];
 
 export const FREQ_PROBLEMS = [
+  // =========================================================================
+  // TIER 0: POLE-ZERO EXTRACTION, NON-MINIMUM-PHASE & CANCELLATION TRAPS (2 problems)
+  // =========================================================================
+  {
+    id: 'frq0-pz-factor-rhp',
+    tier: 'poles-zeros',
+    tierLabel: 'Poles & Zeros',
+    title: 'Factoring Poles, RHP Zero & Non-Minimum-Phase Trap',
+    mechatronicsContext:
+      'Flexible robotic links, hydroelectric penstocks, and aircraft elevators often exhibit non-minimum-phase transfer functions with a Right Half-Plane zero; factoring every zero and pole first exposes hidden inverse-response undershoot and hard high-gain ceilings before you ever close the loop.',
+    expressionLatex: 'G(s)=\\frac{2s^2-4s-16}{s^3+6s^2+13s} \\;\\;(\\text{Poles \\& Zeros})',
+    finalAnswerLatex:
+      'z=+4,\\,-2\\;(m=2), \\quad p=0,\\,-3\\pm 2j\\;(n=3), \\quad \\angle G(j\\infty)=-270^\\circ\\;(\\text{NMP undershoot})',
+    diagram: {
+      type: 'pole-zero',
+      bounds: { minRe: -5, maxRe: 5.5, minIm: -3.5, maxIm: 3.5 },
+      zeros: [
+        { re: 4, im: 0, label: 'z₁=+4 (RHP)', labelPos: 'above' },
+        { re: -2, im: 0, label: 'z₂=−2', labelPos: 'above' },
+      ],
+      poles: [
+        { re: 0, im: 0, label: 'p₁=0', labelPos: 'below' },
+        { re: -3, im: 2, label: '−3+2j', labelPos: 'above' },
+        { re: -3, im: -2, label: '−3−2j', labelPos: 'below' },
+      ],
+      revealZerosStep: 1,
+      revealPolesStep: 2,
+      summaryBadge: 'n=3, m=2 · RHP Zero (+4)',
+      setupHint: 'Step 1: Factor N(s)=0 → ○   Step 2: Factor D(s)=0 → ×',
+      subtitle: 'Non-Minimum-Phase Plant s-Plane',
+    },
+    verifyPlot: {
+      kind: 'pole-map',
+      bounds: { minRe: -5, maxRe: 5.5, minIm: -3.5, maxIm: 3.5 },
+      poles: [
+        { re: 0, im: 0, label: 'p₁ = 0', status: 'marginal' },
+        { re: -3, im: 2, label: '−3+2j', status: 'lhp' },
+        { re: -3, im: -2, label: '−3−2j', status: 'lhp' },
+      ],
+      zeros: [
+        { re: 4, im: 0, label: 'z₁ = +4 (RHP)' },
+        { re: -2, im: 0, label: 'z₂ = −2' },
+      ],
+      hudLabel: 'n=3 Poles (×) · m=2 Zeros (○) · RHP Zero at +4',
+      defaultCursor: 0.5,
+      subtitle:
+        'Complex $s$-plane pole-zero map: the $3$ open-loop poles sit at $0$ and $-3 \\pm 2j$ (×), while the odd RHP zero at $z_1 = +4$ (○) adds $-90^\\circ$ non-minimum-phase lag, initial inverse-response undershoot, and an inescapable RHP root-locus branch!',
+      domainMeta: 'Non-Minimum-Phase Map · n=3 Poles, m=2 Zeros · RHP Zero z₁=+4',
+      metrics: [
+        { label: 'Finite Zeros (○)', value: 'z = +4 (RHP), −2 (m=2)' },
+        { label: 'Open-Loop Poles', value: 'p = 0, −3±2j (n=3)' },
+        { label: 'HF Slope & Phase', value: '−20 dB/dec · −270°' },
+        { label: 'NMP Consequence', value: 'Undershoot & K_max ✓' },
+      ],
+    },
+    steps: [
+      {
+        stepType: 'factor_zeros',
+        badge: 'Factor Numerator for Finite Zeros',
+        whyThisStep:
+          'Zeros ($N(s) = 0$) block transmission at specific complex frequencies and shape both transient kick and phase — spotting any root with $\\operatorname{Re}(z) > 0$ immediately warns of severe performance limits.',
+        systemImpact:
+          'Factoring $N(s) = 2(s - 4)(s + 2)$ exposes a Right Half-Plane zero at $z_1 = +4$ alongside the LHP zero $z_2 = -2$, instantly flagging this plant as Non-Minimum-Phase!',
+        prompt:
+          'Factor the numerator polynomial $N(s) = 2s^2 - 4s - 16 = 0$ to find all finite open-loop zeros and zero count $m$.',
+        highlightLatex:
+          'N(s) = \\textcolor{#F59E0B}{2s^2 - 4s - 16} = 2\\,(s^2 - 2s - 8) = 0',
+        options: [
+          {
+            id: 'a',
+            latex: 'z = +4\\;(\\text{RHP}),\\; -2 \\qquad (m = 2)',
+            correct: true,
+          },
+          {
+            id: 'b',
+            latex: 'z = -4,\\; +2\\;(\\text{RHP}) \\qquad (m = 2)',
+            correct: false,
+            misconception:
+              'Check the middle term: $(s + 4)(s - 2) = s^2 + 2s - 8$, which has $+2s$ instead of $-2s$; the true factors are $(s - 4)(s + 2)$.',
+          },
+          {
+            id: 'c',
+            latex: 'z = +8,\\; -4 \\qquad (m = 2)',
+            correct: false,
+            misconception:
+              'Factor out the leading $2$ first ($2(s^2 - 2s - 8) = 0$) — the leading gain $2$ scales magnitude but does NOT multiply the roots!',
+          },
+          {
+            id: 'd',
+            latex: 'z = +4,\\; -2,\\; 0 \\qquad (m = 3)',
+            correct: false,
+            misconception:
+              'There is no factor of $s$ in the numerator ($N(0) = -16 \\neq 0$); the factor of $s$ sits in the DENOMINATOR (making $s = 0$ a pole, not a zero).',
+          },
+        ],
+        lockedLabel: 'Finite Zeros (○)',
+        lockedResultLatex: 'z = \\textcolor{#34D399}{+4\\;(\\text{RHP}),\\; -2} \\qquad (m = 2)',
+        hint: 'Pull out $2$ and find two integers that multiply to $-8$ and add to $-2$.',
+      },
+      {
+        stepType: 'factor_poles',
+        badge: 'Factor Denominator for Open-Loop Poles',
+        whyThisStep:
+          'Open-loop poles ($D(s) = 0$) define the natural free-response modes of the plant — factoring out origin integrators and completing the square on quadratics reveals every real and oscillatory mode.',
+        systemImpact:
+          'With $p_1 = 0$ (an integrator) and $p_{2,3} = -3 \\pm 2j$ ($\\zeta \\approx 0.83$ damped complex pair), the plant itself has NO unstable RHP poles — every trouble ahead comes purely from the RHP zero at $+4$!',
+        prompt:
+          'Factor the denominator $D(s) = s^3 + 6s^2 + 13s = 0$ to extract all open-loop poles and pole count $n$.',
+        highlightLatex:
+          'D(s) = \\textcolor{#22D3EE}{s\\,(s^2 + 6s + 13)} = 0',
+        options: [
+          {
+            id: 'a',
+            latex: 'p = 0,\\; -3 \\pm 2j \\qquad (n = 3)',
+            correct: true,
+          },
+          {
+            id: 'b',
+            latex: 'p = 0,\\; -3 \\pm \\sqrt{13}\\,j \\qquad (n = 3)',
+            correct: false,
+            misconception:
+              'Complete the square carefully: $s^2 + 6s + 13 = (s + 3)^2 + (13 - 9) = (s + 3)^2 + 4 = 0$, giving imaginary part $\\pm\\sqrt{4} = \\pm 2$, not $\\pm\\sqrt{13}$.',
+          },
+          {
+            id: 'c',
+            latex: 'p = -3 \\pm 2j \\qquad (n = 2)',
+            correct: false,
+            misconception:
+              'Do not discard the factored $s$ in $s(s^2 + 6s + 13) = 0$: it contributes a third open-loop pole right at the origin $p_1 = 0$!',
+          },
+          {
+            id: 'd',
+            latex: 'p = 0,\\; +3 \\pm 2j \\qquad (n = 3)',
+            correct: false,
+            misconception:
+              'Solving $(s + 3)^2 = -4$ gives $s = -3 \\pm 2j$ in the stable LHP (negative real part, not $+3$).',
+          },
+        ],
+        lockedLabel: 'Open-Loop Poles (×)',
+        lockedResultLatex: 'p = \\textcolor{#34D399}{0,\\; -3 \\pm 2j} \\qquad (n = 3)',
+        hint: 'Pull out $s$ for $p_1 = 0$, then complete the square: $s^2 + 6s + 13 = (s+3)^2 + 2^2$.',
+      },
+      {
+        stepType: 'rel_deg_phase',
+        badge: 'Relative Degree vs. High-Freq Phase',
+        whyThisStep:
+          'Minimum-phase rules link high-frequency magnitude slope $-20(n-m)$ directly to phase $-90^\\circ(n-m)$, but an RHP zero BREAKS that link — giving the magnitude lift of a zero with the phase LAG of a pole!',
+        systemImpact:
+          'Even though $n - m = 1$ gives a gentle $-20\\text{ dB/dec}$ magnitude slope, the RHP zero at $+4$ shears off $-90^\\circ$ instead of adding $+90^\\circ$, driving asymptotic phase lag all the way to $-270^\\circ$ ($180^\\circ$ worse than minimum-phase)!',
+        prompt:
+          'Compute the relative degree $n - m$, high-frequency magnitude roll-off, and net Bode asymptotic phase (summing $3$ LHP/origin poles, $1$ LHP zero at $-2$, and $1$ RHP zero at $+4$).',
+        highlightLatex:
+          'n - m = \\textcolor{#22D3EE}{3} - \\textcolor{#F59E0B}{2} = 1, \\qquad \\text{RHP zero } (1 - s/4) \\to \\textcolor{#F59E0B}{-90^\\circ\\text{ lag!}}',
+        options: [
+          {
+            id: 'a',
+            latex: 'n-m=1\\;(-20\\text{ dB/dec}), \\qquad \\angle G(j\\infty) = -90^\\circ',
+            correct: false,
+            misconception:
+              '$-90^\\circ = -90^\\circ(n-m)$ holds ONLY for minimum-phase plants! The RHP zero at $+4$ contributes $-90^\\circ$ lag instead of $+90^\\circ$ lead, adding $180^\\circ$ extra lag.',
+          },
+          {
+            id: 'b',
+            latex: 'n-m=1\\;(-20\\text{ dB/dec}), \\qquad \\angle G(j\\infty) = -270^\\circ',
+            correct: true,
+          },
+          {
+            id: 'c',
+            latex: 'n-m=3\\;(-60\\text{ dB/dec}), \\qquad \\angle G(j\\infty) = -270^\\circ',
+            correct: false,
+            misconception:
+              'An RHP zero still raises magnitude at $+20\\text{ dB/dec}$ just like an LHP zero ($|j\\omega - 4| = |j\\omega + 4|$), so relative degree is $n - m = 3 - 2 = 1$ ($-20\\text{ dB/dec}$).',
+          },
+          {
+            id: 'd',
+            latex: 'n-m=1\\;(-20\\text{ dB/dec}), \\qquad \\angle G(j\\infty) = -180^\\circ',
+            correct: false,
+            misconception:
+              'Sum every dynamic factor: $3$ poles ($-270^\\circ$) $+ 1$ LHP zero ($+90^\\circ$) $+ 1$ RHP zero ($-90^\\circ$) $= -270^\\circ$.',
+          },
+        ],
+        lockedLabel: 'Slope & HF Phase',
+        lockedResultLatex: '\\textcolor{#34D399}{n-m=1\\;(-20\\text{ dB/dec}),\\;\\; \\angle G(j\\infty)=-270^\\circ}',
+        hint: 'Count $-90^\\circ$ per LHP/origin pole, $+90^\\circ$ for the LHP zero ($-2$), and $-90^\\circ$ for the RHP zero ($+4$).',
+      },
+      {
+        stepType: 'nmp_undershoot',
+        badge: 'Non-Minimum-Phase Step Diagnosis',
+        whyThisStep:
+          'Recognizing the physical time-domain signature of an odd number of RHP zeros prepares you for real-world hardware (like backing a trailer or opening a hydro turbine gate) that initially moves the WRONG way!',
+        systemImpact:
+          'Because $G(s)$ has a single (odd) RHP zero at $z_1 = +4$, a step command triggers initial inverse-response undershoot — the output first moves opposite its eventual trend before turning around!',
+        prompt:
+          'Diagnose why $G(s)$ is classified as Non-Minimum-Phase and identify the unmistakable step-response signature of its single (odd) RHP zero at $z_1 = +4$.',
+        highlightLatex:
+          'z_1 = \\textcolor{#F59E0B}{+4 > 0} \\;(\\text{1 odd RHP zero}) \\implies \\dot{y}(0^+)\\text{ vs. }\\dot{y}(\\infty)\\text{ have opposite signs}',
+        options: [
+          {
+            id: 'a',
+            latex: '\\text{Minimum-phase: all poles have } \\operatorname{Re}(p) \\le 0 \\text{ so step is monotonic}',
+            correct: false,
+            misconception:
+              'Minimum-phase requires BOTH all poles AND all zeros to avoid the open RHP; the zero at $s = +4$ makes $G(s)$ strictly Non-Minimum-Phase.',
+          },
+          {
+            id: 'b',
+            latex: '\\text{Non-Minimum-Phase: causes initial inverse-response undershoot}',
+            correct: true,
+          },
+          {
+            id: 'c',
+            latex: '\\text{Non-Minimum-Phase: output diverges exponentially as } e^{+4t}',
+            correct: false,
+            misconception:
+              'Zeros do NOT create open-loop exponential modes ($e^{+4t}$ would come from an RHP POLE at $+4$); an RHP zero causes inverse-response undershoot and phase lag.',
+          },
+          {
+            id: 'd',
+            latex: '\\text{Non-Minimum-Phase: eliminates all step overshoot automatically}',
+            correct: false,
+            misconception:
+              'RHP zeros do the opposite of helping — they inject severe phase lag AND initial wrong-way undershoot, making fast tracking much harder!',
+          },
+        ],
+        lockedLabel: 'NMP Diagnosis',
+        lockedResultLatex: '\\textcolor{#34D399}{\\text{Non-Minimum-Phase: initial inverse-response undershoot}}',
+        hint: 'An odd count of real RHP zeros flips the sign of initial response relative to the final steady-state direction.',
+      },
+      {
+        stepType: 'rhp_zero_rl_limit',
+        badge: 'High-Gain Root Locus Trap',
+        whyThisStep:
+          'Connecting open-loop zeros directly to closed-loop Root Locus endpoints reveals the fundamental bandwidth wall of every non-minimum-phase plant: cranking up feedback gain ALWAYS ends in instability!',
+        systemImpact:
+          'As $K \\to \\infty$, one closed-loop pole MUST march straight into the RHP zero at $z_1 = +4$, capping achievable closed-loop bandwidth below roughly $\\omega_{BW} \\lesssim z_1/2 = 2\\text{ rad/s}$!',
+        prompt:
+          'Under high-gain feedback ($K \\to \\infty$), where do the $n = 3$ closed-loop poles terminate, and what does this guarantee for high proportional gain?',
+        highlightLatex:
+          'K \\to \\infty: \\;\\; p_{\\text{CL}} \\longrightarrow \\{\\textcolor{#F59E0B}{z_1=+4},\\; \\textcolor{#34D399}{z_2=-2},\\; -\\infty\\}',
+        options: [
+          {
+            id: 'a',
+            latex: '\\text{All 3 poles move to } -\\infty\\text{; loop is unconditionally stable for all } K',
+            correct: false,
+            misconception:
+              'Only $n - m = 1$ branch goes to $-\\infty$; the other $m = 2$ branches MUST terminate at the finite open-loop zeros ($-2$ and $+4$).',
+          },
+          {
+            id: 'b',
+            latex: '\\text{One branch terminates at } z_1=+4\\text{ (RHP)} \\implies \\text{guaranteed unstable at high } K',
+            correct: true,
+          },
+          {
+            id: 'c',
+            latex: '\\text{Closed-loop poles repel away from RHP zeros, keeping them in the LHP}',
+            correct: false,
+            misconception:
+              'Finite zeros ATTRACT root-locus branches as $K \\to \\infty$ regardless of half-plane — so an RHP zero acts like a magnet dragging a closed-loop pole into instability!',
+          },
+          {
+            id: 'd',
+            latex: '\\text{Adding a faster sensor removes the RHP zero from the closed-loop locus}',
+            correct: false,
+            misconception:
+              'Feedback cannot relocate plant zeros (unless you illegally cancel them in the RHP, which causes internal instability) — the RHP zero ceiling is fundamental!',
+          },
+        ],
+        lockedLabel: 'High-Gain Limit',
+        lockedResultLatex: '\\textcolor{#34D399}{\\text{1 branch ends at } z_1=+4\\text{ (RHP)} \\implies \\text{hard gain/BW ceiling}}',
+        hint: 'Remember the universal root-locus rule: $m$ branches terminate on the $m$ finite open-loop zeros as $K \\to \\infty$.',
+      },
+    ],
+  },
+
+  {
+    id: 'frq0-pz-cancellation-trap',
+    tier: 'poles-zeros',
+    tierLabel: 'Poles & Zeros',
+    title: 'Pole-Zero Cancellation, Hidden RHP Modes & Dominance',
+    mechatronicsContext:
+      'Attempting to erase an unstable actuator pole by placing a controller zero on top of it makes the simplified input-output transfer function look magically stable — factoring the full polynomials reveals why RHP pole-zero cancellation creates a fatal hidden internal instability.',
+    expressionLatex: 'G(s)=\\frac{s^2-4}{s^3+3s^2-4s-12} \\;\\;(\\text{Cancellation})',
+    finalAnswerLatex:
+      'G(s)=\\frac{(s-2)(s+2)}{(s+3)(s-2)(s+2)}\\to\\frac{1}{s+3}, \\quad \\text{RHP cancel at } s=+2 \\implies \\text{Internally Unstable!}',
+    diagram: {
+      type: 'pole-zero',
+      bounds: { minRe: -4.8, maxRe: 3.6, minIm: -2.5, maxIm: 2.5 },
+      zeros: [
+        { re: 2, im: 0, label: 'z=+2 (RHP)', labelPos: 'above' },
+        { re: -2, im: 0, label: 'z=−2', labelPos: 'above' },
+      ],
+      poles: [
+        { re: -3, im: 0, label: 'p=−3', labelPos: 'below' },
+        { re: 2, im: 0, label: 'p=+2 CANCEL!', labelPos: 'below' },
+        { re: -2, im: 0, label: 'p=−2', labelPos: 'below' },
+      ],
+      revealZerosStep: 1,
+      revealPolesStep: 2,
+      summaryBadge: 'RHP Cancel at s=+2 (UNSTABLE!)',
+      setupHint: 'Factor N(s) & D(s) to expose hidden pole-zero cancellations',
+      subtitle: 'Hidden Pole-Zero Cancellation Map',
+    },
+    verifyPlot: {
+      kind: 'pole-map',
+      bounds: { minRe: -4.8, maxRe: 3.6, minIm: -2.5, maxIm: 2.5 },
+      poles: [
+        { re: -3, im: 0, label: 'p₁ = −3', status: 'lhp' },
+        { re: -2, im: 0, label: 'p₂ = −2', status: 'lhp' },
+        { re: 2, im: 0, label: 'p₃ = +2 (RHP!)', status: 'rhp' },
+      ],
+      zeros: [
+        { re: -2, im: 0, label: 'z₂ = −2' },
+        { re: 2, im: 0, label: 'z₁ = +2 (RHP)' },
+      ],
+      hudLabel: 'Hidden RHP Cancellation at s=+2 → Internally Unstable',
+      defaultCursor: 0.5,
+      subtitle:
+        'Complex $s$-plane cancellation map: both $(s+2)$ and $(s-2)$ overlap (× on ○), algebraically reducing $G(s)$ to $\\frac{1}{s+3}$ — yet the hidden RHP mode $e^{+2t}$ at $s = +2$ diverges internally to $\\infty$!',
+      domainMeta: 'Pole-Zero Cancellation Map · Hidden Unstable Mode at s=+2',
+      metrics: [
+        { label: 'Zeros & Poles', value: 'z = ±2 · p = −3, ±2' },
+        { label: 'Reduced I/O TF', value: 'G_red(s) = 1/(s+3)' },
+        { label: 'Internal Stability', value: 'UNSTABLE (e^+2t mode!)' },
+        { label: 'Safe Dominance', value: 'LHP only, ≥5–10× faster ✓' },
+      ],
+    },
+    steps: [
+      {
+        stepType: 'factor_num_cancel',
+        badge: 'Factor Numerator N(s)',
+        whyThisStep:
+          'Always factor numerator and denominator completely BEFORE simplifying — premature cancellation hides critical RHP dynamics from your stability checks.',
+        systemImpact:
+          'The difference of squares $s^2 - 4$ splits symmetrically into an LHP zero ($-2$) and an RHP zero ($+2$), immediately putting us on high alert for any matching RHP pole.',
+        prompt:
+          'Factor the numerator $N(s) = s^2 - 4 = 0$ to extract all finite zeros of $G(s)$.',
+        highlightLatex:
+          'N(s) = \\textcolor{#F59E0B}{s^2 - 4} = 0',
+        options: [
+          {
+            id: 'a',
+            latex: 'z = +2\\;(\\text{RHP}),\\; -2 \\qquad (m = 2)',
+            correct: true,
+          },
+          {
+            id: 'b',
+            latex: 'z = \\pm 2j \\qquad (m = 2)',
+            correct: false,
+            misconception:
+              'Watch the sign! $s^2 + 4 = 0$ gives imaginary zeros $\\pm 2j$; $s^2 - 4 = (s - 2)(s + 2) = 0$ gives REAL zeros $+2$ and $-2$.',
+          },
+          {
+            id: 'c',
+            latex: 'z = -2,\\; -2 \\;(\\text{double zero}) \\qquad (m = 2)',
+            correct: false,
+            misconception:
+              '$(s+2)^2 = s^2 + 4s + 4$; difference of squares $s^2 - 4$ factors as $(s - 2)(s + 2)$ with opposite signs.',
+          },
+          {
+            id: 'd',
+            latex: 'z = +4,\\; -4 \\qquad (m = 2)',
+            correct: false,
+            misconception:
+              'Take the square root of $4$: $s^2 = 4 \\implies s = \\pm 2$, not $\\pm 4$.',
+          },
+        ],
+        lockedLabel: 'Numerator Zeros',
+        lockedResultLatex: 'z = \\textcolor{#34D399}{+2\\;(\\text{RHP}),\\; -2} \\qquad (m = 2)',
+        hint: 'Apply difference of squares $a^2 - b^2 = (a - b)(a + b)$ to $s^2 - 4$.',
+      },
+      {
+        stepType: 'factor_den_group',
+        badge: 'Factor Cubic Denominator by Grouping',
+        whyThisStep:
+          'Higher-order plant denominators often hide unstable modes behind innocent-looking coefficients — factoring by grouping exposes every single pole cleanly without numerical root-finding.',
+        systemImpact:
+          'Factoring $D(s) = (s + 3)(s - 2)(s + 2)$ unmasks a dangerous RHP pole at $s = +2$ sitting directly underneath the numerator zero at $s = +2$!',
+        prompt:
+          'Factor the cubic denominator $D(s) = s^3 + 3s^2 - 4s - 12 = 0$ by grouping terms to find all $n = 3$ poles.',
+        highlightLatex:
+          'D(s) = \\textcolor{#22D3EE}{s^2(s + 3) - 4(s + 3)} = 0',
+        options: [
+          {
+            id: 'a',
+            latex: 'p = -3,\\; -2,\\; -2 \\qquad (n = 3)',
+            correct: false,
+            misconception:
+              'Pulling out $(s+3)$ leaves $(s+3)(s^2 - 4) = (s+3)(s - 2)(s + 2)$, so one root is $+2$ in the RHP!',
+          },
+          {
+            id: 'b',
+            latex: 'p = +3,\\; +2,\\; -2 \\qquad (n = 3)',
+            correct: false,
+            misconception:
+              'Setting $(s + 3) = 0$ gives $p = -3$ in the LHP, not $+3$.',
+          },
+          {
+            id: 'c',
+            latex: 'p = -3,\\; +2\\;(\\text{RHP}),\\; -2 \\qquad (n = 3)',
+            correct: true,
+          },
+          {
+            id: 'd',
+            latex: 'p = -3,\\; \\pm 2j \\qquad (n = 3)',
+            correct: false,
+            misconception:
+              'The quadratic factor is $(s^2 - 4)$, NOT $(s^2 + 4)$ — so its roots are real ($+2, -2$), not imaginary.',
+          },
+        ],
+        lockedLabel: 'Denominator Poles',
+        lockedResultLatex: 'p = \\textcolor{#34D399}{-3,\\; +2\\;(\\text{RHP}),\\; -2} \\qquad (n = 3)',
+        hint: 'Factor out the common binomial $(s + 3)$ to get $(s + 3)(s^2 - 4) = 0$.',
+      },
+      {
+        stepType: 'id_cancellations',
+        badge: 'Expose Both Pole-Zero Cancellations',
+        whyThisStep:
+          'Algebraic cancellation hides poles from the transfer function $Y(s)/U(s)$, so you must classify EVERY canceled pair by half-plane before trusting the reduced expression.',
+        systemImpact:
+          'While $G_{\\text{red}}(s) = \\frac{1}{s+3}$ looks like a benign first-order low-pass filter, canceling $(s - 2)$ silently hid an unstable RHP pole at $s = +2$!',
+        prompt:
+          'Cancel the common factors in $G(s) = \\frac{(s - 2)(s + 2)}{(s + 3)(s - 2)(s + 2)}$ and classify BOTH canceled pole-zero pairs.',
+        highlightLatex:
+          'G(s) = \\frac{\\cancel{\\textcolor{#F59E0B}{(s-2)}}\\,\\cancel{\\textcolor{#34D399}{(s+2)}}}{(s+3)\\,\\cancel{\\textcolor{#F59E0B}{(s-2)}}\\,\\cancel{\\textcolor{#34D399}{(s+2)}}} \\longrightarrow G_{\\text{red}}(s)',
+        options: [
+          {
+            id: 'a',
+            latex: 'G_{\\text{red}}(s)=\\frac{1}{s+3};\\;\\; \\text{stable LHP cancel at } -2,\\;\\; \\text{fatal RHP cancel at } +2',
+            correct: true,
+          },
+          {
+            id: 'b',
+            latex: 'G_{\\text{red}}(s)=\\frac{1}{s+3};\\;\\; \\text{both cancellations are harmless algebraic simplifications}',
+            correct: false,
+            misconception:
+              'Only LHP cancellations decay safely to zero ($e^{-2t} \\to 0$); an RHP cancellation at $s = +2$ hides an exponentially exploding mode $e^{+2t}$!',
+          },
+          {
+            id: 'c',
+            latex: 'G_{\\text{red}}(s)=\\frac{s+2}{s+3};\\;\\; \\text{only } (s-2) \\text{ cancels}',
+            correct: false,
+            misconception:
+              'Both $(s - 2)$ AND $(s + 2)$ appear in numerator and denominator, reducing the input-output ratio all the way to $\\frac{1}{s+3}$.',
+          },
+          {
+            id: 'd',
+            latex: 'G_{\\text{red}}(s)=\\frac{1}{s-3};\\;\\; \\text{the surviving pole at } +3 \\text{ is unstable}',
+            correct: false,
+            misconception:
+              'The surviving denominator factor is $(s + 3)$, which gives a STABLE pole at $s = -3$; the real danger is the HIDDEN RHP cancellation at $s = +2$!',
+          },
+        ],
+        lockedLabel: 'Canceled Pairs',
+        lockedResultLatex: 'G_{\\text{red}}=\\textcolor{#34D399}{\\frac{1}{s+3}} \\;\\;(\\text{LHP }-2\\text{ ok, }\\textcolor{#F59E0B}{\\text{RHP }+2\\text{ FATAL!}})',
+        hint: 'Divide out both $(s+2)$ and $(s-2)$, then check the sign of $\\operatorname{Re}(s)$ for each canceled root.',
+      },
+      {
+        stepType: 'internal_stability',
+        badge: 'Why RHP Cancellation Breaks Internal Stability',
+        whyThisStep:
+          'A transfer function that looks BIBO-stable from $u \\to y$ can still blow up your actuator in milliseconds if an unstable mode is hidden inside — this is why control engineers insist on INTERNAL stability!',
+        systemImpact:
+          'The canceled $s = +2$ mode becomes unobservable/uncontrollable from $u \\to y$, yet any nonzero initial state, load disturbance, or $0.1\\%$ parameter drift triggers $e^{+2t} \\to \\infty$ internally!',
+        prompt:
+          'Even though $G_{\\text{red}}(s) = \\frac{1}{s + 3}$ has its only visible pole in the LHP, why is the physical system NOT internally stable?',
+        highlightLatex:
+          '\\text{Hidden mode } \\textcolor{#F59E0B}{e^{+2t}} \\text{ canceled from } \\frac{Y(s)}{U(s)} \\implies \\text{unobservable / uncontrollable!}',
+        options: [
+          {
+            id: 'a',
+            latex: '\\text{It IS internally stable because } G_{\\text{red}}(s)=\\frac{1}{s+3} \\text{ has all poles in LHP}',
+            correct: false,
+            misconception:
+              'BIBO stability of the reduced transfer function does NOT imply internal stability when an RHP pole was canceled!',
+          },
+          {
+            id: 'b',
+            latex: '\\text{Hidden } e^{+2t} \\text{ mode persists internally; any disturbance or mismatch drives states to } \\infty',
+            correct: true,
+          },
+          {
+            id: 'c',
+            latex: '\\text{The surviving pole at } s = -3 \\text{ oscillates because two modes were canceled}',
+            correct: false,
+            misconception:
+              'A real pole at $s = -3$ produces pure monotonic decay $e^{-3t}$; the catastrophe is the hidden RHP mode $e^{+2t}$ at $s = +2$.',
+          },
+          {
+            id: 'd',
+            latex: '\\text{Exact digital floating-point arithmetic eliminates the } e^{+2t} \\text{ mode permanently}',
+            correct: false,
+            misconception:
+              'Even with EXACT mathematical cancellation, nonzero initial energy or internal disturbances still excite $e^{+2t} \\to \\infty$ — and real hardware NEVER has exact parameter matching anyway!',
+          },
+        ],
+        lockedLabel: 'Internal Stability',
+        lockedResultLatex: '\\textcolor{#34D399}{\\text{NOT internally stable: hidden } e^{+2t} \\text{ diverges on any perturbation}}',
+        hint: 'Ask what happens to the internal state $x(t)$ when an $e^{+2t}$ eigenvalue is hidden from $Y(s)/U(s)$ and perturbed slightly.',
+      },
+      {
+        stepType: 'dominance_rule',
+        badge: 'Safe LHP Dominance & Cancellation Rule',
+        whyThisStep:
+          'Knowing WHEN you can safely drop a fast pole-zero dipole (order reduction) versus when cancellation is strictly forbidden separates textbook algebra from safe aerospace and robotics design.',
+        systemImpact:
+          'You may drop/approximate a pole-zero dipole ONLY when it is strictly in the LHP AND far faster than the dominant poles ($|p_{\\text{fast}}| \\ge 5\\text{–}10\\,|\\operatorname{Re}(p_{\\text{dom}})|$); RHP cancellation is NEVER legal!',
+        prompt:
+          'State the valid engineering rule for pole-zero cancellation and dominant-pole model reduction.',
+        highlightLatex:
+          '\\text{LHP fast dipole: } \\textcolor{#34D399}{|p_{\\text{fast}}| \\ge 5\\text{–}10\\,|\\sigma_{\\text{dom}}|} \\qquad\\text{vs.}\\qquad \\text{RHP cancel: } \\textcolor{#F59E0B}{\\text{FORBIDDEN}}',
+        options: [
+          {
+            id: 'a',
+            latex: '\\text{Permissible ONLY in LHP when fast } (|p| \\ge 5\\text{–}10\\,|\\sigma_{\\text{dom}}|);\\;\\; \\text{RHP cancel NEVER allowed}',
+            correct: true,
+          },
+          {
+            id: 'b',
+            latex: '\\text{Any RHP pole may be canceled as long as } |p| \\ge 10\\,|\\sigma_{\\text{dom}}|',
+            correct: false,
+            misconception:
+              'A FASTER RHP pole (e.g. $s = +30$) explodes EVEN FASTER ($e^{+30t}$) — RHP pole-zero cancellation is NEVER permissible at any frequency!',
+          },
+          {
+            id: 'c',
+            latex: '\\text{Even LHP pole-zero cancellations always cause internal instability}',
+            correct: false,
+            misconception:
+              'Canceled LHP modes decay exponentially to zero ($e^{-\\alpha t} \\to 0$), so LHP cancellation preserves internal stability (just avoid canceling slow LHP poles if disturbance rejection matters).',
+          },
+          {
+            id: 'd',
+            latex: '\\text{Drop whichever poles are CLOSEST to the } j\\omega\\text{-axis since they have smallest magnitude}',
+            correct: false,
+            misconception:
+              'Poles CLOSEST to the $j\\omega$-axis decay the SLOWEST and are the DOMINANT poles you must KEEP — only fast poles far to the left can be approximated away!',
+          },
+        ],
+        lockedLabel: 'Dominance Rule',
+        lockedResultLatex: '\\textcolor{#34D399}{\\text{LHP fast only } (\\ge 5\\text{–}10\\times\\text{ faster});\\;\\; \\text{RHP cancel NEVER allowed}}',
+        hint: 'Check which half-plane decays naturally and which poles die out fastest in $e^{pt}$.',
+      },
+    ],
+  },
+
   // =========================================================================
   // TIER 1: ROOT LOCUS GEOMETRY & ZERO PLACEMENT (3 problems)
   // =========================================================================
@@ -37,6 +584,21 @@ export const FREQ_PROBLEMS = [
     expressionLatex: 'L(s)=\\frac{K}{s(s+2)(s+4)} \\;\\;(\\text{Root Locus})',
     finalAnswerLatex:
       '\\sigma_a=-2,\\; \\phi=\\pm 60^\\circ,180^\\circ, \\quad s_b\\approx -0.845, \\quad K_u=48\\;(\\omega_u=2\\sqrt{2})',
+    diagram: {
+      type: 'pole-zero',
+      bounds: { minRe: -5.2, maxRe: 1.5, minIm: -3.0, maxIm: 3.0 },
+      zeros: [],
+      poles: [
+        { re: 0, im: 0, label: 'p₁=0', labelPos: 'above' },
+        { re: -2, im: 0, label: 'p₂=−2', labelPos: 'above' },
+        { re: -4, im: 0, label: 'p₃=−4', labelPos: 'above' },
+      ],
+      revealZerosStep: 1,
+      revealPolesStep: 1,
+      summaryBadge: 'n=3, m=0 · n−m=3',
+      setupHint: 'Step 1: Extract open-loop zeros (N=0) & poles (D=0)',
+      subtitle: 'Open-Loop Pole-Zero Map (3 Poles)',
+    },
     verifyPlot: {
       kind: 'pole-map',
       bounds: { minRe: -6.5, maxRe: 1.8, minIm: -4.2, maxIm: 4.2 },
@@ -54,6 +616,49 @@ export const FREQ_PROBLEMS = [
     },
     steps: [
       {
+        stepType: 'extract_pz',
+        badge: 'Open-Loop Zeros, Poles & Degree',
+        whyThisStep:
+          'Every root locus begins at the open-loop poles ($K = 0$) and terminates at finite zeros or asymptotes ($K \\to \\infty$), so extracting all zeros, poles, and relative degree $n - m$ is always Step 1.',
+        systemImpact:
+          'With $n = 3$ real poles at $0, -2, -4$ and $m = 0$ finite zeros, relative degree $n - m = 3$ locks in $3$ root-locus branches and immediately flags high-gain instability risk!',
+        prompt:
+          'Extract all finite open-loop zeros ($N(s) = 0$), poles ($D(s) = 0$), and relative degree $n - m$ of $L(s) = \\frac{K}{s(s+2)(s+4)}$.',
+        highlightLatex:
+          'L(s) = \\frac{\\textcolor{#F59E0B}{K}}{\\textcolor{#22D3EE}{s(s+2)(s+4)}} \\implies N(s)=0,\\; D(s)=0',
+        options: [
+          {
+            id: 'a',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = 0,\\,-2,\\,-4\\;(n=3),\\;\\; n-m = 3',
+            correct: true,
+          },
+          {
+            id: 'b',
+            latex: 'm = 1\\text{ zero } (z=0),\\;\\; p = -2,\\,-4\\;(n=2),\\;\\; n-m = 1',
+            correct: false,
+            misconception:
+              '$s$ is in the DENOMINATOR, making $s = 0$ an open-loop pole (integrator), not a zero; $N(s) = K$ has no roots in $s$.',
+          },
+          {
+            id: 'c',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = 0,\\,+2,\\,+4\\;(n=3),\\;\\; n-m = 3',
+            correct: false,
+            misconception:
+              'Setting $(s+2)=0$ and $(s+4)=0$ flips the signs to $s = -2$ and $s = -4$ in the stable LHP, not $+2, +4$.',
+          },
+          {
+            id: 'd',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = -2,\\,-4\\;(n=2),\\;\\; n-m = 2',
+            correct: false,
+            misconception:
+              'Never drop the lone factor $s$ in the denominator — it contributes an integrator pole right at the origin $s = 0$!',
+          },
+        ],
+        lockedLabel: 'Open-Loop P & Z',
+        lockedResultLatex: '\\textcolor{#34D399}{m=0,\\;\\; p=0,\\,-2,\\,-4\\;(n=3,\\; n-m=3)}',
+        hint: 'Set $N(s) = K = 0$ (no finite roots) and set each denominator factor $s, (s+2), (s+4)$ to zero.',
+      },
+      {
         stepType: 'real_axis',
         badge: 'Real-Axis Locus Segments',
         whyThisStep:
@@ -61,7 +666,7 @@ export const FREQ_PROBLEMS = [
         systemImpact:
           'Because $(-2, 0)$ lies on the locus with two open-loop poles at its endpoints, those two poles MUST march toward each other and collide into complex oscillatory pairs.',
         prompt:
-          'Apply the real-axis rule (odd count of open-loop poles + zeros strictly to the right) to $L(s) = \\frac{K}{s(s+2)(s+4)}$ with poles at $0, -2, -4$.',
+          'Using the locked poles at $0, -2, -4$ ($m=0$), apply the real-axis rule (odd count of open-loop poles + zeros strictly to the right) to identify the locus intervals.',
         highlightLatex:
           '\\text{Poles at } \\textcolor{#22D3EE}{0,\\; -2,\\; -4} \\;\\;\\longrightarrow\\;\\; \\text{odd count to the right}',
         options: [
@@ -281,6 +886,21 @@ export const FREQ_PROBLEMS = [
     expressionLatex: 'G(s)=\\frac{1}{s(s+4)},\\;\\; s_d=-3+3j',
     finalAnswerLatex:
       '\\theta_z=\\arctan(0.5)\\approx 26.6^\\circ \\implies z=9,\\;\\; K=2 \\;\\;(C(s)=2s+18)',
+    diagram: {
+      type: 'pole-zero',
+      bounds: { minRe: -5.5, maxRe: 1.5, minIm: -4.2, maxIm: 4.2 },
+      zeros: [],
+      poles: [
+        { re: 0, im: 0, label: 'p₁=0', labelPos: 'below' },
+        { re: -4, im: 0, label: 'p₂=−4', labelPos: 'below' },
+      ],
+      target: { re: -3, im: 3, label: 'sd=−3+3j' },
+      revealZerosStep: 1,
+      revealPolesStep: 1,
+      summaryBadge: 'n=2, m=0 · Target sd',
+      setupHint: 'Step 1: Find plant zeros & poles before angle sum at sd',
+      subtitle: 'Uncompensated Plant & Target Pole sd',
+    },
     verifyPlot: {
       kind: 'pole-map',
       bounds: { minRe: -10.5, maxRe: 1.5, minIm: -4.5, maxIm: 4.5 },
@@ -303,6 +923,49 @@ export const FREQ_PROBLEMS = [
     },
     steps: [
       {
+        stepType: 'extract_pz',
+        badge: 'Plant Zeros, Poles & Degree',
+        whyThisStep:
+          'Before measuring vector angles to the desired closed-loop pole $s_d$, locating every open-loop plant pole and zero establishes both the uncompensated asymptote and every angle term.',
+        systemImpact:
+          'With $n = 2$ poles at $0, -4$ and $m = 0$ zeros, the uncompensated root locus has vertical $\\pm 90^\\circ$ asymptotes stuck at $\\sigma_a = -2$, proving it can NEVER reach $\\operatorname{Re}(s_d) = -3$ without adding a zero!',
+        prompt:
+          'Extract the finite open-loop zeros, poles, and relative degree $n - m$ of the uncompensated plant $G(s) = \\frac{1}{s(s+4)}$.',
+        highlightLatex:
+          'G(s) = \\frac{1}{\\textcolor{#22D3EE}{s(s+4)}} \\implies N(s)=0,\\; D(s)=0',
+        options: [
+          {
+            id: 'a',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = 0,\\,-4\\;(n=2),\\;\\; n-m = 2',
+            correct: true,
+          },
+          {
+            id: 'b',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = -4\\;(n=1),\\;\\; n-m = 1',
+            correct: false,
+            misconception:
+              'Do not overlook the lone $s$ in the denominator — it contributes an integrator pole right at the origin $s = 0$ ($n = 2$ poles total)!',
+          },
+          {
+            id: 'c',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = 0,\\,+4\\;(n=2),\\;\\; n-m = 2',
+            correct: false,
+            misconception:
+              'Solving $(s + 4) = 0$ places the pole in the stable LHP at $s = -4$, not $+4$.',
+          },
+          {
+            id: 'd',
+            latex: 'z = 1\\;(m=1),\\;\\; p = 0,\\,-4\\;(n=2),\\;\\; n-m = 1',
+            correct: false,
+            misconception:
+              'A constant numerator $N(s) = 1$ has NO roots in $s$, so $m = 0$ finite zeros and $n - m = 2$.',
+          },
+        ],
+        lockedLabel: 'Plant P & Z',
+        lockedResultLatex: '\\textcolor{#34D399}{m=0,\\;\\; p=0,\\,-4\\;(n=2,\\; n-m=2)}',
+        hint: 'Check $N(s) = 1 = 0$ (no finite zeros) and solve $s(s+4) = 0$ for the two poles.',
+      },
+      {
         stepType: 'uncomp_angles',
         badge: 'Open-Loop Pole Angles at sd',
         whyThisStep:
@@ -310,7 +973,7 @@ export const FREQ_PROBLEMS = [
         systemImpact:
           'Because the plant poles alone sum to $206.6^\\circ \\neq 180^\\circ$, NO scalar proportional gain $K$ can ever reach $s_d = -3 + 3j$ (uncompensated poles are trapped on $\\sigma = -2$!).',
         prompt:
-          'Evaluate the vector angles $\\theta_{p1} = \\angle(s_d - 0)$ and $\\theta_{p2} = \\angle(s_d + 4)$ from the plant poles ($0, -4$) to $s_d = -3 + 3j$.',
+          'From the locked plant poles ($0, -4$), evaluate the vector angles $\\theta_{p1} = \\angle(s_d - 0)$ and $\\theta_{p2} = \\angle(s_d + 4)$ to $s_d = -3 + 3j$.',
         highlightLatex:
           's_d - 0 = \\textcolor{#22D3EE}{-3 + 3j}, \\qquad s_d - (-4) = \\textcolor{#F59E0B}{+1 + 3j}',
         options: [
@@ -532,6 +1195,17 @@ export const FREQ_PROBLEMS = [
     expressionLatex: 'L(s)=\\frac{K(s+2)}{s^2} \\;\\;(\\text{Circle Locus})',
     finalAnswerLatex:
       '(\\sigma+2)^2 + \\omega^2 = 2^2, \\quad s_{\\text{in}}=-4\\;(K=8), \\quad s_{\\zeta=0.707}=-2\\pm 2j\\;(K=4)',
+    diagram: {
+      type: 'pole-zero',
+      bounds: { minRe: -4.5, maxRe: 1.5, minIm: -2.8, maxIm: 2.8 },
+      zeros: [{ re: -2, im: 0, label: 'z=−2', labelPos: 'above' }],
+      poles: [{ re: 0, im: 0, mult: 2, label: 'p=0 (×2)', labelPos: 'below' }],
+      revealZerosStep: 1,
+      revealPolesStep: 1,
+      summaryBadge: 'n=2 (×2 at 0), m=1',
+      setupHint: 'Step 1: Find zeros, double pole & relative degree n−m',
+      subtitle: 'Double Integrator + PD Zero Map',
+    },
     verifyPlot: {
       kind: 'pole-map',
       bounds: { minRe: -6.5, maxRe: 1.0, minIm: -3.2, maxIm: 3.2 },
@@ -549,6 +1223,49 @@ export const FREQ_PROBLEMS = [
     },
     steps: [
       {
+        stepType: 'extract_pz',
+        badge: 'Zeros, Double Pole & Degree',
+        whyThisStep:
+          'Spotting pole multiplicity and finite zeros first determines the number of branches, real-axis parity, and whether high gain stays bounded in the LHP.',
+        systemImpact:
+          'Two poles at the origin plus one LHP zero ($n - m = 1$) leaves a single $180^\\circ$ asymptote heading to $-\\infty$, guaranteeing a circular complex locus that remains stable for ALL $K > 0$!',
+        prompt:
+          'Extract all finite zeros, poles (with multiplicity), and relative degree $n - m$ of $L(s) = \\frac{K(s+2)}{s^2}$.',
+        highlightLatex:
+          'L(s) = \\frac{K\\,(\\textcolor{#F59E0B}{s+2})}{\\textcolor{#22D3EE}{s^2}} \\implies N(s)=0,\\; D(s)=0',
+        options: [
+          {
+            id: 'a',
+            latex: 'z = -2\\;(m=1),\\;\\; p = 0,\\,0\\;(\\text{mult }2,\\; n=2),\\;\\; n-m = 1',
+            correct: true,
+          },
+          {
+            id: 'b',
+            latex: 'z = -2\\;(m=1),\\;\\; p = 0\\;(n=1),\\;\\; n-m = 0',
+            correct: false,
+            misconception:
+              'The denominator $s^2$ is a DOUBLE pole (multiplicity $2$) at the origin, so $n = 2$ and relative degree $n - m = 1$!',
+          },
+          {
+            id: 'c',
+            latex: 'z = +2\\;(m=1),\\;\\; p = 0,\\,0\\;(n=2),\\;\\; n-m = 1',
+            correct: false,
+            misconception:
+              'Setting $(s + 2) = 0$ puts the PD zero in the stable LHP at $z = -2$, not $+2$.',
+          },
+          {
+            id: 'd',
+            latex: 'z = 0,\\,0\\;(m=2),\\;\\; p = -2\\;(n=1),\\;\\; n-m = -1',
+            correct: false,
+            misconception:
+              'Numerator roots are ZEROS ($z = -2$) and denominator roots are POLES ($p = 0, 0$ double integrator).',
+          },
+        ],
+        lockedLabel: 'Open-Loop P & Z',
+        lockedResultLatex: '\\textcolor{#34D399}{z=-2\\;(m=1),\\;\\; p=0\\;(\\times 2,\\; n=2),\\;\\; n-m=1}',
+        hint: 'Solve $(s+2)=0$ for the finite zero and count $s^2=0$ as a multiplicity-2 pole at $0$.',
+      },
+      {
         stepType: 'real_segment',
         badge: 'Real-Axis Segment (Double Pole!)',
         whyThisStep:
@@ -556,7 +1273,7 @@ export const FREQ_PROBLEMS = [
         systemImpact:
           'Because $(-2, 0)$ is excluded, the two poles at $s = 0$ immediately depart vertically into the LHP for any $K > 0$, instantly stabilizing the spacecraft!',
         prompt:
-          'Apply the real-axis odd-count rule to $L(s) = \\frac{K(s+2)}{s^2}$ (double pole at $s=0$, single zero at $s=-2$).',
+          'Using the locked double pole at $s=0$ and single zero at $s=-2$, apply the real-axis odd-count rule to find the real-axis locus.',
         highlightLatex:
           '\\text{2 poles at } \\textcolor{#22D3EE}{s=0}, \\quad \\text{1 zero at } \\textcolor{#F59E0B}{s=-2}',
         options: [
@@ -779,6 +1496,20 @@ export const FREQ_PROBLEMS = [
     expressionLatex: 'G(s)=\\frac{20(s+2)}{s(s+10)} \\;\\;(\\text{Bode})',
     finalAnswerLatex:
       'G(s)=\\frac{4(1+s/2)}{s(1+s/10)}, \\quad \\angle G(j\\sqrt{20})\\approx -48.2^\\circ \\;\\;(\\text{uncond. stable})',
+    diagram: {
+      type: 'pole-zero',
+      bounds: { minRe: -12, maxRe: 2, minIm: -4, maxIm: 4 },
+      zeros: [{ re: -2, im: 0, label: 'z=−2', labelPos: 'above' }],
+      poles: [
+        { re: 0, im: 0, label: 'p₁=0', labelPos: 'below' },
+        { re: -10, im: 0, label: 'p₂=−10', labelPos: 'below' },
+      ],
+      revealZerosStep: 1,
+      revealPolesStep: 1,
+      summaryBadge: 'z=−2 · p=0, −10',
+      setupHint: 'Step 1: Locate zeros & poles to identify Bode break frequencies',
+      subtitle: 'Bode Corner Pole-Zero Map',
+    },
     verifyPlot: {
       kind: 'bode-margin',
       wMin: 0.2,
@@ -803,6 +1534,49 @@ export const FREQ_PROBLEMS = [
       ],
     },
     steps: [
+      {
+        stepType: 'extract_pz',
+        badge: 'Extract Zeros, Poles & Degree',
+        whyThisStep:
+          'Every real pole and zero on the $s$-plane directly sets a Bode corner frequency ($\\omega_c = |p|$ or $|z|$), while poles at $s = 0$ fix the system Type and low-frequency slope.',
+        systemImpact:
+          'Because the zero ($|z| = 2$) sits closer to the origin than the non-zero pole ($|p| = 10$), it acts as a mid-band phase-lead dipole while $n - m = 1$ caps high-frequency roll-off at $-20\\text{ dB/dec}$!',
+        prompt:
+          'Extract all finite zeros, poles, and relative degree $n - m$ of $G(s) = \\frac{20(s+2)}{s(s+10)}$.',
+        highlightLatex:
+          'G(s) = \\frac{20\\,(\\textcolor{#F59E0B}{s+2})}{\\textcolor{#22D3EE}{s(s+10)}} \\implies N(s)=0,\\; D(s)=0',
+        options: [
+          {
+            id: 'a',
+            latex: 'z = -2\\;(m=1),\\;\\; p = 0,\\,-10\\;(n=2),\\;\\; n-m = 1',
+            correct: true,
+          },
+          {
+            id: 'b',
+            latex: 'z = -2\\;(m=1),\\;\\; p = -10\\;(n=1),\\;\\; n-m = 0',
+            correct: false,
+            misconception:
+              'Never omit the free integrator $s$ in the denominator — it places an open-loop pole right at $s = 0$, giving $n = 2$ and $n - m = 1$!',
+          },
+          {
+            id: 'c',
+            latex: 'z = 0,\\,-10\\;(m=2),\\;\\; p = -2\\;(n=1),\\;\\; n-m = -1',
+            correct: false,
+            misconception:
+              'Numerator roots are ZEROS ($s + 2 = 0 \\implies z = -2$) and denominator roots are POLES ($s(s+10) = 0 \\implies p = 0, -10$).',
+          },
+          {
+            id: 'd',
+            latex: 'z = +2\\;(m=1),\\;\\; p = 0,\\,+10\\;(n=2),\\;\\; n-m = 1',
+            correct: false,
+            misconception:
+              'Setting $(s + 2) = 0$ and $(s + 10) = 0$ yields negative roots $z = -2$ and $p = -10$ in the LHP, not $+2, +10$.',
+          },
+        ],
+        lockedLabel: 'Zeros & Poles',
+        lockedResultLatex: '\\textcolor{#34D399}{z = -2\\;(m=1),\\;\\; p = 0,\\,-10\\;(n=2,\\; n-m=1)}',
+        hint: 'Set $(s+2)=0$ for the finite zero and $s(s+10)=0$ for the two poles.',
+      },
       {
         stepType: 'bode_std_form',
         badge: 'Bode Time-Constant Form',
@@ -1031,6 +1805,20 @@ export const FREQ_PROBLEMS = [
     expressionLatex: 'T(s)=\\frac{100}{s^2+4s+100} \\;\\;(\\text{Resonance})',
     finalAnswerLatex:
       '\\omega_n=10,\\; \\zeta=0.2 \\implies \\omega_r\\approx 9.59\\text{ rad/s},\\; M_r\\approx 2.55\\;(+8.1\\text{ dB})',
+    diagram: {
+      type: 'pole-zero',
+      bounds: { minRe: -6, maxRe: 2, minIm: -12, maxIm: 12 },
+      zeros: [],
+      poles: [
+        { re: -2, im: 9.8, label: '−2+j4√6', labelPos: 'above' },
+        { re: -2, im: -9.8, label: '−2−j4√6', labelPos: 'below' },
+      ],
+      revealZerosStep: 1,
+      revealPolesStep: 1,
+      summaryBadge: 'p=−2±j4√6 · m=0',
+      setupHint: 'Step 1: Solve D(s)=s²+4s+100=0 for complex conjugate poles',
+      subtitle: 'Lightly Damped Conjugate Pole Pair',
+    },
     verifyPlot: {
       kind: 'bode-margin',
       wMin: 1,
@@ -1057,6 +1845,49 @@ export const FREQ_PROBLEMS = [
     },
     steps: [
       {
+        stepType: 'extract_pz',
+        badge: 'Exact Complex Poles & Zeros',
+        whyThisStep:
+          'A sharp resonant spike on a Bode plot always corresponds to a lightly damped complex-conjugate pole pair hovering close to the $j\\omega$-axis — finding the exact pole coordinates exposes that proximity immediately.',
+        systemImpact:
+          'Poles at $p = -2 \\pm j4\\sqrt{6} \\approx -2 \\pm 9.80j$ sit $5\\times$ closer to the $j\\omega$-axis than their radial distance $|p| = 10$, guaranteeing a severe resonant peak near $\\omega \\approx 9.6\\text{ rad/s}$!',
+        prompt:
+          'Solve $N(s) = 0$ and $D(s) = s^2 + 4s + 100 = 0$ to find the exact finite zeros, complex poles, and relative degree $n - m$ of $T(s) = \\frac{100}{s^2+4s+100}$.',
+        highlightLatex:
+          'N(s) = 100 = 0, \\qquad D(s) = \\textcolor{#22D3EE}{s^2 + 4s + 100} = 0',
+        options: [
+          {
+            id: 'a',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = -2 \\pm j4\\sqrt{6}\\;(\\approx -2 \\pm 9.80j),\\;\\; n-m = 2',
+            correct: true,
+          },
+          {
+            id: 'b',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = -2 \\pm 10j,\\;\\; n-m = 2',
+            correct: false,
+            misconception:
+              'Completing the square gives $(s+2)^2 + (100 - 4) = (s+2)^2 + 96 = 0$, so the imaginary part is $\\pm\\sqrt{96} = \\pm 4\\sqrt{6} \\approx \\pm 9.80$, not $\\pm 10$!',
+          },
+          {
+            id: 'c',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = -4 \\pm j\\sqrt{84},\\;\\; n-m = 2',
+            correct: false,
+            misconception:
+              'Divide the middle coefficient $4$ by $2$ when completing the square: $\\sigma = -4/2 = -2$, giving $(s+2)^2 + 96 = 0$.',
+          },
+          {
+            id: 'd',
+            latex: 'z = 100\\;(m=1),\\;\\; p = -2 \\pm j4\\sqrt{6},\\;\\; n-m = 1',
+            correct: false,
+            misconception:
+              'A constant numerator $N(s) = 100$ has NO roots in $s$ ($m = 0$ finite zeros), so $n - m = 2$.',
+          },
+        ],
+        lockedLabel: 'Complex P & Z',
+        lockedResultLatex: '\\textcolor{#34D399}{m=0,\\;\\; p = -2 \\pm j4\\sqrt{6}\\;(\\approx -2\\pm 9.80j),\\;\\; n-m=2}',
+        hint: 'Complete the square: $s^2 + 4s + 100 = (s + 2)^2 + 96 = 0$, and note $\\sqrt{96} = 4\\sqrt{6}$.',
+      },
+      {
         stepType: 'id_wn_zeta',
         badge: 'Extract ωn & ζ',
         whyThisStep:
@@ -1064,7 +1895,7 @@ export const FREQ_PROBLEMS = [
         systemImpact:
           'With $\\zeta = 0.2$, the loop is very lightly damped (~53% step overshoot!) and will strongly amplify sinusoidal inputs near $10\\text{ rad/s}$.',
         prompt:
-          'Match $T(s) = \\frac{100}{s^2 + 4s + 100}$ to canonical form $\\frac{\\omega_n^2}{s^2 + 2\\zeta\\omega_n s + \\omega_n^2}$ to extract $\\omega_n$ and $\\zeta$.',
+          'From the locked complex poles $p = -2 \\pm j4\\sqrt{6}$ (and canonical form $\\frac{\\omega_n^2}{s^2 + 2\\zeta\\omega_n s + \\omega_n^2}$), extract the natural frequency $\\omega_n = |p|$ and damping ratio $\\zeta = -\\sigma/\\omega_n$.',
         highlightLatex:
           '\\textcolor{#22D3EE}{\\omega_n}^2 = 100, \\qquad 2\\textcolor{#F59E0B}{\\zeta}\\textcolor{#22D3EE}{\\omega_n} = 4',
         options: [
@@ -1284,6 +2115,20 @@ export const FREQ_PROBLEMS = [
     expressionLatex: 'L(s)=\\frac{5}{s(s+2)^2} \\;\\;(\\text{GM \\& PM})',
     finalAnswerLatex:
       '\\omega_{pc}=2\\;(\\text{GM}=3.2\\;/\\,+10.1\\text{ dB}), \\quad \\omega_{gc}=1\\;(\\text{PM}=36.9^\\circ,\\; \\tau_{\\max}\\approx 0.64\\text{ s})',
+    diagram: {
+      type: 'pole-zero',
+      bounds: { minRe: -4.2, maxRe: 1.5, minIm: -2.5, maxIm: 2.5 },
+      zeros: [],
+      poles: [
+        { re: 0, im: 0, label: 'p₁=0', labelPos: 'above' },
+        { re: -2, im: 0, mult: 2, label: 'p₂,₃=−2 (×2)', labelPos: 'above' },
+      ],
+      revealZerosStep: 1,
+      revealPolesStep: 1,
+      summaryBadge: 'n=3 (×2 at −2), m=0',
+      setupHint: 'Step 1: Find open-loop zeros, poles (with multiplicity) & n−m',
+      subtitle: '3-Pole Loop Map (Double Pole at −2)',
+    },
     verifyPlot: {
       kind: 'bode-margin',
       wMin: 0.2,
@@ -1310,6 +2155,49 @@ export const FREQ_PROBLEMS = [
       ],
     },
     steps: [
+      {
+        stepType: 'extract_pz',
+        badge: 'Zeros, Repeated Poles & Degree',
+        whyThisStep:
+          'Before computing Gain and Phase Margins, extracting every zero and pole (including multiplicity!) tells you immediately whether phase can even cross $-180^\\circ$ — a finite Gain Margin requires $n - m \\ge 3$ (or RHP zeros/delay)!',
+        systemImpact:
+          'With $n = 3$ poles ($0$ plus a double pole at $-2$) and $m = 0$ zeros, high-frequency phase plunges to $-90^\\circ(3) = -270^\\circ$, guaranteeing a finite phase crossover $\\omega_{pc}$ and finite Gain Margin!',
+        prompt:
+          'Extract all finite zeros, open-loop poles (noting multiplicity), and relative degree $n - m$ of $L(s) = \\frac{5}{s(s+2)^2}$.',
+        highlightLatex:
+          'L(s) = \\frac{5}{\\textcolor{#22D3EE}{s(s+2)^2}} \\implies N(s)=0,\\; D(s)=0',
+        options: [
+          {
+            id: 'a',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = 0,\\,-2\\;(n=2),\\;\\; n-m = 2',
+            correct: false,
+            misconception:
+              'The squared factor $(s + 2)^2$ creates a DOUBLE pole (multiplicity $2$) at $s = -2$, making total pole count $n = 3$, not $2$!',
+          },
+          {
+            id: 'b',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = 0,\\,-2,\\,-2\\;(\\text{mult }2\\text{ at }-2,\\; n=3),\\;\\; n-m = 3',
+            correct: true,
+          },
+          {
+            id: 'c',
+            latex: 'z = 5\\;(m=1),\\;\\; p = 0,\\,-2,\\,-2\\;(n=3),\\;\\; n-m = 2',
+            correct: false,
+            misconception:
+              'A constant numerator $N(s) = 5$ has NO roots in $s$, so $m = 0$ finite zeros and $n - m = 3$.',
+          },
+          {
+            id: 'd',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = 0,\\,+2,\\,+2\\;(n=3),\\;\\; n-m = 3',
+            correct: false,
+            misconception:
+              'Setting $(s + 2) = 0$ places the repeated pole in the stable LHP at $s = -2$, not $+2$.',
+          },
+        ],
+        lockedLabel: 'Open-Loop P & Z',
+        lockedResultLatex: '\\textcolor{#34D399}{m=0,\\;\\; p=0,\\,-2\\;(\\times 2),\\;\\; n=3,\\; n-m=3}',
+        hint: 'Count $(s + 2)^2$ with multiplicity $2$ alongside the origin pole $s = 0$.',
+      },
       {
         stepType: 'phase_eq',
         badge: 'Open-Loop Phase Equation',
@@ -1584,6 +2472,20 @@ export const FREQ_PROBLEMS = [
     expressionLatex: 'G(s)=\\frac{4}{s(s+2)},\\;\\; \\phi_m=30^\\circ,\\; \\omega_m=3',
     finalAnswerLatex:
       '\\alpha=3,\\; z=\\sqrt{3},\\; p=3\\sqrt{3} \\implies C(s)=3\\frac{s+\\sqrt{3}}{s+3\\sqrt{3}} \\;\\;(\\text{PM}: 51.8^\\circ\\to 72.9^\\circ)',
+    diagram: {
+      type: 'pole-zero',
+      bounds: { minRe: -4.5, maxRe: 1.5, minIm: -2.5, maxIm: 2.5 },
+      zeros: [],
+      poles: [
+        { re: 0, im: 0, label: 'p₁=0', labelPos: 'above' },
+        { re: -2, im: 0, label: 'p₂=−2', labelPos: 'above' },
+      ],
+      revealZerosStep: 1,
+      revealPolesStep: 1,
+      summaryBadge: 'Plant p=0, −2 · Lead z<p',
+      setupHint: 'Step 1: Find plant zeros & poles to baseline uncompensated phase',
+      subtitle: 'Uncompensated Plant Pole-Zero Map',
+    },
     verifyPlot: {
       kind: 'bode-margin',
       wMin: 0.3,
@@ -1617,6 +2519,49 @@ export const FREQ_PROBLEMS = [
       ],
     },
     steps: [
+      {
+        stepType: 'extract_pz',
+        badge: 'Plant Zeros, Poles & Degree',
+        whyThisStep:
+          'Synthesizing a phase-lead compensator begins by extracting the plant\'s open-loop poles and zeros so you know its baseline Type number, phase roll-off ($-90^\\circ \\to -180^\\circ$), and where phase lag accelerates.',
+        systemImpact:
+          'With $p = 0, -2$ and $m = 0$, the Type-1 plant loses phase rapidly above $\\omega = 2\\text{ rad/s}$ — showing exactly why inserting a lead dipole ($z < p$) centered at $\\omega_m = 3$ lifts Phase Margin!',
+        prompt:
+          'Extract the finite open-loop zeros, poles, and relative degree $n - m$ of the uncompensated plant $G(s) = \\frac{4}{s(s+2)}$.',
+        highlightLatex:
+          'G(s) = \\frac{4}{\\textcolor{#22D3EE}{s(s+2)}} \\implies N(s)=0,\\; D(s)=0',
+        options: [
+          {
+            id: 'a',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = 0,\\,-2\\;(n=2),\\;\\; n-m = 2',
+            correct: true,
+          },
+          {
+            id: 'b',
+            latex: 'z = 4\\;(m=1),\\;\\; p = 0,\\,-2\\;(n=2),\\;\\; n-m = 1',
+            correct: false,
+            misconception:
+              'The constant numerator $4$ sets loop gain ($K_v = 2$) but has NO roots in $s$, so $m = 0$ finite zeros and $n - m = 2$.',
+          },
+          {
+            id: 'c',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = 0,\\,+2\\;(n=2),\\;\\; n-m = 2',
+            correct: false,
+            misconception:
+              'Solving $(s + 2) = 0$ puts the pole in the stable LHP at $s = -2$, not $+2$.',
+          },
+          {
+            id: 'd',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = -2\\;(n=1),\\;\\; n-m = 1',
+            correct: false,
+            misconception:
+              'Never omit the free integrator $s$ in the denominator — it contributes an open-loop pole right at $s = 0$ ($n = 2$ poles total).',
+          },
+        ],
+        lockedLabel: 'Plant P & Z',
+        lockedResultLatex: '\\textcolor{#34D399}{m=0,\\;\\; p=0,\\,-2\\;(n=2,\\; n-m=2)}',
+        hint: 'Check $N(s) = 4 = 0$ (no roots) and solve $s(s+2) = 0$.',
+      },
       {
         stepType: 'lead_alpha',
         badge: 'Solve Lead Ratio α',
@@ -1888,6 +2833,20 @@ export const FREQ_PROBLEMS = [
     expressionLatex: 'G(s)=\\frac{1}{s(s+1)},\\;\\; K_v=10 \\;\\;(\\text{Lag})',
     finalAnswerLatex:
       'C_{\\text{tot}}(s)=\\frac{s+0.08}{s+0.008} \\implies K_v=10,\\;\\; \\Delta\\phi\\approx -5.1^\\circ,\\;\\; \\text{PM}\\approx 46.5^\\circ',
+    diagram: {
+      type: 'pole-zero',
+      bounds: { minRe: -3.2, maxRe: 1.2, minIm: -2.2, maxIm: 2.2 },
+      zeros: [],
+      poles: [
+        { re: 0, im: 0, label: 'p₁=0', labelPos: 'above' },
+        { re: -1, im: 0, label: 'p₂=−1', labelPos: 'above' },
+      ],
+      revealZerosStep: 1,
+      revealPolesStep: 1,
+      summaryBadge: 'Type 1 (p=0,−1) · Lag p<z',
+      setupHint: 'Step 1: Find plant zeros, poles & Type number before lag design',
+      subtitle: 'Type-1 Plant Pole-Zero Map',
+    },
     verifyPlot: {
       kind: 'bode-margin',
       wMin: 0.005,
@@ -1919,6 +2878,49 @@ export const FREQ_PROBLEMS = [
       ],
     },
     steps: [
+      {
+        stepType: 'extract_pz',
+        badge: 'Plant Zeros, Poles & Type',
+        whyThisStep:
+          'Before designing a lag compensator to boost steady-state accuracy, finding the open-loop zeros and poles identifies the plant\'s Type number (count of origin poles) and confirms it has a finite velocity constant $K_v$.',
+        systemImpact:
+          'One integrator pole at $s = 0$ makes $G(s)$ a Type-1 servo with zero step error and finite ramp error $1/K_v$, while the pole at $s = -1$ governs crossover phase.',
+        prompt:
+          'Extract the finite zeros, open-loop poles, Type number, and relative degree $n - m$ of the plant $G(s) = \\frac{1}{s(s+1)}$.',
+        highlightLatex:
+          'G(s) = \\frac{1}{\\textcolor{#22D3EE}{s(s+1)}} \\implies N(s)=0,\\; D(s)=0',
+        options: [
+          {
+            id: 'a',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = 0,\\,-1\\;(\\text{Type 1},\\; n=2),\\;\\; n-m = 2',
+            correct: true,
+          },
+          {
+            id: 'b',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = -1\\;(\\text{Type 0},\\; n=1),\\;\\; n-m = 1',
+            correct: false,
+            misconception:
+              'Never ignore the factor $s$ in the denominator — it puts a pole right at the origin $s = 0$, making the plant Type 1 ($n = 2$ poles total)!',
+          },
+          {
+            id: 'c',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = 0,\\,+1\\;(\\text{Type 1},\\; n=2),\\;\\; n-m = 2',
+            correct: false,
+            misconception:
+              'Setting $(s + 1) = 0$ gives a stable LHP pole at $s = -1$, not an RHP pole at $+1$.',
+          },
+          {
+            id: 'd',
+            latex: 'z = 1\\;(m=1),\\;\\; p = 0,\\,-1\\;(n=2),\\;\\; n-m = 1',
+            correct: false,
+            misconception:
+              'A constant numerator $N(s) = 1$ has NO roots in $s$, so there are $m = 0$ finite zeros ($n - m = 2$).',
+          },
+        ],
+        lockedLabel: 'Plant P & Z',
+        lockedResultLatex: '\\textcolor{#34D399}{m=0,\\;\\; p=0,\\,-1\\;(\\text{Type 1},\\; n-m=2)}',
+        hint: 'Check $N(s)=1=0$ (no finite zeros) and solve $s(s+1)=0$ for the two poles.',
+      },
       {
         stepType: 'dc_boost_kv',
         badge: 'Required DC Gain for Kv = 10',
@@ -2150,6 +3152,20 @@ export const FREQ_PROBLEMS = [
     expressionLatex: 'S(s)=\\frac{1}{1+L},\\;\\; T(s)=\\frac{L}{1+L}',
     finalAnswerLatex:
       'S+T=1, \\quad d_{\\min}=\\frac{1}{M_s}, \\quad M_s\\le 1.6 \\implies \\text{GM}\\ge 2.67,\\; \\text{PM}\\ge 36.4^\\circ',
+    diagram: {
+      type: 'pole-zero',
+      mode: 'symbolic',
+      revealZerosStep: 1,
+      revealPolesStep: 1,
+      setupHint: 'L(s)=N_L/D_L → Map zeros & poles of S(s) and T(s)',
+      symbolicBadges: [
+        { title: 'S(s) ZEROS', expr: 'D_L(s) = 0', sub: 'Open-Loop Poles', accent: 'cyan' },
+        { title: 'T(s) ZEROS', expr: 'N_L(s) = 0', sub: 'Open-Loop Zeros', accent: 'emerald' },
+        { title: 'SHARED CL POLES', expr: 'D_L + N_L = 0', sub: '1 + L(s) = 0', accent: 'violet' },
+      ],
+      summaryBadge: 'S(s)+T(s)=1 · Pole-Zero Structure',
+      subtitle: 'Sensitivity Pole-Zero Mapping',
+    },
     verifyPlot: {
       kind: 'bode-margin',
       sensitivityMode: true,
@@ -2175,6 +3191,49 @@ export const FREQ_PROBLEMS = [
       ],
     },
     steps: [
+      {
+        stepType: 'extract_pz',
+        badge: 'Zeros & Poles of S(s) & T(s)',
+        whyThisStep:
+          'Writing $S(s)$ and $T(s)$ in terms of the open-loop numerator $N_L(s)$ and denominator $D_L(s)$ reveals a profound control law: open-loop poles turn into zeros of $S(s)$ (blocking disturbances!) while open-loop zeros survive intact inside $T(s)$!',
+        systemImpact:
+          'An open-loop integrator pole ($D_L(0)=0$) plants a zero of $S(s)$ right at DC ($S(0)=0$, total DC disturbance rejection!), whereas any RHP plant zero stays locked inside $T(s)$, forcing unavoidable inverse-response undershoot!',
+        prompt:
+          'Substitute $L(s) = \\frac{N_L(s)}{D_L(s)}$ (coprime) into $S(s) = \\frac{1}{1+L}$ and $T(s) = \\frac{L}{1+L}$ to identify the zeros of $S(s)$, the zeros of $T(s)$, and their closed-loop poles.',
+        highlightLatex:
+          'L(s)=\\frac{\\textcolor{#F59E0B}{N_L}}{\\textcolor{#22D3EE}{D_L}} \\implies S(s)=\\frac{1}{1+N_L/D_L},\\;\\; T(s)=\\frac{N_L/D_L}{1+N_L/D_L}',
+        options: [
+          {
+            id: 'a',
+            latex: '\\text{zeros}(S)=\\text{OL poles }(D_L=0),\\;\\; \\text{zeros}(T)=\\text{OL zeros }(N_L=0),\\;\\; \\text{shared poles: }D_L+N_L=0',
+            correct: true,
+          },
+          {
+            id: 'b',
+            latex: '\\text{zeros}(S)=\\text{OL zeros }(N_L=0),\\;\\; \\text{zeros}(T)=\\text{OL poles }(D_L=0),\\;\\; \\text{shared poles: }D_L+N_L=0',
+            correct: false,
+            misconception:
+              'You swapped $S$ and $T$! Multiplying top and bottom by $D_L$ gives $S = D_L/(D_L+N_L)$ and $T = N_L/(D_L+N_L)$, so open-loop poles become zeros of $S$.',
+          },
+          {
+            id: 'c',
+            latex: '\\text{zeros}(S)=\\text{none},\\;\\; \\text{zeros}(T)=\\text{OL zeros }(N_L=0),\\;\\; \\text{poles}(S)\\neq\\text{poles}(T)',
+            correct: false,
+            misconception:
+              'Clearing the compound fraction lifts $D_L(s)$ into the numerator of $S(s)$, and BOTH $S$ and $T$ share the exact same closed-loop characteristic polynomial $D_L + N_L = 0$.',
+          },
+          {
+            id: 'd',
+            latex: '\\text{zeros}(S)=\\text{OL poles }(D_L=0),\\;\\; \\text{zeros}(T)=\\text{OL zeros }(N_L=0),\\;\\; \\text{poles: }D_L=0',
+            correct: false,
+            misconception:
+              'Closing the loop shifts the poles from the open-loop roots $D_L(s) = 0$ to the closed-loop characteristic roots $D_L(s) + N_L(s) = 0$!',
+          },
+        ],
+        lockedLabel: 'S & T Pole-Zero Map',
+        lockedResultLatex: '\\textcolor{#34D399}{z(S)=\\text{OL poles},\\; z(T)=\\text{OL zeros},\\; p_{\\text{CL}}: D_L+N_L=0}',
+        hint: 'Multiply numerator and denominator of both $S(s)$ and $T(s)$ by $D_L(s)$ to clear the compound fractions.',
+      },
       {
         stepType: 'st_identity',
         badge: 'Fundamental S + T Identity',
@@ -2403,6 +3462,17 @@ export const FREQ_PROBLEMS = [
     expressionLatex: 'L(s)=\\frac{K}{s-2} \\;\\;(P=1\\text{ RHP Pole})',
     finalAnswerLatex:
       'P=1 \\implies N=-1\\;(\\text{1 CCW}) \\iff -\\frac{K}{2} < -1 \\iff K > 2 \\;\\;(s_{\\text{CL}}=2-K)',
+    diagram: {
+      type: 'pole-zero',
+      bounds: { minRe: -3.5, maxRe: 3.5, minIm: -2.5, maxIm: 2.5 },
+      zeros: [],
+      poles: [{ re: 2, im: 0, label: 'p=+2 (RHP!)', labelPos: 'above' }],
+      revealZerosStep: 1,
+      revealPolesStep: 1,
+      summaryBadge: 'P=1 RHP Pole (+2) · m=0',
+      setupHint: 'Step 1: Extract open-loop zeros & RHP pole count P',
+      subtitle: 'Open-Loop Unstable Plant (RHP Pole)',
+    },
     verifyPlot: {
       kind: 'nyquist-circle',
       bounds: { minRe: -3.2, maxRe: 0.8, minIm: -1.8, maxIm: 1.8 },
@@ -2423,46 +3493,46 @@ export const FREQ_PROBLEMS = [
     steps: [
       {
         stepType: 'count_p',
-        badge: 'Count Open-Loop RHP Poles P',
+        badge: 'Open-Loop Zeros, Poles & RHP P',
         whyThisStep:
-          'Before plotting a single frequency point, counting open-loop RHP poles $P$ tells you immediately whether simple Bode stability rules even apply — if $P > 0$, they DO NOT!',
+          'Before plotting a single frequency point, extracting every open-loop zero and pole — and counting RHP poles $P$ — tells you immediately whether simple Bode stability rules even apply: if $P > 0$, they DO NOT!',
         systemImpact:
-          'With $P = 1$ (an exponentially diverging mode $e^{+2t}$), leaving the loop open or setting gain too low causes immediate crash/rail saturation.',
+          'With $m = 0$ finite zeros and $P = 1$ unstable RHP pole at $s = +2$ (a diverging $e^{+2t}$ mode), leaving the loop open or setting gain too low causes immediate crash/rail saturation.',
         prompt:
-          'Inspect $L(s) = \\frac{K}{s - 2}$ and state the number $P$ of open-loop poles in the unstable Right Half-Plane ($\\operatorname{Re} s > 0$).',
+          'Extract the finite open-loop zeros ($m$), poles ($p$), and the number $P$ of open-loop poles in the unstable Right Half-Plane ($\\operatorname{Re} s > 0$) of $L(s) = \\frac{K}{s - 2}$.',
         highlightLatex:
-          'L(s) = \\frac{K}{\\textcolor{#F59E0B}{s - 2}} \\implies s_{\\text{OL}} = +2',
+          'L(s) = \\frac{\\textcolor{#22D3EE}{K}}{\\textcolor{#F59E0B}{s - 2}} \\implies N(s)=0,\\; D(s)=0',
         options: [
           {
             id: 'a',
-            latex: 'P = 0 \\;\\;(\\text{open-loop stable})',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = -2 \\;\\;(P = 0\\text{ RHP, open-loop stable})',
             correct: false,
             misconception:
-              'Setting the denominator $s - 2 = 0$ yields $s = +2 > 0$, which sits strictly in the unstable RHP ($P = 1$).',
+              'Setting the denominator $s - 2 = 0$ yields $s = +2 > 0$, which sits strictly in the unstable RHP ($P = 1$), not $-2$.',
           },
           {
             id: 'b',
-            latex: 'P = 1 \\;\\;(\\text{open-loop pole at } s = +2)',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = +2 \\;\\;(n = 1,\\; P = 1\\text{ RHP pole})',
             correct: true,
           },
           {
             id: 'c',
-            latex: 'P = 2 \\;\\;(\\text{two RHP poles})',
+            latex: 'm = 0\\text{ zeros},\\;\\; p = +2,\\,+2 \\;\\;(n = 2,\\; P = 2\\text{ RHP poles})',
             correct: false,
             misconception:
               'The denominator $(s - 2)$ is first-order, so there is only ONE open-loop pole (located at $+2$, not multiplicity $2$).',
           },
           {
             id: 'd',
-            latex: 'P = -1',
+            latex: 'z = +2\\;(m = 1\\text{ RHP zero}),\\;\\; n = 0 \\;\\;(P = 0)',
             correct: false,
             misconception:
-              '$P$ is a non-negative count of open-loop RHP poles ($P \\ge 0$); here $P = 1$.',
+              '$(s - 2)$ sits in the DENOMINATOR, making $s = +2$ an open-loop POLE ($P = 1$), not a zero; $N(s) = K$ has $m = 0$ finite zeros.',
           },
         ],
-        lockedLabel: 'Open-Loop RHP P',
-        lockedResultLatex: 'P = \\textcolor{#34D399}{1} \\;\\;(\\text{pole at } s = +2)',
-        hint: 'Find the roots of $s - 2 = 0$ with positive real part.',
+        lockedLabel: 'OL Zeros & RHP P',
+        lockedResultLatex: '\\textcolor{#34D399}{m = 0,\\;\\; p = +2 \\;\\;(n = 1,\\; P = 1\\text{ RHP})}',
+        hint: 'Check $N(s) = K = 0$ (no finite roots) and solve $s - 2 = 0$ to inspect $\\operatorname{Re}(s)$.',
       },
       {
         stepType: 'nyquist_znp',
