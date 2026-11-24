@@ -2195,6 +2195,933 @@ function renderEstimatorArch(d, p, isSetup, _activeStepIndex) {
   return wrapSVG(p, `Kalman filter predict-update cycle schematic: ${modelStr}, ${measStr}`, body);
 }
 
+/* ==========================================================================
+   Robotics Kinematics Helpers
+   ========================================================================== */
+function pickSpecItem(val, idx, fallback) {
+  if (Array.isArray(val) && val[idx] !== undefined && val[idx] !== null && val[idx] !== '') {
+    return String(val[idx]);
+  }
+  if (typeof val === 'string' && val.includes(',')) {
+    const parts = val
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (parts[idx]) return parts[idx];
+  }
+  return fallback;
+}
+
+function isoTriad(p, x, y, size, color, markerId, labels = null) {
+  const s = size;
+  const xEndX = (x + s * 1.05).toFixed(1);
+  const xEndY = (y + s * 0.28).toFixed(1);
+  const yEndX = (x + s * 0.78).toFixed(1);
+  const yEndY = (y - s * 0.56).toFixed(1);
+  const zEndX = x.toFixed(1);
+  const zEndY = (y - s * 1.05).toFixed(1);
+
+  let out =
+    `<g>` +
+    `<line x1="${x}" y1="${y}" x2="${xEndX}" y2="${xEndY}" stroke="${color}" stroke-width="1.45" marker-end="url(#${p}${markerId})"/>` +
+    `<line x1="${x}" y1="${y}" x2="${yEndX}" y2="${yEndY}" stroke="${color}" stroke-opacity="0.78" stroke-width="1.3" marker-end="url(#${p}${markerId})"/>` +
+    `<line x1="${x}" y1="${y}" x2="${zEndX}" y2="${zEndY}" stroke="${color}" stroke-width="1.5" marker-end="url(#${p}${markerId})"/>` +
+    `<circle cx="${x}" cy="${y}" r="2.6" fill="${color}"/>` +
+    `</g>`;
+
+  if (labels) {
+    out +=
+      (labels[0] ? labelText(Number(xEndX) + 6, Number(xEndY) + 3, labels[0], { color, size: 7.4, weight: '700' }) : '') +
+      (labels[1] ? labelText(Number(yEndX) + 6, Number(yEndY) - 1, labels[1], { color, size: 7.4, weight: '600', opacity: '0.88' }) : '') +
+      (labels[2] ? labelText(Number(zEndX), Number(zEndY) - 5, labels[2], { color, size: 7.4, weight: '700' }) : '');
+  }
+  return out;
+}
+
+/* ==========================================================================
+   13. Robot Manipulator Kinematic Chains (robot-chain)
+   ========================================================================== */
+function renderRobotChain(d, p, isSetup, activeStepIndex) {
+  const variant = fmt(d.variant, '2r-dh').toLowerCase();
+  const arrowFilter = isSetup ? `${p}glow-boost` : '';
+  const cueFilter = isSetup ? `${p}glow-soft` : '';
+  const cueOp = isSetup ? '1' : '0.82';
+
+  if (variant === '3r-mdh') {
+    const convLabel = fmt(d.convention, 'Craig Proximal');
+    const l2Label = pickSpecItem(d.links, 1, pickSpecItem(d.links, 0, 'L₂'));
+    const l3Label = pickSpecItem(d.links, 2, pickSpecItem(d.links, 1, 'L₃'));
+    const j1Label = pickSpecItem(d.joints, 0, 'θ₁');
+    const j2Label = pickSpecItem(d.joints, 1, 'θ₂');
+    const j3Label = pickSpecItem(d.joints, 2, 'θ₃');
+
+    const body =
+      labelText(14, 16, '3R SPATIAL ARM · MODIFIED DH', {
+        color: COLORS.cyan,
+        size: 7.2,
+        weight: '700',
+        anchor: 'start',
+        opacity: '0.88',
+        letterSpacing: '0.7',
+      }) +
+      pillBadge(352, 16, convLabel, COLORS.violet, {
+        size: fitFontSize(convLabel, 108, 7.5, 6.6),
+        padX: 8,
+        h: 15,
+        bg: 'rgba(167,139,250,0.13)',
+        textColor: '#DDD6FE',
+      }) +
+
+      // Isometric base floor ellipse + vertical cylindrical pedestal
+      `<ellipse cx="76" cy="120" rx="30" ry="8" fill="url(#${p}hatch)" fill-opacity="0.55" stroke="${COLORS.wall}" stroke-width="1.2"/>` +
+      `<path d="M 62,92 L 62,118 A 14,4.8 0 0,0 90,118 L 90,92 Z" fill="url(#${p}glass-node)" stroke="${COLORS.wire}" stroke-width="1.35"/>` +
+      `<ellipse cx="76" cy="92" rx="14" ry="4.8" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.3"/>` +
+      // Pedestal riser column to shoulder
+      `<rect x="69" y="62" width="14" height="30" fill="url(#${p}glass-node)" stroke="${COLORS.cyan}" stroke-opacity="0.65" stroke-width="1.15"/>` +
+
+      // Offset d1 dimension bracket on left
+      `<line x1="36" y1="62" x2="36" y2="120" stroke="${COLORS.muted}" stroke-width="1.05" stroke-dasharray="2.5 2"/>` +
+      `<line x1="32" y1="62" x2="40" y2="62" stroke="${COLORS.muted}" stroke-width="1.2"/>` +
+      `<line x1="32" y1="120" x2="40" y2="120" stroke="${COLORS.muted}" stroke-width="1.2"/>` +
+      labelText(24, 94, 'd₁', { color: COLORS.muted, size: 8.6, weight: '700' }) +
+
+      // Vertical z1 axis + yaw arc theta1
+      `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+      `<line x1="76" y1="118" x2="76" y2="29" stroke="${COLORS.cyan}" stroke-width="1.65" stroke-dasharray="3.5 2.2" marker-end="url(#${p}arrow-cyan)"/>` +
+      `</g>` +
+      labelText(65, 34, 'z₁', { color: COLORS.cyan, size: 9.0, weight: '700' }) +
+      `<path d="M 55,83 A 21,6.2 0 1,0 97,83" fill="none" stroke="${COLORS.cyan}" stroke-width="1.5" marker-end="url(#${p}arrow-cyan)" opacity="${cueOp}"/>` +
+      labelText(107, 87, j1Label, { color: COLORS.cyan, size: 8.6, weight: '700', filter: cueFilter }) +
+
+      // Link L2 (Shoulder -> Elbow)
+      `<g transform="translate(76,62) rotate(-8.5)">` +
+      `<rect x="-6" y="-7.5" width="132" height="15" rx="7.5" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.5"/>` +
+      `<line x1="4" y1="-5.8" x2="116" y2="-5.8" stroke="rgba(255,255,255,0.22)" stroke-width="0.85"/>` +
+      `<line x1="0" y1="0" x2="121" y2="0" stroke="${COLORS.cyan}" stroke-opacity="0.34" stroke-width="0.85" stroke-dasharray="3 2.5"/>` +
+      `</g>` +
+      labelText(136, 43, l2Label, { color: '#A5F3FC', size: 9.2, weight: '700' }) +
+
+      // Link L3 (Elbow -> EE)
+      `<g transform="translate(196,44) rotate(19.0)">` +
+      `<rect x="-6" y="-6.8" width="134" height="13.6" rx="6.8" fill="url(#${p}glass-amber)" stroke="${COLORS.amber}" stroke-width="1.5"/>` +
+      `<line x1="4" y1="-5.2" x2="118" y2="-5.2" stroke="rgba(255,255,255,0.2)" stroke-width="0.85"/>` +
+      `<line x1="0" y1="0" x2="123" y2="0" stroke="${COLORS.amber}" stroke-opacity="0.34" stroke-width="0.85" stroke-dasharray="3 2.5"/>` +
+      `</g>` +
+      labelText(262, 55, l3Label, { color: '#FDE68A', size: 9.2, weight: '700' }) +
+
+      // Shoulder Joint 2 (proximal frame {2}, horizontal z2, twist alpha1=90)
+      `<circle cx="76" cy="62" r="11.5" fill="none" stroke="${COLORS.violet}" stroke-opacity="0.7" stroke-width="1.1" stroke-dasharray="2.5 2"/>` +
+      `<circle cx="76" cy="62" r="7.5" fill="url(#${p}glass-amber)" stroke="${COLORS.amber}" stroke-width="1.75" filter="url(#${p}glow-soft)"/>` +
+      `<circle cx="76" cy="62" r="2.7" fill="${COLORS.amber}"/>` +
+      `<line x1="76" y1="62" x2="49" y2="76" stroke="${COLORS.amber}" stroke-width="1.65" marker-end="url(#${p}arrow-amber)"/>` +
+      labelText(40, 79, 'z₂', { color: COLORS.amber, size: 8.8, weight: '700' }) +
+      `<path d="M 96,60 A 20,20 0 0,0 91,48" fill="none" stroke="${COLORS.amber}" stroke-width="1.35" marker-end="url(#${p}arrow-amber)"/>` +
+      labelText(104, 52, j2Label, { color: COLORS.amber, size: 8.4, weight: '700' }) +
+      labelText(92, 74, '{2}', { color: COLORS.violet, size: 7.8, weight: '700' }) +
+
+      // Alpha1 = 90° twist cue between z1 & z2
+      `<path d="M 76,44 Q 62,48 59,66" fill="none" stroke="${COLORS.violet}" stroke-width="1.25" stroke-dasharray="2.2 1.8"/>` +
+      pillBadge(126, 31, 'α₁ = 90°', COLORS.violet, {
+        size: 7.4,
+        padX: 6,
+        h: 13.5,
+        bg: 'rgba(167,139,250,0.14)',
+        textColor: '#EDE9FE',
+      }) +
+
+      // Elbow Joint 3 (proximal frame {3}, z3 parallel to z2)
+      `<circle cx="196" cy="44" r="11" fill="none" stroke="${COLORS.violet}" stroke-opacity="0.7" stroke-width="1.1" stroke-dasharray="2.5 2"/>` +
+      `<circle cx="196" cy="44" r="7.2" fill="url(#${p}glass-amber)" stroke="${COLORS.amber}" stroke-width="1.75" filter="url(#${p}glow-soft)"/>` +
+      `<circle cx="196" cy="44" r="2.6" fill="${COLORS.amber}"/>` +
+      `<line x1="196" y1="44" x2="170" y2="58" stroke="${COLORS.amber}" stroke-width="1.6" marker-end="url(#${p}arrow-amber)"/>` +
+      labelText(161, 61, 'z₃', { color: COLORS.amber, size: 8.8, weight: '700' }) +
+      `<path d="M 218,45 A 22,22 0 0,1 215,56" fill="none" stroke="${COLORS.amber}" stroke-width="1.35" marker-end="url(#${p}arrow-amber)"/>` +
+      labelText(228, 52, j3Label, { color: COLORS.amber, size: 8.4, weight: '700' }) +
+      labelText(205, 31, '{3}', { color: COLORS.violet, size: 7.8, weight: '700' }) +
+
+      // Proximal frame highlight badge at bottom center
+      pillBadge(204, 121, 'Craig Proximal: {i} Attached to Joint i', COLORS.violet, {
+        size: 7.4,
+        padX: 8,
+        h: 15,
+        bg: 'rgba(7,11,20,0.92)',
+        textColor: '#DDD6FE',
+      }) +
+
+      // End-Effector 3D Triad {e}
+      `<g filter="url(#${p}glow-soft)">` +
+      isoTriad(p, 312, 84, 24, COLORS.emerald, 'arrow-emerald', ['xₑ', 'yₑ', 'zₑ']) +
+      `</g>` +
+      labelText(366, 98, 'EE {e}', { color: COLORS.emerald, size: 8.8, weight: '700' }) +
+
+      renderSubtitle(d.subtitle, 14, 143);
+
+    return wrapSVG(p, `3R spatial articulated robot schematic with Craig Modified DH proximal frames (${convLabel})`, body);
+  }
+
+  if (variant === 'scara-rrp') {
+    const convLabel = fmt(d.convention, 'SCARA RRP');
+    const l1Label = pickSpecItem(d.links, 0, 'L₁');
+    const l2Label = pickSpecItem(d.links, 1, 'L₂');
+    const j1Label = pickSpecItem(d.joints, 0, 'θ₁');
+    const j2Label = pickSpecItem(d.joints, 1, 'θ₂');
+    const j3Label = pickSpecItem(d.joints, 2, 'd₃ ↓');
+
+    const body =
+      labelText(14, 16, '4-DOF SCARA · RRP(R)', {
+        color: COLORS.cyan,
+        size: 7.2,
+        weight: '700',
+        anchor: 'start',
+        opacity: '0.88',
+        letterSpacing: '0.7',
+      }) +
+      pillBadge(358, 16, convLabel, COLORS.violet, {
+        size: fitFontSize(convLabel, 100, 7.5, 6.6),
+        padX: 8,
+        h: 15,
+        bg: 'rgba(167,139,250,0.13)',
+        textColor: '#DDD6FE',
+      }) +
+
+      // Isometric PCB Workplane on bottom-right
+      `<polygon points="184,126 234,96 398,96 348,126" fill="rgba(52,211,153,0.08)" stroke="${COLORS.emerald}" stroke-opacity="0.58" stroke-width="1.2"/>` +
+      // Subtle PCB copper trace pattern
+      `<path d="M 218,118 L 246,118 L 258,111 L 284,111" fill="none" stroke="${COLORS.emerald}" stroke-opacity="0.34" stroke-width="0.9"/>` +
+      `<path d="M 284,111 L 316,111 L 328,104 L 364,104" fill="none" stroke="${COLORS.emerald}" stroke-opacity="0.34" stroke-width="0.9"/>` +
+      `<circle cx="284" cy="111" r="4.5" fill="rgba(52,211,153,0.18)" stroke="${COLORS.emerald}" stroke-width="1.1"/>` +
+      `<circle cx="284" cy="111" r="1.6" fill="${COLORS.emerald}"/>` +
+      labelText(334, 121, 'PCB WORKPLANE', { color: COLORS.emerald, size: 6.8, weight: '700', opacity: '0.86', letterSpacing: '0.5' }) +
+
+      // Base Pedestal & Vertical Column
+      `<ellipse cx="68" cy="122" rx="26" ry="7.2" fill="url(#${p}hatch)" fill-opacity="0.6" stroke="${COLORS.wall}" stroke-width="1.2"/>` +
+      `<path d="M 55,48 L 55,120 A 13,4.2 0 0,0 81,120 L 81,48 Z" fill="url(#${p}glass-node)" stroke="${COLORS.wire}" stroke-width="1.4"/>` +
+      `<ellipse cx="68" cy="48" rx="13" ry="4.4" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.45"/>` +
+      // Upward z0 axis + yaw arc theta1
+      `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+      `<line x1="68" y1="48" x2="68" y2="23" stroke="${COLORS.cyan}" stroke-width="1.7" marker-end="url(#${p}arrow-cyan)"/>` +
+      `</g>` +
+      labelText(48, 30, 'z₀ ↑', { color: COLORS.cyan, size: 8.8, weight: '700' }) +
+      `<path d="M 48,54 A 20,6.2 0 1,0 88,54" fill="none" stroke="${COLORS.cyan}" stroke-width="1.4" marker-end="url(#${p}arrow-cyan)" opacity="${cueOp}"/>` +
+      labelText(38, 59, j1Label, { color: COLORS.cyan, size: 8.6, weight: '700', filter: cueFilter }) +
+
+      // Horizontal Link 1 (extruded 3D-like plate)
+      `<path d="M 68,42 L 174,34 L 174,47 L 68,55 Z" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.5" stroke-linejoin="round"/>` +
+      `<line x1="74" y1="43.5" x2="168" y2="36.2" stroke="rgba(255,255,255,0.22)" stroke-width="0.85"/>` +
+      labelText(121, 30, l1Label, { color: '#A5F3FC', size: 9.2, weight: '700' }) +
+
+      // Joint 2 Vertical Revolute Drum + theta2 arc
+      `<path d="M 164,34 L 164,49 A 10,3.6 0 0,0 184,49 L 184,34 Z" fill="url(#${p}glass-amber)" stroke="${COLORS.amber}" stroke-width="1.4"/>` +
+      `<ellipse cx="174" cy="34" rx="10" ry="3.6" fill="url(#${p}glass-amber)" stroke="${COLORS.amber}" stroke-width="1.5"/>` +
+      `<path d="M 159,28 A 15,4.8 0 1,1 189,28" fill="none" stroke="${COLORS.amber}" stroke-width="1.35" marker-end="url(#${p}arrow-amber)"/>` +
+      labelText(174, 21, j2Label, { color: COLORS.amber, size: 8.6, weight: '700' }) +
+
+      // Horizontal Link 2 (extruded isometric arm plate)
+      `<path d="M 174,35 L 284,50 L 284,63 L 174,48 Z" fill="url(#${p}glass-amber)" stroke="${COLORS.amber}" stroke-width="1.5" stroke-linejoin="round"/>` +
+      `<line x1="181" y1="37.2" x2="278" y2="50.8" stroke="rgba(255,255,255,0.2)" stroke-width="0.85"/>` +
+      labelText(231, 36, l2Label, { color: '#FDE68A', size: 9.2, weight: '700' }) +
+
+      // Glowing Emerald Vertical Prismatic Quill
+      `<ellipse cx="284" cy="54" rx="11" ry="4" fill="url(#${p}glass-emerald)" stroke="${COLORS.emerald}" stroke-width="1.55"/>` +
+      `<g filter="url(#${p}glow-soft)">` +
+      `<rect x="280.2" y="54" width="7.6" height="46" rx="2.5" fill="url(#${p}glass-emerald)" stroke="${COLORS.emerald}" stroke-width="1.5"/>` +
+      `<polygon points="280.5,100 287.5,100 284,106" fill="${COLORS.emerald}"/>` +
+      `</g>` +
+      // Spline thread notches on quill
+      `<line x1="281" y1="65" x2="287" y2="67" stroke="#A7F3D0" stroke-opacity="0.55" stroke-width="0.85"/>` +
+      `<line x1="281" y1="74" x2="287" y2="76" stroke="#A7F3D0" stroke-opacity="0.55" stroke-width="0.85"/>` +
+      `<line x1="281" y1="83" x2="287" y2="85" stroke="#A7F3D0" stroke-opacity="0.55" stroke-width="0.85"/>` +
+      // Dashed alignment drop line to PCB pad
+      `<line x1="284" y1="106" x2="284" y2="111" stroke="${COLORS.emerald}" stroke-width="1.15" stroke-dasharray="2 1.8"/>` +
+      // Subtle theta4 wrist spin arc
+      `<path d="M 271,94 A 13,4.2 0 1,0 297,94" fill="none" stroke="${COLORS.emerald}" stroke-opacity="0.65" stroke-width="1.1"/>` +
+
+      // Double-headed vertical prismatic arrow d3 ↓ & alpha2=180° flip cue
+      `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+      `<line x1="306" y1="60" x2="306" y2="99" stroke="${COLORS.emerald}" stroke-width="1.75" marker-start="url(#${p}arrow-emerald)" marker-end="url(#${p}arrow-emerald)"/>` +
+      `</g>` +
+      labelText(327, 82, j3Label, { color: COLORS.emerald, size: 9.2, weight: '700' }) +
+      pillBadge(362, 56, 'α₂ = 180°', COLORS.violet, {
+        size: 7.6,
+        padX: 7,
+        h: 15,
+        bg: 'rgba(167,139,250,0.14)',
+        textColor: '#EDE9FE',
+      }) +
+      labelText(362, 70, 'z₃ ↓ opp. z₀ ↑', { color: COLORS.muted, size: 7.0, weight: '600' }) +
+
+      renderSubtitle(d.subtitle, 14, 143);
+
+    return wrapSVG(p, `4-DOF SCARA RRP robot schematic with vertical prismatic quill (${convLabel})`, body);
+  }
+
+  if (variant === 'pieper-6dof') {
+    const convLabel = fmt(d.convention, 'Pieper Decoupling');
+
+    const body =
+      labelText(14, 16, '6-DOF PIEPER KINEMATIC DECOUPLING', {
+        color: COLORS.cyan,
+        size: 7.2,
+        weight: '700',
+        anchor: 'start',
+        opacity: '0.88',
+        letterSpacing: '0.65',
+      }) +
+      pillBadge(346, 16, convLabel, COLORS.violet, {
+        size: fitFontSize(convLabel, 118, 7.5, 6.6),
+        padX: 8,
+        h: 15,
+        bg: 'rgba(167,139,250,0.13)',
+        textColor: '#DDD6FE',
+      }) +
+
+      // Region 1 (Left): Luminous Dashed Cyan Box — Regional Arm (theta1, theta2, theta3)
+      `<rect x="14" y="27" width="186" height="99" rx="9" fill="rgba(34,211,238,0.05)" stroke="${COLORS.cyan}" stroke-opacity="0.52" stroke-width="1.15" stroke-dasharray="4.5 3"/>` +
+      labelText(107, 38, 'REGIONAL ARM (θ₁, θ₂, θ₃)', { color: COLORS.cyan, size: 7.2, weight: '700', letterSpacing: '0.35' }) +
+
+      // Region 2 (Right): Luminous Dashed Amber Box — Spherical Wrist (theta4, theta5, theta6)
+      `<rect x="208" y="27" width="198" height="99" rx="9" fill="rgba(245,158,11,0.05)" stroke="${COLORS.amber}" stroke-opacity="0.52" stroke-width="1.15" stroke-dasharray="4.5 3"/>` +
+      labelText(307, 38, 'SPHERICAL WRIST (θ₄, θ₅, θ₆)', { color: COLORS.amber, size: 7.2, weight: '700', letterSpacing: '0.35' }) +
+
+      // Base pedestal & theta1 yaw inside Region 1
+      `<rect x="24" y="106" width="38" height="5.5" fill="url(#${p}hatch)" opacity="0.7"/>` +
+      `<line x1="22" y1="106" x2="64" y2="106" stroke="${COLORS.wall}" stroke-width="1.3"/>` +
+      `<rect x="35" y="84" width="16" height="22" rx="3" fill="url(#${p}glass-node)" stroke="${COLORS.cyan}" stroke-width="1.3"/>` +
+      `<path d="M 27,97 A 16,4.8 0 1,0 59,97" fill="none" stroke="${COLORS.cyan}" stroke-width="1.25" marker-end="url(#${p}arrow-cyan)"/>` +
+      labelText(24, 91, 'θ₁', { color: COLORS.cyan, size: 8.2, weight: '700' }) +
+
+      // Upper arm (Shoulder -> Elbow) & Forearm (Elbow -> Wrist Center p_wc)
+      `<line x1="43" y1="84" x2="108" y2="54" stroke="${COLORS.cyan}" stroke-width="6.5" stroke-linecap="round" stroke-opacity="0.28"/>` +
+      `<line x1="43" y1="84" x2="108" y2="54" stroke="${COLORS.cyan}" stroke-width="2.1" stroke-linecap="round"/>` +
+      `<line x1="108" y1="54" x2="256" y2="76" stroke="${COLORS.cyan}" stroke-width="5.5" stroke-linecap="round" stroke-opacity="0.24"/>` +
+      `<line x1="108" y1="54" x2="256" y2="76" stroke="${COLORS.cyan}" stroke-width="1.9" stroke-linecap="round"/>` +
+
+      // Shoulder & Elbow joints
+      `<circle cx="43" cy="84" r="5.5" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.65"/>` +
+      labelText(60, 88, 'θ₂', { color: COLORS.cyan, size: 8.2, weight: '700' }) +
+      `<circle cx="108" cy="54" r="5.5" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.65"/>` +
+      labelText(108, 46, 'θ₃', { color: COLORS.cyan, size: 8.2, weight: '700' }) +
+
+      // Decoupling position equation inside Region 1 bottom
+      labelText(107, 118, 'p_wc = p_e − d₆ z_e', { color: '#A5F3FC', size: 7.9, weight: '700' }) +
+
+      // Spherical Wrist Center p_wc (Glowing Amber, 3 intersecting axes z4, z5, z6)
+      `<circle cx="256" cy="76" r="19" fill="rgba(245,158,11,0.09)" stroke="${COLORS.amber}" stroke-opacity="0.58" stroke-width="1.2" stroke-dasharray="3 2.2"/>` +
+      // Axis z4 (incoming)
+      `<line x1="219" y1="85" x2="252" y2="77" stroke="${COLORS.amber}" stroke-width="1.5" marker-end="url(#${p}arrow-amber)"/>` +
+      labelText(224, 74, 'z₄', { color: COLORS.amber, size: 8.0, weight: '700' }) +
+      // Axis z5 (vertical-tilted)
+      `<line x1="249" y1="102" x2="263" y2="49" stroke="${COLORS.amber}" stroke-width="1.5" marker-end="url(#${p}arrow-amber)"/>` +
+      labelText(267, 48, 'z₅', { color: COLORS.amber, size: 8.0, weight: '700' }) +
+      // Axis z6 (outgoing toward EE)
+      `<line x1="256" y1="76" x2="305" y2="76" stroke="${COLORS.amber}" stroke-width="1.5" marker-end="url(#${p}arrow-amber)"/>` +
+      labelText(286, 68, 'z₆', { color: COLORS.amber, size: 8.0, weight: '700' }) +
+      // Glowing p_wc intersection point
+      `<circle cx="256" cy="76" r="4.6" fill="${COLORS.amber}" filter="url(#${p}glow-boost)"/>` +
+      labelText(256, 116, 'p_wc', { color: COLORS.amber, size: 9.0, weight: '700' }) +
+
+      // Offset d6 z_e -> Emerald EE Pose (p_e, R_e)
+      `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+      `<line x1="261" y1="76" x2="342" y2="76" stroke="${COLORS.emerald}" stroke-width="1.8" stroke-dasharray="3.2 2" marker-end="url(#${p}arrow-emerald)"/>` +
+      `</g>` +
+      labelText(308, 90, 'd₆ z_e', { color: COLORS.emerald, size: 8.1, weight: '700' }) +
+
+      // Emerald EE Triad
+      `<g filter="url(#${p}glow-soft)">` +
+      isoTriad(p, 348, 76, 22, COLORS.emerald, 'arrow-emerald', ['xₑ', 'yₑ', 'zₑ']) +
+      `</g>` +
+      labelText(360, 116, '(p_e, R_e)', { color: COLORS.emerald, size: 8.6, weight: '700' }) +
+
+      renderSubtitle(d.subtitle, 14, 143);
+
+    return wrapSVG(p, `6-DOF industrial robot Pieper kinematic decoupling schematic (${convLabel})`, body);
+  }
+
+  // Default variant: '2r-dh' (2-Link Planar Robotic Arm)
+  const convLabel = fmt(d.convention, 'Standard DH');
+  const l1Label = pickSpecItem(d.links, 0, 'L₁');
+  const l2Label = pickSpecItem(d.links, 1, 'L₂');
+  const j1Label = pickSpecItem(d.joints, 0, 'θ₁');
+  const j2Label = pickSpecItem(d.joints, 1, 'θ₂');
+
+  const body =
+    labelText(14, 16, '2R PLANAR MANIPULATOR', {
+      color: COLORS.cyan,
+      size: 7.3,
+      weight: '700',
+      anchor: 'start',
+      opacity: '0.88',
+      letterSpacing: '0.7',
+    }) +
+    pillBadge(354, 16, convLabel, COLORS.violet, {
+      size: fitFontSize(convLabel, 108, 7.6, 6.6),
+      padX: 8,
+      h: 15,
+      bg: 'rgba(167,139,250,0.13)',
+      textColor: '#DDD6FE',
+    }) +
+
+    // Hatched Base Floor & Trapezoidal Pedestal on Left
+    `<rect x="26" y="122" width="80" height="8" fill="url(#${p}hatch)" opacity="0.72"/>` +
+    `<line x1="24" y1="122" x2="108" y2="122" stroke="${COLORS.wall}" stroke-width="1.6"/>` +
+    `<path d="M 46,122 L 54,100 L 78,100 L 86,122 Z" fill="url(#${p}glass-node)" stroke="${COLORS.wire}" stroke-width="1.4"/>` +
+
+    // Base Frame {0} axes (x0 right, y0 up, z0 out/in)
+    `<line x1="66" y1="98" x2="132" y2="98" stroke="${COLORS.wire}" stroke-width="1.25" stroke-dasharray="3.2 2.2" marker-end="url(#${p}arrow-slate)"/>` +
+    `<line x1="66" y1="98" x2="66" y2="40" stroke="${COLORS.wire}" stroke-width="1.25" stroke-dasharray="3.2 2.2" marker-end="url(#${p}arrow-slate)"/>` +
+    labelText(139, 101, 'x₀', { color: COLORS.muted, size: 8.6, weight: '700' }) +
+    labelText(66, 33, 'y₀', { color: COLORS.muted, size: 8.6, weight: '700' }) +
+    labelText(34, 86, '{0}', { color: COLORS.cyan, size: 8.6, weight: '700' }) +
+    labelText(34, 99, 'z₀⊗', { color: COLORS.muted, size: 8.0, weight: '600' }) +
+
+    // Link 1 Extension Reference Ray x1 (from Joint 2 along -20.77 deg)
+    `<line x1="182" y1="54" x2="229" y2="36.2" stroke="${COLORS.wire}" stroke-width="1.15" stroke-dasharray="3 2.2" marker-end="url(#${p}arrow-slate)"/>` +
+    labelText(237, 35, 'x₁', { color: COLORS.muted, size: 8.4, weight: '700' }) +
+    labelText(171, 37, '{1}', { color: COLORS.amber, size: 8.4, weight: '700' }) +
+
+    // Anodized Glass Link 1 (J1=(66,98) -> J2=(182,54), angle=-20.77 deg, len=124.1)
+    `<g transform="translate(66,98) rotate(-20.77)">` +
+    `<rect x="-8" y="-8.5" width="140" height="17" rx="8.5" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.55"/>` +
+    `<line x1="5" y1="-6.8" x2="120" y2="-6.8" stroke="rgba(255,255,255,0.22)" stroke-width="0.9"/>` +
+    `<line x1="0" y1="0" x2="124" y2="0" stroke="${COLORS.cyan}" stroke-opacity="0.34" stroke-width="0.9" stroke-dasharray="3 2.5"/>` +
+    `</g>` +
+    labelText(118, 59, l1Label, { color: '#A5F3FC', size: 9.8, weight: '700' }) +
+
+    // Anodized Glass Link 2 (J2=(182,54) -> EE=(304,78), angle=+11.13 deg, len=124.3)
+    `<g transform="translate(182,54) rotate(11.13)">` +
+    `<rect x="-7" y="-7.5" width="138" height="15" rx="7.5" fill="url(#${p}glass-amber)" stroke="${COLORS.amber}" stroke-width="1.55"/>` +
+    `<line x1="5" y1="-5.8" x2="119" y2="-5.8" stroke="rgba(255,255,255,0.2)" stroke-width="0.85"/>` +
+    `<line x1="0" y1="0" x2="124" y2="0" stroke="${COLORS.amber}" stroke-opacity="0.34" stroke-width="0.9" stroke-dasharray="3 2.5"/>` +
+    `</g>` +
+    labelText(242, 89, l2Label, { color: '#FDE68A', size: 9.8, weight: '700' }) +
+
+    // Joint 1 angle arc theta1 (Cyan)
+    `<g opacity="${cueOp}"${cueFilter ? ` filter="url(#${cueFilter})"` : ''}>` +
+    `<path d="M 103,98 A 37,37 0 0,0 100.6,84.9" fill="none" stroke="${COLORS.cyan}" stroke-width="1.55" marker-end="url(#${p}arrow-cyan)"/>` +
+    labelText(114, 89, j1Label, { color: COLORS.cyan, size: 9.2, weight: '700' }) +
+    `</g>` +
+
+    // Joint 2 angle arc theta2 (Amber)
+    `<g opacity="${cueOp}"${cueFilter ? ` filter="url(#${cueFilter})"` : ''}>` +
+    `<path d="M 214.7,41.6 A 35,35 0 0,1 216.3,60.8" fill="none" stroke="${COLORS.amber}" stroke-width="1.55" marker-end="url(#${p}arrow-amber)"/>` +
+    labelText(230, 52, j2Label, { color: COLORS.amber, size: 9.2, weight: '700' }) +
+    `</g>` +
+
+    // Glowing Cyan Joint 1 Pin
+    `<g filter="url(#${p}glow-soft)">` +
+    `<circle cx="66" cy="98" r="8.5" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.85"/>` +
+    `<circle cx="66" cy="98" r="3.2" fill="${COLORS.cyan}"/>` +
+    `</g>` +
+
+    // Glowing Amber Joint 2 Pin
+    `<g filter="url(#${p}glow-soft)">` +
+    `<circle cx="182" cy="54" r="7.8" fill="url(#${p}glass-amber)" stroke="${COLORS.amber}" stroke-width="1.85"/>` +
+    `<circle cx="182" cy="54" r="3.0" fill="${COLORS.amber}"/>` +
+    `</g>` +
+
+    // End-Effector Emerald Triad {2} (x, y)
+    `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+    `<line x1="304" y1="78" x2="346" y2="86.2" stroke="${COLORS.emerald}" stroke-width="1.75" marker-end="url(#${p}arrow-emerald)"/>` +
+    `<line x1="304" y1="78" x2="312.2" y2="39" stroke="${COLORS.emerald}" stroke-width="1.75" marker-end="url(#${p}arrow-emerald)"/>` +
+    `<circle cx="304" cy="78" r="5.0" fill="url(#${p}glass-emerald)" stroke="${COLORS.emerald}" stroke-width="1.75"/>` +
+    `<circle cx="304" cy="78" r="2.0" fill="${COLORS.emerald}"/>` +
+    `</g>` +
+    labelText(355, 89, 'x₂', { color: COLORS.emerald, size: 8.8, weight: '700' }) +
+    labelText(315, 34, 'y₂', { color: COLORS.emerald, size: 8.8, weight: '700' }) +
+    pillBadge(356, 112, '{2} (x, y)', COLORS.emerald, {
+      size: 8.2,
+      padX: 8,
+      h: 16,
+      bg: 'rgba(52,211,153,0.12)',
+      textColor: '#A7F3D0',
+    }) +
+
+    renderSubtitle(d.subtitle, 14, 143);
+
+  return wrapSVG(p, `2R planar robot manipulator schematic (${convLabel}): links ${l1Label}, ${l2Label}`, body);
+}
+
+/* ==========================================================================
+   14. Screw Theory & Product of Exponentials (screw-poe)
+   ========================================================================== */
+function renderScrewPoE(d, p, isSetup, activeStepIndex) {
+  const variant = fmt(d.variant, 'poe-3r').toLowerCase();
+  const arrowFilter = isSetup ? `${p}glow-boost` : '';
+  const cueFilter = isSetup ? `${p}glow-soft` : '';
+
+  if (variant === 'rodrigues') {
+    const screwLabel = fmt(d.screw, 'S = (ω, v)');
+    const mapLabel = fmt(d.map, 'exp([S]θ)');
+    const poseLabel = fmt(d.formula, 'R ∈ SO(3), p ∈ ℝ³');
+
+    const body =
+      labelText(14, 15, 'EXPONENTIAL MAP · SCREW MOTION', {
+        color: COLORS.cyan,
+        size: 7.2,
+        weight: '700',
+        anchor: 'start',
+        opacity: '0.88',
+        letterSpacing: '0.7',
+      }) +
+
+      // Left Dark-Glass Card: Lie Algebra se(3)
+      `<rect x="14" y="23" width="178" height="106" rx="9" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.65"/>` +
+      `<line x1="21" y1="24.3" x2="185" y2="24.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.9"/>` +
+      labelText(103, 35.5, 'LIE ALGEBRA  se(3)', { color: COLORS.cyan, size: 7.3, weight: '700', letterSpacing: '0.55' }) +
+      labelText(52, 51, screwLabel, {
+        color: '#A5F3FC',
+        size: fitFontSize(screwLabel, 68, 7.8, 6.6),
+        weight: '700',
+      }) +
+
+      // Origin O and offset vector q to point q on screw axis
+      `<circle cx="36" cy="110" r="2.6" fill="${COLORS.wire}"/>` +
+      labelText(27, 114, 'O', { color: COLORS.muted, size: 8.2, weight: '700' }) +
+      `<line x1="38.5" y1="109" x2="88" y2="87.5" stroke="${COLORS.wire}" stroke-width="1.35" stroke-dasharray="3 2" marker-end="url(#${p}arrow-slate)"/>` +
+      labelText(62, 108, 'q', { color: COLORS.muted, size: 8.5, weight: '700' }) +
+
+      // Glowing Cyan Screw Axis omega passing through q=(92,86)
+      `<g filter="url(#${p}glow-soft)">` +
+      `<line x1="75" y1="115" x2="122" y2="42" stroke="${COLORS.cyan}" stroke-width="2.0" marker-end="url(#${p}arrow-cyan)"/>` +
+      `</g>` +
+      labelText(133, 47, 'ω', { color: COLORS.cyan, size: 9.6, weight: '700' }) +
+
+      // Helical twist arc theta wrapping around axis
+      `<path d="M 94,63 C 90,54 114,52 121,62 C 125,68 117,74 109,73" fill="none" stroke="${COLORS.violet}" stroke-width="1.5" marker-end="url(#${p}arrow-violet)"/>` +
+      labelText(135, 67, 'θ', { color: '#DDD6FE', size: 9.0, weight: '700' }) +
+
+      // Point q on axis + Amber tangential vector v = -omega x q
+      `<circle cx="92" cy="86" r="3.4" fill="${COLORS.amber}" filter="url(#${p}glow-soft)"/>` +
+      `<line x1="94.5" y1="86.7" x2="145" y2="98" stroke="${COLORS.amber}" stroke-width="1.75" marker-end="url(#${p}arrow-amber)"/>` +
+      labelText(144, 114, 'v = −ω × q', { color: COLORS.amber, size: 7.9, weight: '700' }) +
+
+      // Center Exponential Map Bridge: exp([S]theta)
+      `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+      `<line x1="196" y1="76" x2="255" y2="76" stroke="${COLORS.emerald}" stroke-width="2.05" marker-end="url(#${p}arrow-emerald)"/>` +
+      `</g>` +
+      labelText(226, 65, mapLabel, {
+        color: COLORS.emerald,
+        size: fitFontSize(mapLabel, 64, 8.8, 7.0),
+        weight: '700',
+      }) +
+      labelText(226, 90, 'Rodrigues', { color: COLORS.violet, size: 7.4, weight: '600' }) +
+
+      // Right Dark-Glass Card: Lie Group SE(3)
+      `<rect x="260" y="23" width="146" height="106" rx="9" fill="url(#${p}glass-emerald)" stroke="${COLORS.emerald}" stroke-width="1.65"/>` +
+      `<line x1="267" y1="24.3" x2="399" y2="24.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.9"/>` +
+      labelText(333, 35.5, 'LIE GROUP  SE(3)', { color: COLORS.emerald, size: 7.3, weight: '700', letterSpacing: '0.55' }) +
+
+      // Rigid-body displacement arc from initial frame to transformed frame
+      `<g opacity="0.52">` +
+      isoTriad(p, 282, 82, 16, COLORS.wire, 'arrow-slate') +
+      `</g>` +
+      `<path d="M 285,78 Q 315,49 343,65" fill="none" stroke="${COLORS.emerald}" stroke-width="1.35" stroke-dasharray="3 2" marker-end="url(#${p}arrow-emerald)"/>` +
+      `<g filter="url(#${p}glow-soft)">` +
+      isoTriad(p, 348, 68, 20, COLORS.emerald, 'arrow-emerald') +
+      `</g>` +
+      labelText(378, 72, 'T', { color: COLORS.emerald, size: 9.0, weight: '700' }) +
+
+      // SE(3) Rigid-body pose summary
+      labelText(333, 102, poseLabel, {
+        color: COLORS.text,
+        size: fitFontSize(poseLabel, 134, 8.4, 6.8),
+        weight: '700',
+      }) +
+      labelText(333, 118, 'T(θ) = e^[S]θ ∈ SE(3)', { color: '#A7F3D0', size: 7.6, weight: '600' }) +
+
+      renderSubtitle(d.subtitle, 14, 143);
+
+    return wrapSVG(p, `Screw motion exponential map schematic from Lie algebra se(3) to Lie group SE(3): ${mapLabel}`, body);
+  }
+
+  if (variant === 'body-adjoint') {
+    const mapLabel = fmt(d.map, 'Ad_T / Ad_Tᵀ');
+    const bodyFormula = fmt(d.formula, 'T = M·e^[B₁]θ₁…');
+    const bottomNote = fmt(d.screw, 'Bᵢ = Ad_{M⁻¹} Sᵢ  ·  Power Invariant');
+
+    const body =
+      labelText(14, 15, 'SPACE ↔ BODY ADJOINT DUALITY', {
+        color: COLORS.cyan,
+        size: 7.2,
+        weight: '700',
+        anchor: 'start',
+        opacity: '0.88',
+        letterSpacing: '0.7',
+      }) +
+      pillBadge(340, 15, bodyFormula, COLORS.emerald, {
+        size: fitFontSize(bodyFormula, 126, 7.6, 6.6),
+        padX: 8,
+        h: 15,
+        bg: 'rgba(52,211,153,0.12)',
+        textColor: '#A7F3D0',
+      }) +
+
+      // Left Cyan Card: Space Frame {s}
+      `<rect x="16" y="28" width="132" height="80" rx="9" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.65"/>` +
+      `<line x1="23" y1="29.3" x2="141" y2="29.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.9"/>` +
+      labelText(82, 41, 'SPACE FRAME  {s}', { color: COLORS.cyan, size: 7.4, weight: '700', letterSpacing: '0.45' }) +
+      isoTriad(p, 35, 72, 13, COLORS.cyan, 'arrow-cyan') +
+      labelText(96, 66, 'Sᵢ ,  V_s', { color: COLORS.text, size: 10.6, weight: '700' }) +
+      labelText(96, 84, 'Wrench: F_s', { color: '#FDE68A', size: 8.1, weight: '600' }) +
+      labelText(82, 99, 'Fixed Base', { color: COLORS.muted, size: 7.1, weight: '500' }) +
+
+      // Right Emerald Card: Body Frame {b}
+      `<rect x="272" y="28" width="132" height="80" rx="9" fill="url(#${p}glass-emerald)" stroke="${COLORS.emerald}" stroke-width="1.65"/>` +
+      `<line x1="279" y1="29.3" x2="397" y2="29.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.9"/>` +
+      labelText(338, 41, 'BODY FRAME  {b}', { color: COLORS.emerald, size: 7.4, weight: '700', letterSpacing: '0.45' }) +
+      isoTriad(p, 291, 72, 13, COLORS.emerald, 'arrow-emerald') +
+      labelText(352, 66, 'Bᵢ ,  V_b', { color: COLORS.text, size: 10.6, weight: '700' }) +
+      labelText(352, 84, 'Wrench: F_b', { color: '#FDE68A', size: 8.1, weight: '600' }) +
+      labelText(338, 99, 'End-Effector', { color: COLORS.muted, size: 7.1, weight: '500' }) +
+
+      // Center Top Bidirectional Adjoint Twist Channel
+      `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+      `<line x1="154" y1="54" x2="266" y2="54" stroke="${COLORS.violet}" stroke-width="1.85" marker-start="url(#${p}arrow-cyan)" marker-end="url(#${p}arrow-emerald)"/>` +
+      `</g>` +
+      labelText(210, 42, mapLabel, {
+        color: COLORS.violet,
+        size: fitFontSize(mapLabel, 112, 8.6, 7.0),
+        weight: '700',
+      }) +
+      labelText(210, 66, 'V_s = Ad_T V_b', { color: '#DDD6FE', size: 7.8, weight: '600' }) +
+
+      // Center Bottom Dual Wrench Arrow: F_b = Ad^T F_s
+      `<line x1="154" y1="90" x2="266" y2="90" stroke="${COLORS.amber}" stroke-width="1.75" marker-end="url(#${p}arrow-amber)"/>` +
+      labelText(210, 82, 'F_b = Adᵀ F_s', { color: COLORS.amber, size: 8.4, weight: '700', filter: cueFilter }) +
+      labelText(210, 102, 'V_sᵀ F_s = V_bᵀ F_b', { color: COLORS.muted, size: 7.0, weight: '600' }) +
+
+      // Bottom Summary Pill
+      pillBadge(210, 124, bottomNote, COLORS.violet, {
+        size: fitFontSize(bottomNote, 260, 7.5, 6.6),
+        padX: 9,
+        h: 15,
+        bg: 'rgba(7,11,20,0.92)',
+        textColor: '#DDD6FE',
+      }) +
+
+      renderSubtitle(d.subtitle, 14, 143);
+
+    return wrapSVG(p, `Space and Body frame Adjoint duality schematic: ${mapLabel}, ${bodyFormula}`, body);
+  }
+
+  // Default variant: 'poe-3r' (Zero-Intermediate-Frame PoE Spatial Chain)
+  const poeBadge = fmt(d.map, 'Only 2 Frames: {s} & {b}');
+  const poeFormula = fmt(d.formula, 'T(θ) = e^[S₁]θ₁ · e^[S₂]θ₂ · e^[S₃]θ₃ · M');
+
+  const body =
+    labelText(14, 16, 'PRODUCT OF EXPONENTIALS (PoE)', {
+      color: COLORS.cyan,
+      size: 7.2,
+      weight: '700',
+      anchor: 'start',
+      opacity: '0.88',
+      letterSpacing: '0.7',
+    }) +
+    pillBadge(334, 16, poeBadge, COLORS.violet, {
+      size: fitFontSize(poeBadge, 142, 7.4, 6.5),
+      padX: 8,
+      h: 15,
+      bg: 'rgba(167,139,250,0.13)',
+      textColor: '#DDD6FE',
+    }) +
+
+    // Base Frame {s} (Cyan 3D Triad)
+    `<g filter="url(#${p}glow-soft)">` +
+    isoTriad(p, 46, 104, 21, COLORS.cyan, 'arrow-cyan', ['xₛ', 'yₛ', 'zₛ']) +
+    `</g>` +
+    labelText(24, 106, '{s}', { color: COLORS.cyan, size: 9.4, weight: '700' }) +
+
+    // Sleek dark-glass spatial chain links (zero intermediate coordinate frames!)
+    `<line x1="46" y1="104" x2="88" y2="92" stroke="${COLORS.wire}" stroke-width="2.2" stroke-dasharray="3 2" stroke-opacity="0.7"/>` +
+    // Link 1: J1=(88,92) -> J2=(174,64)
+    `<line x1="88" y1="92" x2="174" y2="64" stroke="${COLORS.wire}" stroke-width="8" stroke-linecap="round" stroke-opacity="0.22"/>` +
+    `<line x1="88" y1="92" x2="174" y2="64" stroke="${COLORS.wire}" stroke-width="2.2" stroke-linecap="round"/>` +
+    // Link 2: J2=(174,64) -> J3=(264,68)
+    `<line x1="174" y1="64" x2="264" y2="68" stroke="${COLORS.wire}" stroke-width="7.5" stroke-linecap="round" stroke-opacity="0.22"/>` +
+    `<line x1="174" y1="64" x2="264" y2="68" stroke="${COLORS.wire}" stroke-width="2.2" stroke-linecap="round"/>` +
+    // Link 3: J3=(264,68) -> Home Pose {b}=(348,86)
+    `<line x1="264" y1="68" x2="348" y2="86" stroke="${COLORS.wire}" stroke-width="7" stroke-linecap="round" stroke-opacity="0.22"/>` +
+    `<line x1="264" y1="68" x2="348" y2="86" stroke="${COLORS.wire}" stroke-width="2.2" stroke-linecap="round"/>` +
+
+    // Three dark-glass joint rings (no intermediate frames attached)
+    `<circle cx="88" cy="92" r="6.8" fill="url(#${p}glass-node)" stroke="${COLORS.violet}" stroke-width="1.6"/>` +
+    `<circle cx="174" cy="64" r="6.8" fill="url(#${p}glass-node)" stroke="${COLORS.violet}" stroke-width="1.6"/>` +
+    `<circle cx="264" cy="68" r="6.8" fill="url(#${p}glass-node)" stroke="${COLORS.violet}" stroke-width="1.6"/>` +
+
+    // Glowing Violet Helical Screw Axis S1 piercing Joint 1
+    `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+    `<line x1="88" y1="115" x2="88" y2="38" stroke="${COLORS.violet}" stroke-width="1.85" marker-end="url(#${p}arrow-violet)"/>` +
+    `</g>` +
+    `<path d="M 75,65 A 13,4.5 0 1,0 101,65" fill="none" stroke="${COLORS.violet}" stroke-width="1.35" marker-end="url(#${p}arrow-violet)"/>` +
+    labelText(88, 31, 'S₁', { color: COLORS.violet, size: 9.2, weight: '700' }) +
+
+    // Glowing Violet Helical Screw Axis S2 piercing Joint 2
+    `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+    `<line x1="152" y1="90" x2="196" y2="39" stroke="${COLORS.violet}" stroke-width="1.85" marker-end="url(#${p}arrow-violet)"/>` +
+    `</g>` +
+    `<path d="M 176,52 C 172,44 190,44 193,52 C 195,58 187,62 181,60" fill="none" stroke="${COLORS.violet}" stroke-width="1.3" marker-end="url(#${p}arrow-violet)"/>` +
+    labelText(206, 37, 'S₂', { color: COLORS.violet, size: 9.2, weight: '700' }) +
+
+    // Glowing Violet Helical Screw Axis S3 piercing Joint 3
+    `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+    `<line x1="244" y1="94" x2="284" y2="43" stroke="${COLORS.violet}" stroke-width="1.85" marker-end="url(#${p}arrow-violet)"/>` +
+    `</g>` +
+    `<path d="M 265,56 C 261,48 279,48 282,56 C 284,62 276,66 270,64" fill="none" stroke="${COLORS.violet}" stroke-width="1.3" marker-end="url(#${p}arrow-violet)"/>` +
+    labelText(294, 41, 'S₃', { color: COLORS.violet, size: 9.2, weight: '700' }) +
+
+    // Home Pose Frame {b} M (Emerald 3D Triad)
+    `<g filter="url(#${p}glow-soft)">` +
+    isoTriad(p, 348, 86, 22, COLORS.emerald, 'arrow-emerald', ['x_b', 'y_b', 'z_b']) +
+    `</g>` +
+    labelText(384, 72, '{b}  M', { color: COLORS.emerald, size: 9.0, weight: '700' }) +
+
+    // Bottom Centered PoE Formula Pill
+    pillBadge(210, 124, poeFormula, COLORS.violet, {
+      size: fitFontSize(poeFormula, 330, 8.2, 6.8),
+      padX: 10,
+      h: 16,
+      bg: 'rgba(7,11,20,0.94)',
+      textColor: '#EDE9FE',
+    }) +
+
+    renderSubtitle(d.subtitle, 14, 143);
+
+  return wrapSVG(p, `3R Product of Exponentials (PoE) screw-axis schematic: ${poeFormula}`, body);
+}
+
+/* ==========================================================================
+   15. Inverse Kinematics & Differential Solver Architectures (ik-solver-arch)
+   ========================================================================== */
+function renderIkSolverArch(d, p, isSetup, activeStepIndex) {
+  const variant = fmt(d.variant, 'jacobian-ellipsoid').toLowerCase();
+  const arrowFilter = isSetup ? `${p}glow-boost` : '';
+  const cueFilter = isSetup ? `${p}glow-soft` : '';
+
+  if (variant === 'dls-nullspace') {
+    const dlsLaw = fmt(d.law, 'Jᵀ(JJᵀ + λ²I)⁻¹');
+    const badgeText = fmt(d.badge, 'J·N = 0');
+
+    const body =
+      labelText(14, 15, 'DAMPED LEAST SQUARES + NULLSPACE IK', {
+        color: COLORS.cyan,
+        size: 7.2,
+        weight: '700',
+        anchor: 'start',
+        opacity: '0.88',
+        letterSpacing: '0.65',
+      }) +
+      pillBadge(366, 15, badgeText, COLORS.violet, {
+        size: fitFontSize(badgeText, 92, 7.6, 6.6),
+        padX: 8,
+        h: 14.5,
+        bg: 'rgba(167,139,250,0.14)',
+        textColor: '#DDD6FE',
+      }) +
+
+      // Top Primary Task Branch: e -> DLS Inverse -> Sum
+      `<circle cx="22" cy="49" r="3" fill="${COLORS.cyan}" filter="url(#${p}glow-soft)"/>` +
+      labelText(22, 40, 'e', { color: COLORS.cyan, size: 9.6, weight: '700' }) +
+      labelText(34, 62, 'task', { color: COLORS.muted, size: 7.0, weight: '600' }) +
+      `<line x1="25" y1="49" x2="60" y2="49" stroke="${COLORS.cyan}" stroke-width="1.75" marker-end="url(#${p}arrow-cyan)"/>` +
+
+      // Cyan Glass Box: DLS Inverse
+      `<rect x="64" y="27" width="186" height="44" rx="8" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.7"/>` +
+      `<line x1="71" y1="28.3" x2="243" y2="28.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.9"/>` +
+      labelText(157, 39, 'PRIMARY · DLS INVERSE', { color: COLORS.cyan, size: 7.1, weight: '700', letterSpacing: '0.45' }) +
+      labelText(157, 57, dlsLaw, {
+        color: COLORS.text,
+        size: fitFontSize(dlsLaw, 170, 10.2, 7.5),
+        weight: '700',
+      }) +
+
+      // Top Branch to Summing Junction
+      `<path d="M 250,49 L 310,49 Q 314,49 314,53 L 314,61" fill="none" stroke="${COLORS.cyan}" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#${p}arrow-cyan)"/>` +
+      labelText(282, 42, 'q̇_task', { color: '#A5F3FC', size: 7.8, weight: '700' }) +
+
+      // Bottom Secondary Task Branch: qdot_0 -> Nullspace Projector -> Sum
+      `<circle cx="22" cy="104" r="3" fill="${COLORS.violet}" filter="url(#${p}glow-soft)"/>` +
+      labelText(22, 95, 'q̇₀', { color: COLORS.violet, size: 9.4, weight: '700' }) +
+      labelText(34, 118, 'posture', { color: COLORS.muted, size: 7.0, weight: '600' }) +
+      `<line x1="25" y1="104" x2="60" y2="104" stroke="${COLORS.violet}" stroke-width="1.75" marker-end="url(#${p}arrow-violet)"/>` +
+
+      // Violet Glass Box: Nullspace Projector
+      `<rect x="64" y="82" width="186" height="44" rx="8" fill="url(#${p}glass-violet)" stroke="${COLORS.violet}" stroke-width="1.7"/>` +
+      `<line x1="71" y1="83.3" x2="243" y2="83.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.9"/>` +
+      labelText(157, 94, 'SECONDARY · NULLSPACE N', { color: COLORS.violet, size: 7.1, weight: '700', letterSpacing: '0.45' }) +
+      labelText(157, 112, 'N = I − J⁺J', { color: COLORS.text, size: 10.4, weight: '700' }) +
+
+      // Bottom Branch to Summing Junction + J*N = 0 tag
+      `<path d="M 250,104 L 310,104 Q 314,104 314,100 L 314,91" fill="none" stroke="${COLORS.violet}" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#${p}arrow-violet)"/>` +
+      labelText(282, 116, 'N·q̇₀', { color: '#DDD6FE', size: 7.8, weight: '700' }) +
+      labelText(282, 94, 'J·N = 0', { color: COLORS.violet, size: 7.3, weight: '700', filter: cueFilter }) +
+
+      // Summing Junction Sigma
+      `<circle cx="314" cy="76" r="13" fill="url(#${p}glass-node)" stroke="${COLORS.emerald}" stroke-width="1.8" filter="url(#${p}glow-soft)"/>` +
+      labelText(314, 80, 'Σ', { color: COLORS.text, size: 11.5, weight: '700' }) +
+      labelText(303, 62, '+', { color: COLORS.cyan, size: 8.6, weight: '700' }) +
+      labelText(303, 94, '+', { color: COLORS.violet, size: 8.6, weight: '700' }) +
+
+      // Output Arrow -> Emerald qdot
+      `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+      `<line x1="327" y1="76" x2="368" y2="76" stroke="${COLORS.emerald}" stroke-width="2.0" marker-end="url(#${p}arrow-emerald)"/>` +
+      `</g>` +
+      `<rect x="372" y="61" width="34" height="30" rx="7" fill="url(#${p}glass-emerald)" stroke="${COLORS.emerald}" stroke-width="1.7"/>` +
+      `<line x1="377" y1="62.2" x2="401" y2="62.2" stroke="rgba(255,255,255,0.22)" stroke-width="0.85"/>` +
+      labelText(389, 80, 'q̇', { color: COLORS.text, size: 11.8, weight: '700' }) +
+
+      renderSubtitle(d.subtitle, 14, 143);
+
+    return wrapSVG(p, `Damped Least Squares and Nullspace Projector IK block diagram (${dlsLaw}, ${badgeText})`, body);
+  }
+
+  if (variant === 'qp-ik-se3') {
+    const qpObj = fmt(d.law, 'min Σ wᵢ‖Jᵢq̇−vᵢ*‖² + λ‖q̇‖²');
+    const badgeText = fmt(d.badge, 'SE(3) Diff-IK');
+
+    const body =
+      labelText(14, 15, 'PINK / MINK · DIFFERENTIAL QP-IK', {
+        color: COLORS.cyan,
+        size: 7.2,
+        weight: '700',
+        anchor: 'start',
+        opacity: '0.88',
+        letterSpacing: '0.65',
+      }) +
+      pillBadge(358, 15, badgeText, COLORS.emerald, {
+        size: fitFontSize(badgeText, 102, 7.5, 6.6),
+        padX: 8,
+        h: 14.5,
+        bg: 'rgba(52,211,153,0.12)',
+        textColor: '#A7F3D0',
+      }) +
+
+      // Left Cyan Box: SE(3) Log Error
+      `<rect x="14" y="28" width="96" height="62" rx="8" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.65"/>` +
+      `<line x1="20" y1="29.3" x2="104" y2="29.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.85"/>` +
+      labelText(62, 41, 'SE(3) LOG ERR', { color: COLORS.cyan, size: 7.0, weight: '700', letterSpacing: '0.4' }) +
+      labelText(62, 58, 'e = log(T⁻¹T_d)∨', { color: COLORS.text, size: 7.9, weight: '700' }) +
+      labelText(62, 74, 'v* = (α/Δt) e', { color: '#A5F3FC', size: 7.4, weight: '600' }) +
+
+      // Arrow 1: v*
+      `<line x1="110" y1="59" x2="129" y2="59" stroke="${COLORS.cyan}" stroke-width="1.75" marker-end="url(#${p}arrow-cyan)"/>` +
+      labelText(120, 50, 'v*', { color: COLORS.cyan, size: 8.4, weight: '700' }) +
+
+      // Center Double-Bordered Violet/Emerald Box: Real-Time QP Solver
+      `<rect x="133" y="25" width="168" height="68" rx="9" fill="url(#${p}glass-violet)" stroke="${COLORS.violet}" stroke-width="1.7"/>` +
+      `<rect x="136.5" y="28.5" width="161" height="61" rx="6.5" fill="none" stroke="${COLORS.emerald}" stroke-opacity="0.62" stroke-width="0.95"/>` +
+      `<line x1="142" y1="26.3" x2="292" y2="26.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.9"/>` +
+      labelText(217, 39, 'REAL-TIME QP SOLVER', { color: COLORS.violet, size: 7.2, weight: '700', letterSpacing: '0.5' }) +
+      labelText(217, 56, qpObj, {
+        color: COLORS.text,
+        size: fitFontSize(qpObj, 152, 7.6, 6.4),
+        weight: '700',
+      }) +
+      `<line x1="146" y1="64" x2="288" y2="64" stroke="rgba(167,139,250,0.3)" stroke-width="0.8"/>` +
+      labelText(217, 78, 's.t. q_min ≤ q+q̇Δt ≤ q_max', { color: '#A7F3D0', size: 7.1, weight: '600' }) +
+
+      // Arrow 2: qdot*
+      `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+      `<line x1="301" y1="59" x2="323" y2="59" stroke="${COLORS.emerald}" stroke-width="1.95" marker-end="url(#${p}arrow-emerald)"/>` +
+      `</g>` +
+      labelText(312, 50, 'q̇*', { color: COLORS.emerald, size: 9.0, weight: '700' }) +
+
+      // Right Emerald Box: Robot / MuJoCo
+      `<rect x="327" y="28" width="79" height="62" rx="8" fill="url(#${p}glass-emerald)" stroke="${COLORS.emerald}" stroke-width="1.65"/>` +
+      `<line x1="333" y1="29.3" x2="400" y2="29.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.85"/>` +
+      labelText(366.5, 42, 'ROBOT', { color: COLORS.emerald, size: 7.4, weight: '700', letterSpacing: '0.45' }) +
+      labelText(366.5, 53.5, '/ MuJoCo', { color: '#A7F3D0', size: 7.5, weight: '600' }) +
+      labelText(366.5, 71, 'q ← q + q̇*Δt', { color: COLORS.text, size: 7.3, weight: '700' }) +
+      labelText(366.5, 83, 'FK(q)', { color: COLORS.muted, size: 6.9, weight: '600' }) +
+
+      // Feedback Loop: q, T_curr(q) -> SE(3) Log Error & QP Solver tap
+      `<path d="M 366.5,90 L 366.5,113 Q 366.5,117 362.5,117 L 66,117 Q 62,117 62,113 L 62,92" fill="none" stroke="${COLORS.cyan}" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#${p}arrow-cyan)"/>` +
+      `<line x1="217" y1="109" x2="217" y2="95" stroke="${COLORS.violet}" stroke-width="1.35" stroke-dasharray="2.5 2" marker-end="url(#${p}arrow-violet)"/>` +
+      pillBadge(217, 117, 'q,  T_curr(q)', COLORS.cyan, {
+        size: 7.8,
+        padX: 10,
+        h: 15,
+        bg: 'rgba(7,11,20,0.95)',
+        textColor: '#A5F3FC',
+      }) +
+
+      renderSubtitle(d.subtitle, 14, 143);
+
+    return wrapSVG(p, `Pink and Mink Differential SE(3) QP-IK closed-loop architecture schematic (${badgeText})`, body);
+  }
+
+  // Default variant: 'jacobian-ellipsoid' (Manipulability Ellipsoid + Velocity/Force Duality)
+  const metricText = fmt(d.metric, fmt(d.badge, 'w = √det(JJᵀ)'));
+  const velLaw = fmt(d.law, 'v = J(θ) θ̇');
+
+  const body =
+    labelText(14, 15, 'JACOBIAN ELLIPSOID & FORCE DUALITY', {
+      color: COLORS.cyan,
+      size: 7.2,
+      weight: '700',
+      anchor: 'start',
+      opacity: '0.88',
+      letterSpacing: '0.65',
+    }) +
+    pillBadge(350, 15, metricText, COLORS.violet, {
+      size: fitFontSize(metricText, 114, 7.6, 6.6),
+      padX: 8,
+      h: 14.5,
+      bg: 'rgba(167,139,250,0.13)',
+      textColor: '#DDD6FE',
+    }) +
+
+    // Left Panel: Isometric Manipulability Ellipsoid
+    `<rect x="14" y="24" width="190" height="106" rx="9" fill="rgba(7,11,20,0.74)" stroke="rgba(34,211,238,0.34)" stroke-width="1"/>` +
+    labelText(109, 36, 'MANIPULABILITY ELLIPSOID', { color: COLORS.cyan, size: 7.1, weight: '700', letterSpacing: '0.45' }) +
+
+    // Subtle task-space axes
+    `<line x1="28" y1="78" x2="188" y2="78" stroke="${COLORS.wire}" stroke-opacity="0.22" stroke-width="0.9"/>` +
+    `<line x1="104" y1="42" x2="104" y2="112" stroke="${COLORS.wire}" stroke-opacity="0.22" stroke-width="0.9"/>` +
+
+    // Healthy Manipulability Ellipsoid (isometric tilted ellipse + equator ring)
+    `<ellipse cx="104" cy="78" rx="54" ry="25" transform="rotate(-22 104 78)" fill="rgba(34,211,238,0.12)" stroke="${COLORS.cyan}" stroke-width="1.65"/>` +
+    `<ellipse cx="104" cy="78" rx="54" ry="8.5" transform="rotate(-22 104 78)" fill="none" stroke="${COLORS.cyan}" stroke-opacity="0.3" stroke-width="0.9" stroke-dasharray="2.5 2"/>` +
+
+    // Dashed flattened singular line (Rose)
+    `<line x1="56" y1="97.4" x2="152" y2="58.6" stroke="${COLORS.rose}" stroke-width="1.35" stroke-dasharray="3.5 2.4" stroke-opacity="0.9"/>` +
+
+    // Semi-axes sigma1 (Cyan) and sigma2 (Emerald)
+    `<g${arrowFilter ? ` filter="url(#${arrowFilter})"` : ''}>` +
+    `<line x1="104" y1="78" x2="150" y2="59.4" stroke="${COLORS.cyan}" stroke-width="1.85" marker-end="url(#${p}arrow-cyan)"/>` +
+    `<line x1="104" y1="78" x2="95.2" y2="56.2" stroke="${COLORS.emerald}" stroke-width="1.85" marker-end="url(#${p}arrow-emerald)"/>` +
+    `</g>` +
+    `<circle cx="104" cy="78" r="2.8" fill="${COLORS.text}"/>` +
+    labelText(156, 54, 'σ₁', { color: COLORS.cyan, size: 9.0, weight: '700' }) +
+    labelText(84, 55, 'σ₂', { color: COLORS.emerald, size: 9.0, weight: '700' }) +
+    labelText(109, 121, 'σ₂ → 0 : Singular (rank drop)', { color: COLORS.rose, size: 7.2, weight: '600' }) +
+
+    // Right Stacked Duality Cards (Velocity Map & Static Force Duality)
+    // Top Card: Velocity Map (Cyan)
+    `<rect x="218" y="26" width="188" height="46" rx="8" fill="url(#${p}glass-cyan)" stroke="${COLORS.cyan}" stroke-width="1.65"/>` +
+    `<line x1="225" y1="27.3" x2="399" y2="27.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.9"/>` +
+    labelText(228, 38.5, 'VELOCITY MAP', { color: COLORS.cyan, size: 7.1, weight: '700', anchor: 'start', letterSpacing: '0.45' }) +
+    labelText(396, 38.5, '‖θ̇‖ ≤ 1', { color: '#A5F3FC', size: 7.1, weight: '600', anchor: 'end' }) +
+    labelText(312, 58, velLaw, {
+      color: COLORS.text,
+      size: fitFontSize(velLaw, 170, 11.4, 8.2),
+      weight: '700',
+    }) +
+
+    // Virtual Work Duality Link between cards
+    labelText(312, 80.5, 'Fᵀv = τᵀθ̇  ·  Virtual Work', { color: COLORS.violet, size: 7.1, weight: '600', filter: cueFilter }) +
+
+    // Bottom Card: Static Force Duality (Amber)
+    `<rect x="218" y="85" width="188" height="45" rx="8" fill="url(#${p}glass-amber)" stroke="${COLORS.amber}" stroke-width="1.65"/>` +
+    `<line x1="225" y1="86.3" x2="399" y2="86.3" stroke="rgba(255,255,255,0.22)" stroke-width="0.9"/>` +
+    labelText(228, 97.5, 'STATIC FORCE DUALITY', { color: COLORS.amber, size: 7.1, weight: '700', anchor: 'start', letterSpacing: '0.45' }) +
+    labelText(396, 97.5, 'J ↔ Jᵀ', { color: '#FDE68A', size: 7.1, weight: '600', anchor: 'end' }) +
+    labelText(312, 117, 'τ = Jᵀ(θ) F', { color: COLORS.text, size: 11.4, weight: '700' }) +
+
+    renderSubtitle(d.subtitle, 14, 143);
+
+  return wrapSVG(p, `Jacobian manipulability ellipsoid and velocity-force duality schematic (${metricText})`, body);
+}
+
 const RENDERERS = {
   msd: renderMSD,
   rotational: renderRotational,
@@ -2208,6 +3135,9 @@ const RENDERERS = {
   'state-space-loop': renderStateSpaceLoop,
   'mpc-cbf': renderMpcCbf,
   'estimator-arch': renderEstimatorArch,
+  'robot-chain': renderRobotChain,
+  'screw-poe': renderScrewPoE,
+  'ik-solver-arch': renderIkSolverArch,
 };
 
 /**

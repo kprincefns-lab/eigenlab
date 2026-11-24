@@ -2,7 +2,7 @@
  * EIGENLAB — Paperless Multi-Step Symbolic Solver
  * Supports Derivatives, Integrals, Diff Eq / Laplace, Linear Algebra,
  * Physical Modeling & s-Plane, PID Control, Root Locus & Bode Frequency Design,
- * and Modern State-Space, MPC & SOTA Estimation.
+ * Modern State-Space, MPC & SOTA Estimation, and Forward & Inverse Robot Kinematics.
  * Zero scratch paper required: every completed micro-step locks into a persistent
  * Working Step Ledger with per-step "Why This Step?" and "⚡ System Impact" insights,
  * culminating in a high-DPI interactive numerical or geometric verification plot.
@@ -37,6 +37,10 @@ import {
   STATESPACE_PROBLEMS,
   STATESPACE_SOLVER_TIERS,
 } from '../../data/lessons/statespace-problems.js';
+import {
+  KINEMATICS_PROBLEMS,
+  KINEMATICS_SOLVER_TIERS,
+} from '../../data/lessons/kinematics-problems.js';
 import { store, sound, renderKatex, renderInlineMathText } from '../store.js';
 import { renderSystemSchematicSVG } from '../viz/schematic-svg.js';
 
@@ -406,6 +410,57 @@ const STATESPACE_CHEAT_SHEET_RULES = [
   },
 ];
 
+const KINEMATICS_CHEAT_SHEET_RULES = [
+  {
+    name: 'Standard DH Transform',
+    tag: 'Classical DH',
+    latex:
+      'T_i^{i-1} = \\operatorname{Rot}_z(\\theta_i)\\operatorname{Trans}_z(d_i)\\operatorname{Trans}_x(a_i)\\operatorname{Rot}_x(\\alpha_i)',
+  },
+  {
+    name: 'Modified DH (Craig)',
+    tag: 'Proximal MDH',
+    latex:
+      'T_i^{i-1} = \\operatorname{Rot}_x(\\alpha_{i-1})\\operatorname{Trans}_x(a_{i-1})\\operatorname{Rot}_z(\\theta_i)\\operatorname{Trans}_z(d_i)',
+  },
+  {
+    name: 'Product of Exponentials',
+    tag: 'SOTA SE(3)',
+    latex:
+      'T(\\theta) = e^{[\\mathcal{S}_1]\\theta_1}\\cdots e^{[\\mathcal{S}_n]\\theta_n}\\,M, \\quad v_i = -\\omega_i \\times q_i',
+  },
+  {
+    name: 'Rodrigues & Adjoint',
+    tag: 'Lie Group',
+    latex:
+      'e^{[\\omega]\\theta}=I+s_\\theta[\\omega]+(1-c_\\theta)[\\omega]^2, \\quad \\operatorname{Ad}_T=\\begin{bmatrix}R&0\\\\{}[p]R&R\\end{bmatrix}',
+  },
+  {
+    name: 'Jacobian & Force Duality',
+    tag: 'Differential',
+    latex:
+      '\\mathcal{V}_s = \\textcolor{#22D3EE}{J_s(\\theta)}\\dot{\\theta}, \\quad \\textcolor{#F59E0B}{\\tau} = J^T(\\theta)\\mathcal{F}, \\quad w=\\sqrt{\\det(JJ^T)}',
+  },
+  {
+    name: 'Pieper 6-DOF Decoupling',
+    tag: 'Analytical IK',
+    latex:
+      'p_{wc} = p_e - d_6 R_e \\hat{z}, \\quad R_6^3 = (R_3^0)^T R_e \\;(\\le 8\\text{ sols})',
+  },
+  {
+    name: 'DLS & Nullspace IK',
+    tag: 'Singularity-Safe',
+    latex:
+      '\\dot{q} = J^T(JJ^T+\\lambda^2 I)^{-1}v + (I - J^+ J)\\dot{q}_0',
+  },
+  {
+    name: 'Differential QP-IK',
+    tag: 'Pink / Mink SOTA',
+    latex:
+      '\\min_{\\dot{q}}\\sum w_i\\|J_i\\dot{q}-v_i^*\\|^2+\\lambda\\|\\dot{q}\\|^2 \\;\\text{s.t. }\\; q_{\\min}\\le q+\\dot{q}\\Delta t\\le q_{\\max}',
+  },
+];
+
 function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
@@ -514,7 +569,9 @@ export class PaperlessStepSolver {
                   ? 'freq'
                   : modeOpt === 'statespace'
                     ? 'statespace'
-                    : 'derivatives';
+                    : modeOpt === 'kinematics'
+                      ? 'kinematics'
+                      : 'derivatives';
     this.problems =
       Array.isArray(options.problems) && options.problems.length
         ? options.problems
@@ -532,7 +589,9 @@ export class PaperlessStepSolver {
                     ? FREQ_PROBLEMS
                     : this.mode === 'statespace'
                       ? STATESPACE_PROBLEMS
-                      : DERIVATIVE_PROBLEMS;
+                      : this.mode === 'kinematics'
+                        ? KINEMATICS_PROBLEMS
+                        : DERIVATIVE_PROBLEMS;
     this.tiers =
       Array.isArray(options.tiers) && options.tiers.length
         ? options.tiers
@@ -550,7 +609,9 @@ export class PaperlessStepSolver {
                     ? FREQ_SOLVER_TIERS
                     : this.mode === 'statespace'
                       ? STATESPACE_SOLVER_TIERS
-                      : SOLVER_TIERS;
+                      : this.mode === 'kinematics'
+                        ? KINEMATICS_SOLVER_TIERS
+                        : SOLVER_TIERS;
     this.cheatSheetRules =
       this.mode === 'integrals'
         ? INTEGRAL_CHEAT_SHEET_RULES
@@ -566,7 +627,9 @@ export class PaperlessStepSolver {
                   ? FREQ_CHEAT_SHEET_RULES
                   : this.mode === 'statespace'
                     ? STATESPACE_CHEAT_SHEET_RULES
-                    : CHEAT_SHEET_RULES;
+                    : this.mode === 'kinematics'
+                      ? KINEMATICS_CHEAT_SHEET_RULES
+                      : CHEAT_SHEET_RULES;
 
     this.mechatronicsLens = Boolean(
       options.mechatronicsLens ?? options.lens === 'mechatronics'
@@ -730,12 +793,17 @@ export class PaperlessStepSolver {
     return this.mode === 'statespace';
   }
 
+  _isKinematicsMode() {
+    return this.mode === 'kinematics';
+  }
+
   _isControlPlotMode() {
     return (
       this.mode === 'pid' ||
       this.mode === 'modeling' ||
       this.mode === 'freq' ||
-      this.mode === 'statespace'
+      this.mode === 'statespace' ||
+      this.mode === 'kinematics'
     );
   }
 
@@ -1053,6 +1121,7 @@ export class PaperlessStepSolver {
     const isModeling = this._isModelingMode();
     const isFreq = this._isFreqMode();
     const isStateSpace = this._isStateSpaceMode();
+    const isKinematics = this._isKinematicsMode();
     const solvedSet = this._getSolvedSet();
     const totalSolved = this.problems.filter((p) => solvedSet.has(p.id)).length;
     const totalProblems = this.problems.length;
@@ -1067,75 +1136,85 @@ export class PaperlessStepSolver {
         ? 'Root Locus & Bode Reference'
         : isStateSpace
           ? 'Modern Controls Formula Sheet'
-          : isPid
-            ? 'Control & PID Reference'
-            : isLinAlg
-              ? 'Linear Algebra Reference'
-              : isDiffEq
-                ? 'ODE & Laplace Reference'
-                : isIntegral
-                  ? 'Integration Formula Reference'
-                  : 'Differentiation Formula Reference';
+          : isKinematics
+            ? 'Robot Kinematics Formula Sheet'
+            : isPid
+              ? 'Control & PID Reference'
+              : isLinAlg
+                ? 'Linear Algebra Reference'
+                : isDiffEq
+                  ? 'ODE & Laplace Reference'
+                  : isIntegral
+                    ? 'Integration Formula Reference'
+                    : 'Differentiation Formula Reference';
     const targetHeaderLabel = isModeling
       ? 'MODEL & DESIGN s-PLANE'
       : isFreq
         ? 'ROOT LOCUS & BODE DESIGN'
         : isStateSpace
           ? 'MODERN STATE-SPACE & ESTIMATION'
-          : isPid
-            ? 'SOLVE CONTROL & PID'
-            : isLinAlg
-              ? 'Solve Linear Algebra'
-              : isDiffEq
-                ? 'Solve the ODE / Laplace'
-                : isIntegral
-                  ? 'Evaluate the Integral'
-                  : 'Differentiate w.r.t. x';
+          : isKinematics
+            ? 'ROBOT KINEMATICS & MODERN IK'
+            : isPid
+              ? 'SOLVE CONTROL & PID'
+              : isLinAlg
+                ? 'Solve Linear Algebra'
+                : isDiffEq
+                  ? 'Solve the ODE / Laplace'
+                  : isIntegral
+                    ? 'Evaluate the Integral'
+                    : 'Differentiate w.r.t. x';
     const legendCyan = isModeling
       ? 'Cyan: Plant Physics / G(s)'
       : isFreq
         ? 'Cyan: Open-Loop L(s) / ω'
         : isStateSpace
           ? 'Cyan: State Matrix A / x / P'
-          : isPid
-            ? 'Cyan: Plant G(s) / Loop L(s)'
-            : isLinAlg
-              ? 'Cyan: Primary / A / u'
-              : isDiffEq
-                ? 'Cyan: y / P(t) / f(t)'
-                : isIntegral
-                  ? 'Cyan: u / Factor A'
-                  : 'Cyan: Outer / u';
+          : isKinematics
+            ? 'Cyan: Screw Sᵢ / Jacobian J / T'
+            : isPid
+              ? 'Cyan: Plant G(s) / Loop L(s)'
+              : isLinAlg
+                ? 'Cyan: Primary / A / u'
+                : isDiffEq
+                  ? 'Cyan: y / P(t) / f(t)'
+                  : isIntegral
+                    ? 'Cyan: u / Factor A'
+                    : 'Cyan: Outer / u';
     const legendAmber = isModeling
       ? 'Amber: Damping / Gain / Spec'
       : isFreq
         ? 'Amber: Gain K / Target φm / −1'
         : isStateSpace
           ? 'Amber: Input B / Gain L / R'
-          : isPid
-            ? 'Amber: Gain / Spec / Delay'
-            : isLinAlg
-              ? 'Amber: Secondary / λ / b'
-              : isDiffEq
-                ? 'Amber: t / Q(t) / IC'
-                : isIntegral
-                  ? 'Amber: dv / Factor B'
-                  : 'Amber: Inner / v';
+          : isKinematics
+            ? 'Amber: Joint θᵢ / Target / λ'
+            : isPid
+              ? 'Amber: Gain / Spec / Delay'
+              : isLinAlg
+                ? 'Amber: Secondary / λ / b'
+                : isDiffEq
+                  ? 'Amber: t / Q(t) / IC'
+                  : isIntegral
+                    ? 'Amber: dv / Factor B'
+                    : 'Amber: Inner / v';
     const legendEmerald = isModeling
       ? 'Emerald: Poles / CL T(s)'
       : isFreq
         ? 'Emerald: Compensator / Margin'
         : isStateSpace
           ? 'Emerald: Optimal K / MPC / Safe'
-          : isPid
-            ? 'Emerald: Closed-Loop / Margin'
-            : isLinAlg
-              ? 'Emerald: Result / Eigen / Fit'
-              : isDiffEq
-                ? 'Emerald: Solution / F(s)'
-                : isIntegral
-                  ? 'Emerald: Antideriv'
-                  : 'Emerald: Deriv';
+          : isKinematics
+            ? 'Emerald: Pose / IK q̇* / Torque τ'
+            : isPid
+              ? 'Emerald: Closed-Loop / Margin'
+              : isLinAlg
+                ? 'Emerald: Result / Eigen / Fit'
+                : isDiffEq
+                  ? 'Emerald: Solution / F(s)'
+                  : isIntegral
+                    ? 'Emerald: Antideriv'
+                    : 'Emerald: Deriv';
 
     const tierPillsHtml = this.tiers.map((tier) => {
       const list =
@@ -1902,6 +1981,7 @@ export class PaperlessStepSolver {
     const isModeling = this._isModelingMode();
     const isFreq = this._isFreqMode();
     const isStateSpace = this._isStateSpaceMode();
+    const isKinematics = this._isKinematicsMode();
     const isControlPlot = this._isControlPlotMode();
     const isLaplaceFwd = this._isLaplaceForward(problem);
     const isLaplaceInv = this._isLaplaceInverse(problem);
@@ -1915,15 +1995,17 @@ export class PaperlessStepSolver {
         ? 'Frequency & Stability Verified'
         : isStateSpace
           ? 'State-Space & SOTA Estimation Verified'
-          : isPid
-            ? 'Closed-Loop Verification'
-            : isLinAlg
-              ? 'Geometric Verification'
-              : isDiffEq
-                ? 'Solution Verified Numerically'
-                : isIntegral
-                  ? 'Antiderivative Verified Numerically'
-                  : 'Derivative Verified Numerically';
+          : isKinematics
+            ? 'Robot Kinematics & IK Verified'
+            : isPid
+              ? 'Closed-Loop Verification'
+              : isLinAlg
+                ? 'Geometric Verification'
+                : isDiffEq
+                  ? 'Solution Verified Numerically'
+                  : isIntegral
+                    ? 'Antiderivative Verified Numerically'
+                    : 'Derivative Verified Numerically';
 
     const subtitle = isControlPlot
       ? pidMeta.subtitleHtml

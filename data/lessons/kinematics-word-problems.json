@@ -1,0 +1,11 @@
+{
+  "lessonId": "mech-kinematics",
+  "status": "coming_soon",
+  "plannedTopics": [
+    "7-DOF Franka Panda Redundant Nullspace & Collision Avoidance",
+    "UR5e 6-DOF Analytical Pieper IK & Wrist Singularity Detour",
+    "SCARA High-Speed PCB Pick-and-Place Trajectory",
+    "Humanoid Whole-Body QP-IK (Pink/Mink) Dual-Arm Manipulation"
+  ],
+  "problems": []
+}

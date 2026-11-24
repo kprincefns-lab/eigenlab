@@ -137,11 +137,25 @@
         },
         {
           "id": "mech-kinematics",
-          "status": "planned",
+          "status": "live",
           "title": "Forward & Inverse Robot Kinematics",
-          "tag": "Robotics • Coming Next",
-          "description": "Manipulate multi-axis joint spaces, Denavit-Hartenberg transforms, and Jacobian velocity mappings on a 3D robotic arm.",
-          "estimatedMinutes": 35
+          "tag": "Robotics 01 • DH/MDH, Product of Exponentials, Jacobians & QP-IK",
+          "description": "Build Standard & Modified DH (Craig) tables, master modern Product of Exponentials (PoE) screw theory on SE(3), analyze Jacobians, manipulability ellipsoids, and static torque duality, and solve Analytical Pieper IK, Damped Least Squares, Nullspace, and Pink/Mink QP-IK.",
+          "estimatedMinutes": 45,
+          "stages": [
+            "3d-lab",
+            "intuition",
+            "solver",
+            "word-problems"
+          ]
+        },
+        {
+          "id": "mech-parallel-kinematics",
+          "status": "planned",
+          "title": "Parallel Robotic Manipulators & Closed-Chain Kinematics",
+          "tag": "Robotics 02 • Delta, Stewart-Gough & Screw Loop-Closure • Coming Next",
+          "description": "Flip the kinematics script on closed-chain Delta robots, 5-bar linkages, and 6-DOF Stewart-Gough hexapods—closed-form IK, nonlinear FK, parallel singularities, and reciprocal screw theory.",
+          "estimatedMinutes": 40
         }
       ]
     },

@@ -3504,7 +3504,7 @@ function mountStage2Intuition(container) {
     try {
       const updateQuizTabCount = () => {
         const solvedDeriv = (getStoreState().solvedQuizzes || []).filter(
-          (id) => !String(id).startsWith('int-quiz-') && !String(id).startsWith('de-quiz-') && !String(id).startsWith('la-quiz-') && !String(id).startsWith('pid-quiz-') && !String(id).startsWith('mod-quiz-') && !String(id).startsWith('freq-quiz-') && !String(id).startsWith('ss-quiz-')
+          (id) => !String(id).startsWith('int-quiz-') && !String(id).startsWith('de-quiz-') && !String(id).startsWith('la-quiz-') && !String(id).startsWith('pid-quiz-') && !String(id).startsWith('mod-quiz-') && !String(id).startsWith('freq-quiz-') && !String(id).startsWith('ss-quiz-') && !String(id).startsWith('kin-quiz-')
         ).length;
         const quizBtn = container.querySelector('[data-stage2-subtab="quiz"]');
         if (quizBtn) quizBtn.textContent = `🎯 Match Quiz (${solvedDeriv}/8)`;
@@ -9589,6 +9589,886 @@ function mountStateSpaceStage3Solver(container) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// ROBOTICS 01 — FORWARD & INVERSE ROBOT KINEMATICS (`mech-kinematics`) STAGES 1–3
+// ---------------------------------------------------------------------------
+
+function mountKinematicsStage1Lab3D(container) {
+  const presets = normalizeKinematicsPresets();
+  const activePreset = getActiveKinematicsPreset(presets);
+  const lensOn = isMechatronicsLens();
+  const initMetrics = appState.kinematicsTelemetry?.metrics || {};
+
+  container.innerHTML = `
+    <section class="space-y-2 sm:space-y-4 view-enter">
+      <!-- Top Robot Preset Strip + Desktop Camera Presets -->
+      <div class="flex items-center justify-between gap-2 sm:gap-3">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar xl:flex-wrap flex-1 min-w-0 py-0.5" role="tablist" aria-label="Robot kinematics presets">
+          ${presets
+            .map((p) => {
+              const isSelected = activePreset && p.id === activePreset.id;
+              return `
+                <button
+                  type="button"
+                  data-kin-preset-id="${escapeHtml(p.id)}"
+                  class="shrink-0 whitespace-nowrap px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-medium border transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-cyanGlow/20 border-cyanGlow/55 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.22)]'
+                      : 'bg-slate-900/60 border-white/10 text-slate-300 hover:border-white/25 hover:text-white'
+                  }"
+                >
+                  <span class="sm:hidden">${escapeHtml(p.shortName)}</span>
+                  <span class="hidden sm:inline">${escapeHtml(p.name)}</span>
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+
+        <div class="hidden xl:flex items-center gap-1 bg-slate-900/75 p-1 rounded-xl border border-white/10 shrink-0">
+          ${[
+            { id: '3d', label: '3D Studio' },
+            { id: 'front', label: 'Front 2D' },
+            { id: 'iso', label: 'Isometric' },
+          ]
+            .map((cam) => {
+              const active = appState.kinematicsLab.cameraPreset === cam.id;
+              return `
+                <button
+                  type="button"
+                  data-kin-camera-preset="${cam.id}"
+                  class="px-3 py-1.5 rounded-lg text-[11px] font-mono transition-all cursor-pointer ${
+                    active
+                      ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+                      : 'text-slate-400 border border-transparent hover:text-white'
+                  }"
+                >
+                  ${cam.label}
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+      </div>
+
+      <!-- Main Split-Screen Mobile / Full-Bleed Desktop 3D Robot Kinematics Studio -->
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-2.5 sm:gap-4 items-stretch">
+        <!-- 3D Viewport Canvas Container -->
+        <div class="xl:col-span-8 canvas-stage relative h-[35dvh] min-h-[210px] max-h-[290px] sm:h-[420px] sm:max-h-none xl:h-[calc(100vh-210px)] xl:min-h-[540px] flex flex-col">
+          <div id="kin-3d-canvas" class="absolute inset-0 w-full h-full"></div>
+
+          <!-- Top-Left Floating Formula HUD -->
+          <div class="pointer-events-none relative z-10 flex items-start justify-between gap-2 p-2.5 sm:p-4">
+            <div class="pointer-events-auto rounded-xl sm:rounded-2xl px-2.5 py-1.5 sm:px-4 sm:py-3 bg-[#0B0D12]/80 backdrop-blur-xl border border-white/15 shadow-lg max-w-full">
+              <div class="hidden sm:flex items-center gap-2 mb-1">
+                <span class="w-2 h-2 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE]"></span>
+                <span id="kin-hud-title" class="text-[10px] font-mono uppercase tracking-widest text-slate-400">
+                  ${lensOn ? 'Servo Torque Rig + 3D Kinematics Workcell' : '3D Robot Kinematics, Jacobian & IK Studio'}
+                </span>
+              </div>
+              <div class="flex flex-wrap items-center gap-x-2.5 text-[10px] sm:text-xs text-white">
+                <span id="kin-hud-formula-math" class="text-cyan-200"></span>
+              </div>
+            </div>
+
+            <!-- Mechatronics Servo Torque & Actuator Indicator -->
+            <div id="kin-hud-mech-indicator" class="hidden sm:block pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
+              lensOn
+                ? 'bg-amberGlow/15 border-amberGlow/45 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
+                : 'bg-[#0B0D12]/70 border-white/10 text-slate-400'
+            }">
+              <div class="flex items-center gap-2 text-[11px] font-mono">
+                <span class="w-2 h-2 rounded-full ${lensOn ? 'bg-amberGlow animate-pulse' : 'bg-slate-600'}"></span>
+                <span id="kin-hud-mech-text">${lensOn ? 'Servo Torques τ = JᵀF: LIVE' : 'Servo Torque Overlay: Standby'}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Legend + Mobile Camera Switcher -->
+          <div class="pointer-events-none relative z-10 mt-auto p-2 sm:p-4 flex items-center justify-between gap-2">
+            <div class="hidden sm:inline-flex items-center gap-3 px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-300">
+              <span><span class="text-cyanGlow">━</span> Active Arm / EE</span>
+              <span><span class="text-violetGlow">◯</span> Manipulability / Screw</span>
+              <span><span class="text-emeraldGlow">◆</span> Target / Safe Clearance</span>
+            </div>
+
+            <div class="pointer-events-auto xl:hidden ml-auto flex items-center gap-0.5 bg-[#0B0D12]/80 backdrop-blur-md p-0.5 rounded-xl border border-white/15">
+              ${[
+                { id: '3d', label: '3D' },
+                { id: 'front', label: '2D' },
+                { id: 'iso', label: 'Iso' },
+              ]
+                .map((cam) => {
+                  const active = appState.kinematicsLab.cameraPreset === cam.id;
+                  return `
+                    <button
+                      type="button"
+                      data-kin-camera-preset="${cam.id}"
+                      class="px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all cursor-pointer ${
+                        active
+                          ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+                          : 'text-slate-400 border border-transparent hover:text-white'
+                      }"
+                    >
+                      ${cam.label}
+                    </button>
+                  `;
+                })
+                .join('')}
+            </div>
+
+            <div class="hidden xl:inline-flex items-center px-3 py-1.5 rounded-full bg-[#0B0D12]/75 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-400">
+              Drag to orbit • Scroll to zoom
+            </div>
+          </div>
+        </div>
+
+        <!-- Tactile Kinematics Telemetry HUD + Dual Parameter Sliders -->
+        <aside class="xl:col-span-4 flex flex-col gap-2 sm:gap-4 xl:h-[calc(100vh-210px)] xl:overflow-y-auto studio-scroll pr-0.5">
+          <!-- Compact 1-Row Mobile Telemetry / Expanded Desktop Metrics Card -->
+          <div class="glass-panel p-2.5 sm:p-5 space-y-2 sm:space-y-4">
+            <div class="flex items-center justify-between gap-2">
+              <div class="hidden xl:block">
+                <div class="text-[10px] font-mono uppercase tracking-[0.14em] text-slate-400">Kinematics &amp; Jacobian Telemetry</div>
+                <h2 id="kin-panel-mode-title" class="font-display font-semibold text-sm text-white mt-0.5">
+                  ${escapeHtml(activePreset?.name || '2R Planar (DH/MDH)')}
+                </h2>
+              </div>
+
+              <!-- Mobile Compact Inline Readout -->
+              <div class="flex xl:hidden items-center gap-1.5 min-w-0 flex-1">
+                <div class="flex-1 min-w-0 rounded-xl px-2.5 py-1 bg-cyanGlow/[0.08] border border-cyanGlow/25">
+                  <div id="kin-lbl-primary-compact" class="text-[9px] font-mono uppercase tracking-wider text-cyanGlow/90 truncate">
+                    ${escapeHtml(initMetrics.primaryLabel || 'Primary')}
+                  </div>
+                  <div id="kin-val-primary-compact" class="font-mono font-semibold text-xs sm:text-sm text-white leading-tight truncate">
+                    ${escapeHtml(initMetrics.primaryValue || '—')}
+                  </div>
+                </div>
+                <div class="flex-1 min-w-0 rounded-xl px-2.5 py-1 bg-violetGlow/[0.08] border border-violetGlow/25">
+                  <div id="kin-lbl-secondary-compact" class="text-[9px] font-mono uppercase tracking-wider text-violetGlow/90 truncate">
+                    ${escapeHtml(initMetrics.secondaryLabel || 'Secondary')}
+                  </div>
+                  <div id="kin-val-secondary-compact" class="font-mono font-semibold text-xs sm:text-sm text-violet-200 leading-tight truncate">
+                    ${escapeHtml(initMetrics.secondaryValue || '—')}
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5 shrink-0">
+                <div
+                  id="kin-badge-status"
+                  class="px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-mono font-semibold border transition-all duration-300 bg-cyanGlow/15 border-cyanGlow/40 text-cyan-200 max-w-[130px] sm:max-w-none truncate"
+                >
+                  ${escapeHtml(initMetrics.statusText || 'WELL-CONDITIONED')}
+                </div>
+                <button
+                  id="kin-btn-toggle-mobile-formula"
+                  type="button"
+                  aria-expanded="false"
+                  title="Toggle equation & tertiary telemetry"
+                  class="xl:hidden px-2 py-1 rounded-lg bg-white/[0.05] border border-white/15 text-[11px] font-mono text-cyan-200 cursor-pointer"
+                >
+                  T ▾
+                </button>
+              </div>
+            </div>
+
+            <!-- Collapsible on Mobile (<xl), Always Open on Desktop (xl:block) -->
+            <div id="kin-mobile-formula-drawer" class="hidden xl:block space-y-2.5 sm:space-y-3.5">
+              <div class="katex-card flex flex-col items-center justify-center gap-1.5 min-h-[58px] sm:min-h-[68px]">
+                <div id="kin-telemetry-formula-katex" class="text-cyan-200 text-xs sm:text-sm overflow-x-auto max-w-full"></div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <div class="rounded-2xl p-2.5 sm:p-3 bg-cyanGlow/[0.06] border border-cyanGlow/25 min-w-0">
+                  <div id="kin-lbl-primary" class="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-cyanGlow/90 truncate">
+                    ${escapeHtml(initMetrics.primaryLabel || 'Primary')}
+                  </div>
+                  <div id="kin-val-primary" class="font-mono font-semibold text-xs sm:text-sm text-white mt-0.5 truncate">
+                    ${escapeHtml(initMetrics.primaryValue || '—')}
+                  </div>
+                </div>
+                <div class="rounded-2xl p-2.5 sm:p-3 bg-violetGlow/[0.06] border border-violetGlow/25 min-w-0">
+                  <div id="kin-lbl-secondary" class="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-violetGlow/90 truncate">
+                    ${escapeHtml(initMetrics.secondaryLabel || 'Secondary')}
+                  </div>
+                  <div id="kin-val-secondary" class="font-mono font-semibold text-xs sm:text-sm text-violet-200 mt-0.5 truncate">
+                    ${escapeHtml(initMetrics.secondaryValue || '—')}
+                  </div>
+                </div>
+                <div class="rounded-2xl p-2.5 sm:p-3 bg-amberGlow/[0.06] border border-amberGlow/25 min-w-0">
+                  <div id="kin-lbl-tertiary" class="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-amberGlow/90 truncate">
+                    ${escapeHtml(initMetrics.tertiaryLabel || 'Tertiary')}
+                  </div>
+                  <div id="kin-val-tertiary" class="font-mono font-semibold text-xs sm:text-sm text-amber-200 mt-0.5 truncate">
+                    ${escapeHtml(initMetrics.tertiaryValue || '—')}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dual Tactile Parameter Sliders -->
+          <div class="glass-panel p-2.5 sm:p-5 space-y-2.5 sm:space-y-4 flex-1 flex flex-col justify-between">
+            <div class="space-y-2 sm:space-y-4">
+              <!-- Parameter A Slider (Cyan) -->
+              <div class="space-y-1 sm:space-y-1.5">
+                <div class="flex items-center justify-between gap-2">
+                  <label for="slider-kin-param-a" id="label-kin-param-a" class="text-xs font-medium text-slate-200 flex items-center gap-2 min-w-0">
+                    <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE] shrink-0"></span>
+                    <span class="truncate">${escapeHtml(activePreset?.paramALabel || 'Parameter A')}</span>
+                  </label>
+                  <span id="readout-kin-param-a" class="px-2 py-0.5 rounded-lg bg-cyanGlow/15 border border-cyanGlow/30 font-mono text-[11px] sm:text-xs text-cyanGlow font-semibold shrink-0">
+                    ${formatKinematicsParam(appState.kinematicsLab.paramA, activePreset?.paramA?.step)}
+                  </span>
+                </div>
+                <input
+                  id="slider-kin-param-a"
+                  type="range"
+                  min="${activePreset?.paramA?.min ?? -135}"
+                  max="${activePreset?.paramA?.max ?? 135}"
+                  step="${activePreset?.paramA?.step ?? 1}"
+                  value="${appState.kinematicsLab.paramA}"
+                  class="studio-slider-cyan"
+                />
+              </div>
+
+              <!-- Parameter B Slider (Amber) -->
+              <div class="space-y-1 sm:space-y-1.5">
+                <div class="flex items-center justify-between gap-2">
+                  <label for="slider-kin-param-b" id="label-kin-param-b" class="text-xs font-medium text-slate-200 flex items-center gap-2 min-w-0">
+                    <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B] shrink-0"></span>
+                    <span class="truncate">${escapeHtml(activePreset?.paramBLabel || 'Parameter B')}</span>
+                  </label>
+                  <span id="readout-kin-param-b" class="px-2 py-0.5 rounded-lg bg-amberGlow/15 border border-amberGlow/30 font-mono text-[11px] sm:text-xs text-amberGlow font-semibold shrink-0">
+                    ${formatKinematicsParam(appState.kinematicsLab.paramB, activePreset?.paramB?.step)}
+                  </span>
+                </div>
+                <input
+                  id="slider-kin-param-b"
+                  type="range"
+                  min="${activePreset?.paramB?.min ?? -165}"
+                  max="${activePreset?.paramB?.max ?? 165}"
+                  step="${activePreset?.paramB?.step ?? 1}"
+                  value="${appState.kinematicsLab.paramB}"
+                  class="studio-slider-amber"
+                />
+              </div>
+
+              <!-- Action Row: Reset Preset + Quick Stage 2 Mobile Jump -->
+              <div class="flex items-center gap-2 pt-0.5">
+                <button
+                  id="btn-kin-reset"
+                  type="button"
+                  class="flex-1 py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl bg-white/[0.05] border border-white/15 text-slate-200 hover:border-cyanGlow/45 hover:text-white font-display font-semibold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <span aria-hidden="true">↺</span>
+                  <span>Reset Defaults</span>
+                </button>
+                <button
+                  id="btn-kin-next-intuition-mobile"
+                  type="button"
+                  class="xl:hidden flex-1 py-2 px-3 rounded-xl bg-cyanGlow/15 border border-cyanGlow/40 text-cyan-200 font-display font-semibold text-xs transition-all cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <span>IK/Ellip Lab</span>
+                  <span aria-hidden="true">→</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Desktop Stage 2 Forward Link -->
+            <div class="hidden xl:block pt-4 border-t border-white/10 space-y-3">
+              <div class="text-[11px] text-slate-400 leading-relaxed">
+                Toggle <span class="text-amberGlow font-medium">Mechatronics Lens</span> in the header to overlay live servo torque vectors τ = JᵀF &amp; joint-stop strain rings directly on the 3D manipulator.
+              </div>
+
+              <button
+                id="btn-kin-next-intuition"
+                type="button"
+                class="btn-glass w-full !justify-between !text-xs"
+              >
+                <span>Continue to Stage 2: IK &amp; Manipulability Lab</span>
+                <span class="text-cyanGlow" aria-hidden="true">→</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  `;
+
+  const sliderA = document.getElementById('slider-kin-param-a');
+  const sliderB = document.getElementById('slider-kin-param-b');
+  syncSliderTrackFill(sliderA);
+  syncSliderTrackFill(sliderB);
+
+  const syncSlidersForPreset = (preset, valA, valB) => {
+    if (!preset) return;
+    if (sliderA) {
+      sliderA.min = String(preset.paramA.min);
+      sliderA.max = String(preset.paramA.max);
+      sliderA.step = String(preset.paramA.step);
+      sliderA.value = String(valA);
+      syncSliderTrackFill(sliderA);
+    }
+    if (sliderB) {
+      sliderB.min = String(preset.paramB.min);
+      sliderB.max = String(preset.paramB.max);
+      sliderB.step = String(preset.paramB.step);
+      sliderB.value = String(valB);
+      syncSliderTrackFill(sliderB);
+    }
+    const lblA = document.getElementById('label-kin-param-a');
+    if (lblA) {
+      lblA.innerHTML = `<span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyanGlow shadow-[0_0_8px_#22D3EE] shrink-0"></span><span class="truncate">${escapeHtml(preset.paramALabel)}</span>`;
+    }
+    const lblB = document.getElementById('label-kin-param-b');
+    if (lblB) {
+      lblB.innerHTML = `<span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amberGlow shadow-[0_0_8px_#F59E0B] shrink-0"></span><span class="truncate">${escapeHtml(preset.paramBLabel)}</span>`;
+    }
+    const rA = document.getElementById('readout-kin-param-a');
+    const rB = document.getElementById('readout-kin-param-b');
+    if (rA) rA.textContent = formatKinematicsParam(valA, preset.paramA.step);
+    if (rB) rB.textContent = formatKinematicsParam(valB, preset.paramB.step);
+
+    const modeTitle = document.getElementById('kin-panel-mode-title');
+    if (modeTitle) modeTitle.textContent = preset.name;
+  };
+
+  const canvasHost = document.getElementById('kin-3d-canvas');
+
+  const handleKinematicsTelemetry = (m = {}) => {
+    appState.kinematicsTelemetry = {
+      ...appState.kinematicsTelemetry,
+      ...m,
+    };
+    const preset = KINEMATICS_PRESETS[m.presetId || appState.kinematicsLab.presetId];
+    if (typeof m.paramA === 'number') {
+      appState.kinematicsLab.paramA = m.paramA;
+      if (sliderA) {
+        sliderA.value = String(m.paramA);
+        syncSliderTrackFill(sliderA);
+      }
+      const rA = document.getElementById('readout-kin-param-a');
+      if (rA) rA.textContent = formatKinematicsParam(m.paramA, preset?.paramA?.step);
+    }
+    if (typeof m.paramB === 'number') {
+      appState.kinematicsLab.paramB = m.paramB;
+      if (sliderB) {
+        sliderB.value = String(m.paramB);
+        syncSliderTrackFill(sliderB);
+      }
+      const rB = document.getElementById('readout-kin-param-b');
+      if (rB) rB.textContent = formatKinematicsParam(m.paramB, preset?.paramB?.step);
+    }
+    updateKinematicsStage1TelemetryUI();
+  };
+
+  if (canvasHost && typeof Kinematics3DStudio === 'function') {
+    try {
+      const studio = new Kinematics3DStudio({
+        presetId: activePreset?.id || 'planar-2r',
+        paramA: appState.kinematicsLab.paramA,
+        paramB: appState.kinematicsLab.paramB,
+        mechatronicsLens: isMechatronicsLens(),
+        onTelemetry: handleKinematicsTelemetry,
+      });
+      studio.init(canvasHost, {
+        presetId: activePreset?.id || 'planar-2r',
+        paramA: appState.kinematicsLab.paramA,
+        paramB: appState.kinematicsLab.paramB,
+        mechatronicsLens: isMechatronicsLens(),
+        onTelemetry: handleKinematicsTelemetry,
+      });
+      studio.setCameraPreset?.(appState.kinematicsLab.cameraPreset);
+      activeInstances.studio3D = studio;
+      if (typeof studio.getTelemetry === 'function') {
+        handleKinematicsTelemetry(studio.getTelemetry());
+      }
+    } catch (err) {
+      console.error('[EIGENLAB] Kinematics3DStudio init error:', err);
+      canvasHost.innerHTML = `
+        <div class="w-full h-full flex items-center justify-center p-6 text-center text-sm text-slate-400">
+          3D WebGL Robot Kinematics viewport could not initialize on this device.
+        </div>
+      `;
+    }
+  }
+
+  updateKinematicsStage1LensUI();
+  updateKinematicsStage1TelemetryUI();
+
+  const mobBtn = document.getElementById('kin-btn-toggle-mobile-formula');
+  const mobDrawer = document.getElementById('kin-mobile-formula-drawer');
+  mobBtn?.addEventListener('click', () => {
+    playSfx('tick');
+    const isHidden = mobDrawer?.classList.toggle('hidden');
+    mobBtn.setAttribute('aria-expanded', String(!isHidden));
+    mobBtn.textContent = isHidden ? 'T ▾' : 'T ▴';
+  });
+
+  container.querySelectorAll('[data-kin-preset-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-kin-preset-id');
+      if (!id || id === appState.kinematicsLab.presetId) return;
+      playSfx('tick');
+      appState.kinematicsLab.presetId = id;
+      const preset = getActiveKinematicsPreset(presets);
+      if (preset) {
+        appState.kinematicsLab.paramA = preset.paramA.default;
+        appState.kinematicsLab.paramB = preset.paramB.default;
+        syncSlidersForPreset(preset, preset.paramA.default, preset.paramB.default);
+      }
+
+      container.querySelectorAll('[data-kin-preset-id]').forEach((b) => {
+        const sel = b.getAttribute('data-kin-preset-id') === id;
+        b.className = `shrink-0 whitespace-nowrap px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-medium border transition-all cursor-pointer ${
+          sel
+            ? 'bg-cyanGlow/20 border-cyanGlow/55 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.22)]'
+            : 'bg-slate-900/60 border-white/10 text-slate-300 hover:border-white/25 hover:text-white'
+        }`;
+      });
+
+      activeInstances.studio3D?.setPreset?.(id);
+      if (typeof activeInstances.studio3D?.getTelemetry === 'function') {
+        handleKinematicsTelemetry(activeInstances.studio3D.getTelemetry());
+      } else {
+        handleKinematicsTelemetry(
+          analyzeKinematicsSystem({
+            presetId: id,
+            paramA: appState.kinematicsLab.paramA,
+            paramB: appState.kinematicsLab.paramB,
+          })
+        );
+      }
+      markStageDone('3d-lab');
+    });
+  });
+
+  container.querySelectorAll('[data-kin-camera-preset]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const camId = btn.getAttribute('data-kin-camera-preset');
+      if (!camId) return;
+      playSfx('tick');
+      appState.kinematicsLab.cameraPreset = camId;
+      container.querySelectorAll('[data-kin-camera-preset]').forEach((b) => {
+        const act = b.getAttribute('data-kin-camera-preset') === camId;
+        const isCompact = b.textContent.trim().length <= 3;
+        b.className = `${isCompact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'} rounded-lg font-mono transition-all cursor-pointer ${
+          act
+            ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+            : 'text-slate-400 border border-transparent hover:text-white'
+        }`;
+      });
+      activeInstances.studio3D?.setCameraPreset?.(camId);
+    });
+  });
+
+  sliderA?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    const preset = getActiveKinematicsPreset(presets);
+    appState.kinematicsLab.paramA = val;
+    syncSliderTrackFill(sliderA);
+    const r = document.getElementById('readout-kin-param-a');
+    if (r) r.textContent = formatKinematicsParam(val, preset?.paramA?.step);
+    if (typeof activeInstances.studio3D?.setParams === 'function') {
+      activeInstances.studio3D.setParams({
+        paramA: val,
+        paramB: appState.kinematicsLab.paramB,
+      });
+    } else {
+      handleKinematicsTelemetry(
+        analyzeKinematicsSystem({
+          presetId: appState.kinematicsLab.presetId,
+          paramA: val,
+          paramB: appState.kinematicsLab.paramB,
+        })
+      );
+    }
+    markStageDone('3d-lab');
+  });
+
+  sliderB?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    const preset = getActiveKinematicsPreset(presets);
+    appState.kinematicsLab.paramB = val;
+    syncSliderTrackFill(sliderB);
+    const r = document.getElementById('readout-kin-param-b');
+    if (r) r.textContent = formatKinematicsParam(val, preset?.paramB?.step);
+    if (typeof activeInstances.studio3D?.setParams === 'function') {
+      activeInstances.studio3D.setParams({
+        paramA: appState.kinematicsLab.paramA,
+        paramB: val,
+      });
+    } else {
+      handleKinematicsTelemetry(
+        analyzeKinematicsSystem({
+          presetId: appState.kinematicsLab.presetId,
+          paramA: appState.kinematicsLab.paramA,
+          paramB: val,
+        })
+      );
+    }
+    markStageDone('3d-lab');
+  });
+
+  document.getElementById('btn-kin-reset')?.addEventListener('click', () => {
+    playSfx('snap');
+    const preset = getActiveKinematicsPreset(presets);
+    if (preset) {
+      appState.kinematicsLab.paramA = preset.paramA.default;
+      appState.kinematicsLab.paramB = preset.paramB.default;
+      appState.kinematicsLab.cameraPreset = '3d';
+      syncSlidersForPreset(preset, preset.paramA.default, preset.paramB.default);
+    }
+    container.querySelectorAll('[data-kin-camera-preset]').forEach((b) => {
+      const act = b.getAttribute('data-kin-camera-preset') === '3d';
+      const isCompact = b.textContent.trim().length <= 3;
+      b.className = `${isCompact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'} rounded-lg font-mono transition-all cursor-pointer ${
+        act
+          ? 'bg-white/15 text-white border border-white/20 shadow-sm'
+          : 'text-slate-400 border border-transparent hover:text-white'
+      }`;
+    });
+    if (typeof activeInstances.studio3D?.reset === 'function') {
+      const t = activeInstances.studio3D.reset();
+      if (t) handleKinematicsTelemetry(t);
+    } else if (preset) {
+      handleKinematicsTelemetry(
+        analyzeKinematicsSystem({
+          presetId: preset.id,
+          paramA: preset.paramA.default,
+          paramB: preset.paramB.default,
+        })
+      );
+    }
+  });
+
+  const goStage2 = () => {
+    playSfx('tick');
+    switchStage('intuition');
+  };
+  document.getElementById('btn-kin-next-intuition')?.addEventListener('click', goStage2);
+  document.getElementById('btn-kin-next-intuition-mobile')?.addEventListener('click', goStage2);
+}
+
+function updateKinematicsStage1LensUI() {
+  const on = isMechatronicsLens();
+  const titleEl = document.getElementById('kin-hud-title');
+  if (titleEl) {
+    titleEl.textContent = on
+      ? 'Servo Torque Rig + 3D Kinematics Workcell'
+      : '3D Robot Kinematics, Jacobian & IK Studio';
+  }
+  const mechBox = document.getElementById('kin-hud-mech-indicator');
+  const mechTxt = document.getElementById('kin-hud-mech-text');
+  if (mechBox) {
+    mechBox.className = `hidden sm:block pointer-events-auto rounded-2xl px-3.5 py-2 backdrop-blur-xl border transition-all ${
+      on
+        ? 'bg-amberGlow/15 border-amberGlow/45 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
+        : 'bg-[#0B0D12]/70 border-white/10 text-slate-400'
+    }`;
+    const dot = mechBox.querySelector('span.rounded-full');
+    if (dot) dot.className = `w-2 h-2 rounded-full ${on ? 'bg-amberGlow animate-pulse' : 'bg-slate-600'}`;
+  }
+  if (mechTxt) {
+    mechTxt.textContent = on ? 'Servo Torques τ = JᵀF: LIVE' : 'Servo Torque Overlay: Standby';
+  }
+}
+
+function updateKinematicsStage1TelemetryUI() {
+  const t = appState.kinematicsTelemetry || {};
+  const m = t.metrics || {};
+
+  const setText = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  };
+
+  setText('kin-lbl-primary', m.primaryLabel || 'Primary');
+  setText('kin-lbl-primary-compact', m.primaryLabel || 'Primary');
+  setText('kin-val-primary', m.primaryValue || '—');
+  setText('kin-val-primary-compact', m.primaryValue || '—');
+
+  setText('kin-lbl-secondary', m.secondaryLabel || 'Secondary');
+  setText('kin-lbl-secondary-compact', m.secondaryLabel || 'Secondary');
+  setText('kin-val-secondary', m.secondaryValue || '—');
+  setText('kin-val-secondary-compact', m.secondaryValue || '—');
+
+  setText('kin-lbl-tertiary', m.tertiaryLabel || 'Tertiary');
+  setText('kin-val-tertiary', m.tertiaryValue || '—');
+
+  const badge = document.getElementById('kin-badge-status');
+  if (badge) {
+    const statusText = m.statusText || 'WELL-CONDITIONED';
+    badge.textContent = statusText;
+    const c = String(m.statusColor || '').toUpperCase();
+    if (c === '#FB7185') {
+      badge.className =
+        'px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-mono font-semibold border transition-all duration-300 bg-rose-500/20 border-rose-400/50 text-rose-200 max-w-[130px] sm:max-w-none truncate';
+    } else if (c === '#F59E0B') {
+      badge.className =
+        'px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-mono font-semibold border transition-all duration-300 bg-amberGlow/15 border-amberGlow/45 text-amber-200 max-w-[130px] sm:max-w-none truncate';
+    } else if (c === '#A78BFA') {
+      badge.className =
+        'px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-mono font-semibold border transition-all duration-300 bg-violetGlow/15 border-violetGlow/45 text-violet-200 max-w-[130px] sm:max-w-none truncate';
+    } else if (c === '#34D399') {
+      badge.className =
+        'px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-mono font-semibold border transition-all duration-300 bg-emeraldGlow/15 border-emeraldGlow/40 text-emerald-200 max-w-[130px] sm:max-w-none truncate';
+    } else {
+      badge.className =
+        'px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-mono font-semibold border transition-all duration-300 bg-cyanGlow/15 border-cyanGlow/40 text-cyan-200 max-w-[130px] sm:max-w-none truncate';
+    }
+  }
+
+  const formulaTex =
+    t.formulaLatex || KINEMATICS_PRESETS[appState.kinematicsLab.presetId]?.formulaLatex || '';
+  if (formulaTex) {
+    const hudFormulaEl = document.getElementById('kin-hud-formula-math');
+    if (hudFormulaEl) typesetMath(hudFormulaEl, formulaTex, false);
+    const panelFormulaEl = document.getElementById('kin-telemetry-formula-katex');
+    if (panelFormulaEl) typesetMath(panelFormulaEl, formulaTex, false);
+  }
+}
+
+function mountKinematicsStage2Intuition(container) {
+  const on = isMechatronicsLens();
+  const s = getStoreState();
+  const solvedKinQuizzes = (s.solvedQuizzes || []).filter((id) =>
+    String(id).startsWith('kin-quiz-')
+  ).length;
+  let activeSubTab = 'lab';
+
+  container.innerHTML = `
+    <section class="space-y-3 lg:space-y-6 view-enter">
+      <!-- Mobile Segmented Sub-Tab Switcher (<lg) -->
+      <div class="lg:hidden grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[#0E121C]/90 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+        <button
+          type="button"
+          data-stage2-subtab="lab"
+          class="py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer bg-cyanGlow/20 border border-cyanGlow/45 text-cyan-100 shadow-sm"
+        >
+          📐 IK/Ellip Lab
+        </button>
+        <button
+          type="button"
+          data-stage2-subtab="quiz"
+          class="py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer border border-transparent text-slate-300 hover:text-white"
+        >
+          🎯 Visual Quiz (${solvedKinQuizzes}/6)
+        </button>
+      </div>
+
+      <!-- Interactive 2D Workspace, Manipulability Ellipsoid & IK Lab -->
+      <div id="stage2-panel-lab" class="glass-panel p-2.5 sm:p-5 lg:p-6 space-y-2.5 sm:space-y-4">
+        <div class="hidden sm:flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-cyanGlow">Robot Kinematics ↔ Jacobian &amp; IK</div>
+            <h2 id="stage2-lab-title" class="font-display font-bold text-xl text-white mt-0.5">
+              ${
+                on
+                  ? 'Servo Torque Demands τ = JᵀF, Actuator Saturation & Workspace Safety'
+                  : 'Synchronized Workspace Arm, Manipulability Ellipsoid & IK Convergence'
+              }
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Scrub trajectory time across synchronized workspace geometry, Yoshikawa manipulability ellipses, condition number, and DLS / QP-IK joint velocity panels.
+            </p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-[11px] font-mono bg-white/[0.04] border border-white/10 text-slate-300">
+            Drag trajectory cursor t
+          </span>
+        </div>
+
+        <div id="kin-graph-lab-host" class="w-full min-h-[300px] sm:min-h-[380px]"></div>
+      </div>
+
+      <!-- Visual Kinematics & IK Quiz Engine -->
+      <div id="stage2-panel-quiz" class="hidden lg:block glass-panel p-2.5 sm:p-5 lg:p-6 space-y-2.5 sm:space-y-4">
+        <div class="hidden sm:flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-violetGlow">Robotics Geometric Mastery</div>
+            <h2 class="font-display font-bold text-xl text-white mt-0.5">DH, PoE, Singularity &amp; QP-IK Visual Challenges</h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Master Standard vs. Modified DH, parallel-axis calibration flaws, workspace branch multiplicity, collapsed manipulability ellipses, DLS damping, and nullspace projection.
+            </p>
+          </div>
+          <button
+            id="btn-next-solver"
+            type="button"
+            class="btn-glass !text-xs"
+          >
+            Next: Robot Kinematics Solver →
+          </button>
+        </div>
+
+        <div id="kin-quiz-engine-host" class="w-full min-h-[280px] sm:min-h-[320px]"></div>
+      </div>
+    </section>
+  `;
+
+  const panelLab = document.getElementById('stage2-panel-lab');
+  const panelQuiz = document.getElementById('stage2-panel-quiz');
+  const setSubTab = (tab) => {
+    activeSubTab = tab;
+    if (panelLab && panelQuiz) {
+      panelLab.classList.toggle('hidden', tab !== 'lab');
+      panelLab.classList.add('lg:block');
+      panelQuiz.classList.toggle('hidden', tab !== 'quiz');
+      panelQuiz.classList.add('lg:block');
+    }
+    container.querySelectorAll('[data-stage2-subtab]').forEach((btn) => {
+      const isAct = btn.getAttribute('data-stage2-subtab') === tab;
+      btn.className = isAct
+        ? 'py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer bg-cyanGlow/20 border border-cyanGlow/45 text-cyan-100 shadow-sm'
+        : 'py-2 px-3 rounded-xl text-xs font-display font-semibold transition-all cursor-pointer border border-transparent text-slate-300 hover:text-white';
+    });
+    requestAnimationFrame(() => {
+      if (tab === 'lab') {
+        activeInstances.stackedLab?._resizeAll?.();
+        activeInstances.stackedLab?._drawAll?.();
+      } else {
+        activeInstances.quizEngine?._resizeCanvas?.();
+        activeInstances.quizEngine?._resizeCanvases?.();
+        activeInstances.quizEngine?._drawCanvas?.();
+        activeInstances.quizEngine?._drawCanvases?.();
+      }
+      window.dispatchEvent(new Event('resize'));
+    });
+  };
+
+  container.querySelectorAll('[data-stage2-subtab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const next = btn.getAttribute('data-stage2-subtab');
+      if (next && next !== activeSubTab) {
+        playSfx('tick');
+        setSubTab(next);
+      }
+    });
+  });
+
+  const labHost = document.getElementById('kin-graph-lab-host');
+  if (labHost && typeof KinematicsGraphLab === 'function') {
+    try {
+      activeInstances.stackedLab = new KinematicsGraphLab(labHost, {
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        initialPreset: appState.kinematicsLab.presetId || 'planar-2r',
+        onInteract: () => markStageDone('intuition'),
+        onOpenQuiz: () => {
+          playSfx('tick');
+          setSubTab('quiz');
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] KinematicsGraphLab mount error:', err);
+    }
+  }
+
+  const quizHost = document.getElementById('kin-quiz-engine-host');
+  if (quizHost && typeof KinematicsVisualQuizEngine === 'function') {
+    try {
+      const updateTabCount = (payload) => {
+        const count =
+          payload?.solvedCount ??
+          (getStoreState().solvedQuizzes || []).filter((id) =>
+            String(id).startsWith('kin-quiz-')
+          ).length;
+        const quizBtn = container.querySelector('[data-stage2-subtab="quiz"]');
+        if (quizBtn) quizBtn.textContent = `🎯 Visual Quiz (${count}/6)`;
+      };
+      activeInstances.quizEngine = new KinematicsVisualQuizEngine(quizHost, {
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onAnswer: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+        onProgress: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+        onComplete: (p) => {
+          markStageDone('intuition');
+          updateLessonStageDotsUI();
+          updateTabCount(p);
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] KinematicsVisualQuizEngine mount error:', err);
+    }
+  }
+
+  document.getElementById('btn-next-solver')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('solver');
+  });
+}
+
+function mountKinematicsStage3Solver(container) {
+  container.innerHTML = `
+    <section class="max-w-4xl mx-auto space-y-3 sm:space-y-5 view-enter">
+      <div class="hidden md:flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="text-[11px] font-mono uppercase tracking-[0.14em] text-cyanGlow">Robotics &amp; Modern IK Drills</div>
+          <h2 class="font-display font-bold text-2xl text-white mt-0.5">DH, PoE SE(3), Jacobian &amp; QP-IK Step Solver</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+            12 deep 5-to-6-part robotics drills covering Standard &amp; Modified DH, Rodrigues SO(3) / SE(3) Product of Exponentials, Space/Body Jacobians, Yoshikawa manipulability, Pieper spherical-wrist IK, Damped Least Squares, and differential QP-IK.
+          </p>
+        </div>
+
+        <button
+          id="btn-next-word-problems"
+          type="button"
+          class="btn-glass !text-xs"
+        >
+          Next: Word Problems →
+        </button>
+      </div>
+
+      <div id="paperless-solver-host" class="glass-panel p-2.5 sm:p-5 md:p-6 min-h-[420px]"></div>
+    </section>
+  `;
+
+  const host = document.getElementById('paperless-solver-host');
+  if (host && typeof PaperlessStepSolver === 'function') {
+    try {
+      activeInstances.stepSolver = new PaperlessStepSolver(host, {
+        mode: 'kinematics',
+        curriculum: 'kinematics',
+        problems: KINEMATICS_PROBLEMS,
+        tiers: KINEMATICS_SOLVER_TIERS,
+        mechatronicsLens: isMechatronicsLens(),
+        lens: isMechatronicsLens() ? 'mechatronics' : 'math',
+        onSolve: () => {
+          markStageDone('solver');
+          updateLessonStageDotsUI();
+        },
+        onProblemSolved: () => {
+          markStageDone('solver');
+          updateLessonStageDotsUI();
+        },
+        onProgress: (info) => {
+          if (!info || (info.solvedCount ?? 1) >= 1) {
+            markStageDone('solver');
+            updateLessonStageDotsUI();
+          }
+        },
+      });
+    } catch (err) {
+      console.error('[EIGENLAB] Kinematics PaperlessStepSolver mount error:', err);
+    }
+  }
+
+  document.getElementById('btn-next-word-problems')?.addEventListener('click', () => {
+    playSfx('tick');
+    switchStage('word-problems');
+  });
+}
+
 function mountStage4WordProblems(container) {
   if (!container) return;
 
@@ -9599,37 +10479,42 @@ function mountStage4WordProblems(container) {
   const isPid = isPidLesson();
   const isFreq = isFreqLesson();
   const isSS = isStateSpaceLesson();
-  const fallbackData = isSS
-    ? FALLBACK_STATESPACE_WORD_PROBLEMS
-    : isFreq
-      ? FALLBACK_FREQ_WORD_PROBLEMS
-      : isPid
-        ? FALLBACK_PID_WORD_PROBLEMS
-        : isMod
-          ? FALLBACK_MODELING_WORD_PROBLEMS
-          : isLA
-            ? FALLBACK_LINALG_WORD_PROBLEMS
-            : isDE
-              ? FALLBACK_DIFFEQ_WORD_PROBLEMS
-              : isInt
-                ? FALLBACK_INTEGRAL_WORD_PROBLEMS
-                : FALLBACK_WORD_PROBLEMS;
+  const isKin = isKinematicsLesson();
+  const fallbackData = isKin
+    ? FALLBACK_KINEMATICS_WORD_PROBLEMS
+    : isSS
+      ? FALLBACK_STATESPACE_WORD_PROBLEMS
+      : isFreq
+        ? FALLBACK_FREQ_WORD_PROBLEMS
+        : isPid
+          ? FALLBACK_PID_WORD_PROBLEMS
+          : isMod
+            ? FALLBACK_MODELING_WORD_PROBLEMS
+            : isLA
+              ? FALLBACK_LINALG_WORD_PROBLEMS
+              : isDE
+                ? FALLBACK_DIFFEQ_WORD_PROBLEMS
+                : isInt
+                  ? FALLBACK_INTEGRAL_WORD_PROBLEMS
+                  : FALLBACK_WORD_PROBLEMS;
   const data = appState.wordProblemsByLesson?.[appState.lessonId] || fallbackData;
-  const jsonFilePath = isSS
-    ? 'data/lessons/statespace-word-problems.json'
-    : isFreq
-      ? 'data/lessons/freq-word-problems.json'
-      : isPid
-        ? 'data/lessons/pid-word-problems.json'
-        : isMod
-          ? 'data/lessons/modeling-word-problems.json'
-          : isLA
-            ? 'data/lessons/linalg-word-problems.json'
-            : isDE
-              ? 'data/lessons/diffeq-word-problems.json'
-              : isInt
-                ? 'data/lessons/integrals-word-problems.json'
-                : 'data/lessons/derivatives-word-problems.json';
+  const jsonFilePath = isKin
+    ? 'data/lessons/kinematics-word-problems.json'
+    : isSS
+      ? 'data/lessons/statespace-word-problems.json'
+      : isFreq
+        ? 'data/lessons/freq-word-problems.json'
+        : isPid
+          ? 'data/lessons/pid-word-problems.json'
+          : isMod
+            ? 'data/lessons/modeling-word-problems.json'
+            : isLA
+              ? 'data/lessons/linalg-word-problems.json'
+              : isDE
+                ? 'data/lessons/diffeq-word-problems.json'
+                : isInt
+                  ? 'data/lessons/integrals-word-problems.json'
+                  : 'data/lessons/derivatives-word-problems.json';
   const problems = Array.isArray(data.problems) ? data.problems : [];
   const rawPlanned =
     Array.isArray(data.plannedTopics) && data.plannedTopics.length
@@ -9667,41 +10552,45 @@ function mountStage4WordProblems(container) {
             <h2 class="font-display font-bold text-xl sm:text-3xl text-white">
               ${escapeHtml(
                 data.title ||
-                  (isSS
-                    ? 'Applied Modern Control, MPC & SOTA Estimation Cases'
-                    : isFreq
-                      ? 'Applied Root Locus, Bode & Loop-Shaping Design Cases'
-                      : isPid
-                        ? 'Applied PID Control & Mechatronics Stabilization Problems'
-                        : isMod
-                          ? 'Applied Physical Modeling & s-Plane Design Problems'
-                          : isLA
-                            ? 'Applied Linear Algebra & Eigen-Engineering Problems'
-                            : isDE
-                              ? 'Applied ODE & Laplace Engineering Problems'
-                              : isInt
-                                ? 'Applied Integral Word Problems'
-                                : 'Applied Engineering Word Problems')
+                  (isKin
+                    ? 'Applied Robot Kinematics, Redundant Nullspace & QP-IK Cases'
+                    : isSS
+                      ? 'Applied Modern Control, MPC & SOTA Estimation Cases'
+                      : isFreq
+                        ? 'Applied Root Locus, Bode & Loop-Shaping Design Cases'
+                        : isPid
+                          ? 'Applied PID Control & Mechatronics Stabilization Problems'
+                          : isMod
+                            ? 'Applied Physical Modeling & s-Plane Design Problems'
+                            : isLA
+                              ? 'Applied Linear Algebra & Eigen-Engineering Problems'
+                              : isDE
+                                ? 'Applied ODE & Laplace Engineering Problems'
+                                : isInt
+                                  ? 'Applied Integral Word Problems'
+                                  : 'Applied Engineering Word Problems')
               )}
             </h2>
             <p class="text-xs sm:text-sm text-slate-300/90 leading-relaxed">
               ${escapeHtml(
                 data.subtitle ||
-                  (isSS
-                    ? 'Synthesize quadruped whole-body MPC + InEKF contact estimators, drone CBF-QP safety filters, satellite reaction-wheel LQR observers, and autonomous car MHE/UKF fusion.'
-                    : isFreq
-                      ? 'Synthesize dual-stage HDD lead-lag servos, flexible-link notch filters, maglev Nyquist loops, and satellite attitude sensitivity budgets.'
-                      : isPid
-                        ? 'Design cascaded drone attitude controllers, anti-windup CNC servos, lead-compensated inverted pendulums, and Smith predictors for delayed thermal plants.'
-                        : isMod
-                          ? 'Model coupled quarter-car suspensions, voice-coil actuators, interacting hydraulic tanks, and MEMS proof-mass sensors from first principles.'
-                          : isLA
-                            ? 'Apply Jacobians, rigid-body inertia tensors, Kalman covariance propagation, and low-rank SVD compression to real robotics and AI pipelines.'
-                            : isDE
-                              ? 'Model RLC transients, closed-loop DC motor transfer functions, suspension damping, and continuous Neural ODEs.'
-                              : isInt
-                                ? 'Translate velocity profiles, variable force paths, pulsed currents, and probability densities into definite integrals.'
-                                : 'Translate physical mechatronics, electronics, thermal, and machine learning narratives into differential models and solve them interactively.')
+                  (isKin
+                    ? 'Design 7-DOF Franka Panda nullspace obstacle avoidance, UR5e analytical Pieper IK detours, high-speed SCARA PCB trajectories, and dual-arm humanoid QP-IK controllers.'
+                    : isSS
+                      ? 'Synthesize quadruped whole-body MPC + InEKF contact estimators, drone CBF-QP safety filters, satellite reaction-wheel LQR observers, and autonomous car MHE/UKF fusion.'
+                      : isFreq
+                        ? 'Synthesize dual-stage HDD lead-lag servos, flexible-link notch filters, maglev Nyquist loops, and satellite attitude sensitivity budgets.'
+                        : isPid
+                          ? 'Design cascaded drone attitude controllers, anti-windup CNC servos, lead-compensated inverted pendulums, and Smith predictors for delayed thermal plants.'
+                          : isMod
+                            ? 'Model coupled quarter-car suspensions, voice-coil actuators, interacting hydraulic tanks, and MEMS proof-mass sensors from first principles.'
+                            : isLA
+                              ? 'Apply Jacobians, rigid-body inertia tensors, Kalman covariance propagation, and low-rank SVD compression to real robotics and AI pipelines.'
+                              : isDE
+                                ? 'Model RLC transients, closed-loop DC motor transfer functions, suspension damping, and continuous Neural ODEs.'
+                                : isInt
+                                  ? 'Translate velocity profiles, variable force paths, pulsed currents, and probability densities into definite integrals.'
+                                  : 'Translate physical mechatronics, electronics, thermal, and machine learning narratives into differential models and solve them interactively.')
               )}
             </p>
           </div>
@@ -9885,6 +10774,7 @@ async function boot() {
     pidWordProblems,
     freqWordProblems,
     statespaceWordProblems,
+    kinematicsWordProblems,
   ] = await Promise.all([
     fetchJsonSafe('./data/curriculum.json', FALLBACK_CURRICULUM),
     fetchJsonSafe('./data/lessons/derivatives-word-problems.json', FALLBACK_WORD_PROBLEMS),
@@ -9909,6 +10799,10 @@ async function boot() {
     fetchJsonSafe(
       './data/lessons/statespace-word-problems.json',
       FALLBACK_STATESPACE_WORD_PROBLEMS
+    ),
+    fetchJsonSafe(
+      './data/lessons/kinematics-word-problems.json',
+      FALLBACK_KINEMATICS_WORD_PROBLEMS
     ),
     waitForKatex(),
   ]);
@@ -9940,6 +10834,9 @@ async function boot() {
   }
   if (statespaceWordProblems && typeof statespaceWordProblems === 'object') {
     appState.wordProblemsByLesson['mech-state-space'] = statespaceWordProblems;
+  }
+  if (kinematicsWordProblems && typeof kinematicsWordProblems === 'object') {
+    appState.wordProblemsByLesson['mech-kinematics'] = kinematicsWordProblems;
   }
 
   subscribeToStoreUpdates();
